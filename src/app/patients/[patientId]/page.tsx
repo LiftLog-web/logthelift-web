@@ -94,13 +94,22 @@ export default function PatientProgressPage() {
   const router    = useRouter();
   const { patientId } = useParams<{ patientId: string }>();
 
-  const [authed,       setAuthed]       = useState(false);
-  const [patientName,  setPatientName]  = useState('');
-  const [workouts,     setWorkouts]     = useState<WorkoutLog[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [expanded,     setExpanded]     = useState<Set<string>>(new Set());
-  const [expandedEx,   setExpandedEx]   = useState<Set<string>>(new Set());
-  const [noAccess,     setNoAccess]     = useState(false);
+  const [authed,        setAuthed]        = useState(false);
+  const [patientName,   setPatientName]   = useState('');
+  const [patientEmail,  setPatientEmail]  = useState('');
+  const [practName,     setPractName]     = useState('');
+  const [workouts,      setWorkouts]      = useState<WorkoutLog[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [expanded,      setExpanded]      = useState<Set<string>>(new Set());
+  const [expandedEx,    setExpandedEx]    = useState<Set<string>>(new Set());
+  const [noAccess,      setNoAccess]      = useState(false);
+
+  // Email modal state
+  const [emailOpen,    setEmailOpen]    = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody,    setEmailBody]    = useState('');
+  const [sending,      setSending]      = useState(false);
+  const [sendResult,   setSendResult]   = useState<'ok' | 'error' | null>(null);
 
   useEffect(() => {
     if (!patientId) return;
@@ -110,8 +119,9 @@ export default function PatientProgressPage() {
       if (!data.session) { router.push('/login'); return; }
 
       const uid = data.session.user.id;
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', uid).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, display_name').eq('id', uid).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      setPractName(prof?.display_name ?? 'Your Practitioner');
 
       // Verify this patient is linked to the practitioner
       const { data: link } = await sb
@@ -123,9 +133,10 @@ export default function PatientProgressPage() {
 
       if (!link) { setNoAccess(true); setLoading(false); return; }
 
-      // Load patient name
-      const { data: patProf } = await sb.from('profiles').select('display_name').eq('id', patientId).single();
+      // Load patient profile
+      const { data: patProf } = await sb.from('profiles').select('display_name, email').eq('id', patientId).single();
       setPatientName(patProf?.display_name ?? 'Patient');
+      setPatientEmail(patProf?.email ?? '');
 
       // Load workouts
       const { data: rows } = await sb
@@ -144,6 +155,31 @@ export default function PatientProgressPage() {
       setLoading(false);
     });
   }, [patientId, router]);
+
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !emailBody.trim()) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to:       patientEmail,
+          toName:   patientName,
+          fromName: practName,
+          subject:  emailSubject,
+          body:     emailBody,
+        }),
+      });
+      const json = await res.json();
+      setSendResult(json.ok ? 'ok' : 'error');
+      if (json.ok) { setEmailSubject(''); setEmailBody(''); }
+    } catch {
+      setSendResult('error');
+    }
+    setSending(false);
+  };
 
   const toggleWorkout = (id: string) =>
     setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -176,6 +212,63 @@ export default function PatientProgressPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
+      {/* Email modal */}
+      {emailOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ width: '100%', maxWidth: 520, background: '#1a1d26', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2 style={{ margin: 0, fontWeight: 700, fontSize: 18 }}>Email {patientName}</h2>
+              <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>To</label>
+                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                  {patientName} &lt;{patientEmail}&gt;
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Subject</label>
+                <input
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  placeholder="e.g. Great progress this week!"
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Message</label>
+                <textarea
+                  value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)}
+                  placeholder="Write your message here…"
+                  rows={7}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
+                />
+              </div>
+              {sendResult === 'ok' && (
+                <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>Email sent successfully.</p>
+              )}
+              {sendResult === 'error' && (
+                <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>Failed to send. Please try again.</p>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.5)', borderRadius: 10, padding: '10px 20px', fontSize: 14, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sending || !emailSubject.trim() || !emailBody.trim()}
+                  style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1 }}
+                >
+                  {sending ? 'Sending…' : 'Send Email'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -184,12 +277,22 @@ export default function PatientProgressPage() {
             / <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a> / {patientName}
           </span>
         </div>
-        <button
-          onClick={() => router.push('/plans')}
-          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
-        >
-          ← Back to Plans
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {patientEmail && (
+            <button
+              onClick={() => { setEmailOpen(true); setSendResult(null); }}
+              style={{ background: `${PURPLE}20`, border: `1px solid ${PURPLE}50`, color: PURPLE, borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              ✉ Email Patient
+            </button>
+          )}
+          <button
+            onClick={() => router.push('/plans')}
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
+          >
+            ← Back to Plans
+          </button>
+        </div>
       </nav>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
