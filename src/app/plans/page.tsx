@@ -31,8 +31,8 @@ export default function PlansPage() {
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
 
-      const { data: prof } = await sb.from('profiles').select('role, approved').eq('id', data.session.user.id).single();
-      if (prof?.role !== 'practitioner') { router.push('/profile'); return; }
+      const { data: prof } = await sb.from('profiles').select('role, approved, is_gym_owner').eq('id', data.session.user.id).single();
+      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setAuthed(true);
 
       const { data: rawPlans } = await sb
