@@ -42,7 +42,7 @@ export default function Home() {
       {/* Hero */}
       <section className="flex flex-col items-center text-center px-6 py-20 gap-6 max-w-3xl mx-auto">
         <Image
-          src="/logo.png"
+          src="/Logo.png"
           alt="LiftLog logo"
           width={140}
           height={140}
