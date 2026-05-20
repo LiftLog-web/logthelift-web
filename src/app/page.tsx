@@ -43,18 +43,13 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="flex flex-col items-center text-center px-6 py-20 gap-6 max-w-3xl mx-auto">
-        {/* Kettlebell */}
-        <svg width="110" height="120" viewBox="0 0 110 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          {/* Handle */}
-          <path d="M 38 58 Q 36 18 55 18 Q 74 18 72 58" stroke={TEAL} strokeWidth="11" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-          {/* Collar */}
-          <rect x="33" y="54" width="44" height="12" rx="5" fill={PURPLE}/>
-          {/* Body */}
-          <circle cx="55" cy="88" r="30" fill={PURPLE}/>
-          {/* Shine */}
-          <ellipse cx="43" cy="76" rx="9" ry="6" fill={YELLOW} fillOpacity="0.35" transform="rotate(-20 43 76)"/>
-        </svg>
+      <section className="relative flex flex-col items-center text-center px-6 py-28 gap-6 max-w-3xl mx-auto overflow-hidden">
+        {/* Ambient glow orbs */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+          <div style={{ position: 'absolute', top: '-80px', left: '-100px', width: '420px', height: '420px', borderRadius: '50%', background: PURPLE, opacity: 0.18, filter: 'blur(90px)' }} />
+          <div style={{ position: 'absolute', top: '20px', right: '-80px', width: '340px', height: '340px', borderRadius: '50%', background: TEAL, opacity: 0.18, filter: 'blur(80px)' }} />
+          <div style={{ position: 'absolute', bottom: '-60px', left: '50%', transform: 'translateX(-50%)', width: '260px', height: '260px', borderRadius: '50%', background: YELLOW, opacity: 0.12, filter: 'blur(70px)' }} />
+        </div>
         <h1 className="text-5xl font-extrabold leading-tight">
           Track workouts.<br />
           <span style={{ color: YELLOW }}>Build better outcomes.</span>
