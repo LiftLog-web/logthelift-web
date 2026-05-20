@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { getSupabase } from '@/lib/getSupabase()';
+import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
