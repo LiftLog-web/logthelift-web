@@ -291,6 +291,7 @@ export default function DashboardPage() {
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>My Plans</a>
+          <a href="/import-pts" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>Import PTs</a>
           <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>
             Sign Out
           </button>

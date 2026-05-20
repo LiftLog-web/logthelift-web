@@ -1,0 +1,318 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSupabase } from '@/lib/supabase';
+
+const TEAL   = '#5fcfbf';
+const PURPLE = '#C471ED';
+
+const MUSCLE_GROUPS = [
+  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms',
+  'Core', 'Quadriceps', 'Hamstrings', 'Glutes', 'Calves',
+  'Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics',
+];
+
+interface CustomExercise {
+  id: string;
+  creator_id: string;
+  name: string;
+  muscle_group: string;
+  equipment: string;
+  type: 'weighted' | 'duration' | 'cardio';
+  media_url: string | null;
+  media_type: 'image' | 'video' | null;
+  created_at: string;
+}
+
+const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+  weighted: { bg: `${TEAL}22`,   color: TEAL   },
+  duration: { bg: `${PURPLE}22`, color: PURPLE  },
+  cardio:   { bg: '#F9F29522',   color: '#F9F295' },
+};
+
+export default function ExercisesPage() {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [authed,    setAuthed]    = useState(false);
+  const [userId,    setUserId]    = useState('');
+  const [exercises, setExercises] = useState<CustomExercise[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [deleting,  setDeleting]  = useState<string | null>(null);
+  const [showForm,  setShowForm]  = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [formError, setFormError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState('');
+
+  const [name,        setName]        = useState('');
+  const [muscleGroup, setMuscleGroup] = useState(MUSCLE_GROUPS[0]);
+  const [equipment,   setEquipment]   = useState('Bodyweight');
+  const [type,        setType]        = useState<'weighted' | 'duration' | 'cardio'>('weighted');
+  const [mediaFile,   setMediaFile]   = useState<File | null>(null);
+
+  useEffect(() => {
+    const sb = getSupabase();
+    sb.auth.getSession().then(async ({ data }) => {
+      if (!data.session) { router.push('/login'); return; }
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
+      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      setUserId(data.session.user.id);
+      setAuthed(true);
+      await fetchExercises();
+    });
+  }, [router]);
+
+  async function fetchExercises() {
+    const { data } = await getSupabase()
+      .from('custom_exercises')
+      .select('id, creator_id, name, muscle_group, equipment, type, media_url, media_type, created_at')
+      .order('created_at', { ascending: false });
+    setExercises(data ?? []);
+    setLoading(false);
+  }
+
+  function resetForm() {
+    setName('');
+    setMuscleGroup(MUSCLE_GROUPS[0]);
+    setEquipment('Bodyweight');
+    setType('weighted');
+    setMediaFile(null);
+    setFormError('');
+    setUploadProgress('');
+  }
+
+  async function handleSave() {
+    if (!name.trim()) { setFormError('Name is required.'); return; }
+    setSaving(true);
+    setFormError('');
+
+    let media_url: string | null = null;
+    let media_type: 'image' | 'video' | null = null;
+
+    if (mediaFile) {
+      setUploadProgress('Uploading media…');
+      const sb = getSupabase();
+      const path = `${userId}/${Date.now()}-${mediaFile.name}`;
+      const { error: upErr } = await sb.storage.from('exercise-media').upload(path, mediaFile, { upsert: true });
+      if (upErr) {
+        setFormError('Media upload failed: ' + upErr.message);
+        setSaving(false);
+        setUploadProgress('');
+        return;
+      }
+      const { data: urlData } = sb.storage.from('exercise-media').getPublicUrl(path);
+      media_url = urlData.publicUrl;
+      media_type = mediaFile.type.startsWith('video') ? 'video' : 'image';
+      setUploadProgress('');
+    }
+
+    const { error } = await getSupabase().from('custom_exercises').insert({
+      name: name.trim(),
+      muscle_group: muscleGroup,
+      equipment: equipment.trim() || 'Bodyweight',
+      type,
+      media_url,
+      media_type,
+    });
+
+    if (error) {
+      setFormError('Failed to save: ' + error.message);
+      setSaving(false);
+      return;
+    }
+
+    await fetchExercises();
+    resetForm();
+    setShowForm(false);
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this exercise? This cannot be undone.')) return;
+    setDeleting(id);
+    await getSupabase().from('custom_exercises').delete().eq('id', id);
+    setExercises(prev => prev.filter(e => e.id !== id));
+    setDeleting(null);
+  }
+
+  if (!authed || loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+
+      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/plans" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textDecoration: 'none' }}>← Plans</a>
+          <span style={{ color: TEAL, fontWeight: 800, fontSize: 20, marginLeft: 8 }}>LiftLog</span>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Exercise Library</span>
+        </div>
+        <button
+          onClick={() => { resetForm(); setShowForm(true); }}
+          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+        >
+          + Add Exercise
+        </button>
+      </nav>
+
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Exercise Library</h1>
+        <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>
+          {exercises.length} custom exercise{exercises.length !== 1 ? 's' : ''}
+        </p>
+
+        {showForm && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
+            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>New Exercise</h2>
+                <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Name *</span>
+                  <input
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="e.g. Bulgarian Split Squat"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
+                  <select
+                    value={muscleGroup}
+                    onChange={e => setMuscleGroup(e.target.value)}
+                    style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                  >
+                    {MUSCLE_GROUPS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Equipment</span>
+                  <input
+                    value={equipment}
+                    onChange={e => setEquipment(e.target.value)}
+                    placeholder="Bodyweight"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Type</span>
+                  <select
+                    value={type}
+                    onChange={e => setType(e.target.value as 'weighted' | 'duration' | 'cardio')}
+                    style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                  >
+                    <option value="weighted">Weighted</option>
+                    <option value="duration">Duration</option>
+                    <option value="cardio">Cardio</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Media (optional)</span>
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}
+                  >
+                    {mediaFile ? mediaFile.name : 'Click to upload image or video'}
+                  </div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    style={{ display: 'none' }}
+                    onChange={e => setMediaFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+
+                {uploadProgress && <p style={{ color: TEAL, fontSize: 13 }}>{uploadProgress}</p>}
+                {formError && <p style={{ color: '#EF4444', fontSize: 13 }}>{formError}</p>}
+
+                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                  <button
+                    onClick={() => { setShowForm(false); resetForm(); }}
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                  >
+                    {saving ? 'Saving…' : 'Save Exercise'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {exercises.length === 0 ? (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+            <p style={{ fontSize: 40, marginBottom: 16 }}>🏋️</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>No custom exercises yet. Add your first one.</p>
+            <button
+              onClick={() => { resetForm(); setShowForm(true); }}
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
+            >
+              Add Exercise
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            {exercises.map(ex => {
+              const typeStyle = TYPE_COLORS[ex.type] ?? TYPE_COLORS.weighted;
+              return (
+                <div key={ex.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {ex.media_url && ex.media_type === 'image' && (
+                    <img src={ex.media_url} alt={ex.name} style={{ width: '100%', height: 160, objectFit: 'cover' }} />
+                  )}
+                  {ex.media_url && ex.media_type === 'video' && (
+                    <video src={ex.media_url} style={{ width: '100%', height: 160, objectFit: 'cover' }} muted playsInline />
+                  )}
+                  <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                    <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{ex.name}</h3>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ background: `${PURPLE}22`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>
+                        {ex.muscle_group}
+                      </span>
+                      <span style={{ background: typeStyle.bg, color: typeStyle.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>
+                        {ex.type.charAt(0).toUpperCase() + ex.type.slice(1)}
+                      </span>
+                    </div>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>{ex.equipment}</p>
+                    <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+                      <button
+                        onClick={() => handleDelete(ex.id)}
+                        disabled={deleting === ex.id}
+                        style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 13, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', opacity: deleting === ex.id ? 0.5 : 1 }}
+                      >
+                        {deleting === ex.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
