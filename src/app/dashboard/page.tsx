@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/getSupabase()';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -72,7 +72,7 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabase().auth.getSession().then(({ data }) => {
       if (data.session) {
         loadDashboard(data.session.user.id);
       } else {
@@ -85,7 +85,7 @@ export default function DashboardPage() {
     setLoadingData(true);
 
     // Check gym owner flag
-    const { data: profile } = await supabase
+    const { data: profile } = await getSupabase()
       .from('profiles')
       .select('is_gym_owner')
       .eq('id', userId)
@@ -98,7 +98,7 @@ export default function DashboardPage() {
     }
 
     // Get gym profile
-    const { data: gymData } = await supabase
+    const { data: gymData } = await getSupabase()
       .from('gym_profiles')
       .select('id, gym_name, address, tier, max_pts')
       .eq('owner_id', userId)
@@ -112,7 +112,7 @@ export default function DashboardPage() {
     setGym(gymData);
 
     // Get subscription
-    const { data: subData } = await supabase
+    const { data: subData } = await getSupabase()
       .from('gym_subscriptions')
       .select('status, trial_end')
       .eq('gym_id', gymData.id)
@@ -120,7 +120,7 @@ export default function DashboardPage() {
     setSub(subData ?? null);
 
     // Get PT links with PT profiles
-    const { data: links } = await supabase
+    const { data: links } = await getSupabase()
       .from('gym_pt_links')
       .select('id, pt_id, status, invited_at, responded_at, pt:pt_id(display_name, email)')
       .eq('gym_id', gymData.id)
@@ -152,7 +152,7 @@ export default function DashboardPage() {
         if (link.status !== 'accepted') return base;
 
         // Patient count
-        const { data: patientLinks } = await supabase
+        const { data: patientLinks } = await getSupabase()
           .from('patient_links')
           .select('patient_id')
           .eq('practitioner_id', link.pt_id);
@@ -162,7 +162,7 @@ export default function DashboardPage() {
 
         // Satisfaction ratings from synced_workouts
         if (patientIds.length > 0) {
-          const { data: workouts } = await supabase
+          const { data: workouts } = await getSupabase()
             .from('synced_workouts')
             .select('data')
             .in('user_id', patientIds);
@@ -190,7 +190,7 @@ export default function DashboardPage() {
     e.preventDefault();
     setLogging(true);
     setLoginError('');
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
     if (error || !data.user) {
       setLoginError('Invalid email or password.');
       setLogging(false);
@@ -201,7 +201,7 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     setAuthState('login');
     setGym(null);
     setPts([]);
