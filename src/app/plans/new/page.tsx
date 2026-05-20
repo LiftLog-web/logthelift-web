@@ -41,6 +41,7 @@ function NewPlanInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const editId       = searchParams.get('edit');
+  const presetPatient = searchParams.get('patient');
 
   const [authed,       setAuthed]       = useState(false);
   const [practId,      setPractId]      = useState('');
@@ -74,6 +75,8 @@ function NewPlanInner() {
         .map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles)
         .filter(Boolean);
       setPatients(pats);
+
+      if (presetPatient) setPatientId(presetPatient);
 
       if (editId) {
         const { data: plan } = await sb

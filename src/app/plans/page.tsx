@@ -19,12 +19,20 @@ interface Plan {
   exerciseCount: number;
 }
 
+interface PatientGroup {
+  patient_id: string;
+  patientName: string;
+  plans: Plan[];
+}
+
 export default function PlansPage() {
   const router = useRouter();
-  const [plans, setPlans]       = useState<Plan[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [authed, setAuthed]     = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [plans, setPlans]         = useState<Plan[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [authed, setAuthed]       = useState(false);
+  const [deleting, setDeleting]   = useState<string | null>(null);
+  const [search, setSearch]       = useState('');
+  const [expanded, setExpanded]   = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const sb = getSupabase();
@@ -67,6 +75,30 @@ export default function PlansPage() {
     setDeleting(null);
   };
 
+  const toggleExpanded = (patientId: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(patientId) ? next.delete(patientId) : next.add(patientId);
+      return next;
+    });
+  };
+
+  // Group plans by patient
+  const grouped: PatientGroup[] = [];
+  const seen = new Map<string, PatientGroup>();
+  for (const plan of plans) {
+    if (!seen.has(plan.patient_id)) {
+      const g: PatientGroup = { patient_id: plan.patient_id, patientName: plan.patientName, plans: [] };
+      seen.set(plan.patient_id, g);
+      grouped.push(g);
+    }
+    seen.get(plan.patient_id)!.plans.push(plan);
+  }
+
+  const filtered = grouped.filter(g =>
+    g.patientName.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (!authed || loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -95,52 +127,118 @@ export default function PlansPage() {
       </nav>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Workout Plans</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>Create and manage plans for your patients.</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Workout Plans</h1>
+            <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 6, marginBottom: 0 }}>
+              {grouped.length} patient{grouped.length !== 1 ? 's' : ''} · {plans.length} plan{plans.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {grouped.length > 0 && (
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search patients…"
+              style={{
+                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 220,
+              }}
+            />
+          )}
+        </div>
 
         {plans.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
             <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>No plans yet. Create your first plan for a patient.</p>
             <button onClick={() => router.push('/plans/new')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
               Create First Plan
             </button>
           </div>
+        ) : filtered.length === 0 ? (
+          <p style={{ color: 'rgba(255,255,255,0.3)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-            {plans.map(plan => (
-              <div key={plan.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}30`, borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h3 style={{ fontWeight: 700, fontSize: 17, margin: 0 }}>{plan.name}</h3>
-                  <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-                    {plan.exerciseCount} exercise{plan.exerciseCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                {plan.description && <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>{plan.description}</p>}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>🏋️</span>
-                  <span style={{ color: PURPLE, fontSize: 14, fontWeight: 600 }}>{plan.patientName}</span>
-                </div>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: 0 }}>
-                  Created {new Date(plan.created_at).toLocaleDateString('en-CA')}
-                </p>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28 }}>
+            {filtered.map(group => {
+              const isOpen = expanded.has(group.patient_id);
+              return (
+                <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+
+                  {/* Patient header row — clickable */}
                   <button
-                    onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
-                    style={{ flex: 1, background: `${TEAL}20`, color: TEAL, borderRadius: 10, padding: '9px 0', fontWeight: 700, fontSize: 13, border: `1px solid ${TEAL}40`, cursor: 'pointer' }}
+                    onClick={() => toggleExpanded(group.patient_id)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'rgba(255,255,255,0.03)',
+                      border: 'none', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left',
+                    }}
                   >
-                    Edit
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                        🏋️
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: isOpen ? '#fff' : 'rgba(255,255,255,0.9)' }}>
+                          {group.patientName}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                          {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
+                        style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        + Add Plan
+                      </button>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                        ▾
+                      </span>
+                    </div>
                   </button>
-                  <button
-                    onClick={() => handleDelete(plan.id)}
-                    disabled={deleting === plan.id}
-                    style={{ flex: 1, background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 10, padding: '9px 0', fontWeight: 700, fontSize: 13, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
-                  >
-                    Delete
-                  </button>
+
+                  {/* Plans for this patient */}
+                  {isOpen && (
+                    <div style={{ borderTop: `1px solid rgba(255,255,255,0.07)`, padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                      {group.plans.map(plan => (
+                        <div key={plan.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
+                            <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {plan.exerciseCount} ex
+                            </span>
+                          </div>
+                          {plan.description && (
+                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: 0 }}>{plan.description}</p>
+                          )}
+                          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: 0 }}>
+                            {new Date(plan.created_at).toLocaleDateString('en-CA')}
+                          </p>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
+                              style={{ flex: 1, background: `${TEAL}20`, color: TEAL, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${TEAL}40`, cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(plan.id)}
+                              disabled={deleting === plan.id}
+                              style={{ flex: 1, background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
