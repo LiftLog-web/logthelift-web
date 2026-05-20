@@ -187,7 +187,13 @@ export default function PlansPage() {
                         </p>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
+                        style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        View Progress
+                      </button>
                       <button
                         onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
                         style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
