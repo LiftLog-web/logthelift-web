@@ -31,15 +31,20 @@ export default function Home() {
           <Image src="/Logo.png" alt="LiftLog" width={36} height={36} className="rounded-lg" />
           <span className="text-xl font-bold" style={{ color: TEAL }}>LiftLog</span>
         </div>
-        <a
-          href="https://apps.apple.com/app/id6762567982"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-semibold px-4 py-2 rounded-full text-[#0f1117]"
-          style={{ backgroundColor: TEAL }}
-        >
-          Download App
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="/login" className="text-sm font-semibold px-4 py-2 rounded-full border border-white/20 hover:border-white/40 transition-colors">
+            Sign In
+          </a>
+          <a
+            href="https://apps.apple.com/app/id6762567982"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold px-4 py-2 rounded-full text-[#0f1117]"
+            style={{ backgroundColor: TEAL }}
+          >
+            Download App
+          </a>
+        </div>
       </nav>
 
       {/* Hero */}
