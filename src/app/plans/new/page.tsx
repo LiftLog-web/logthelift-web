@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
@@ -37,7 +37,7 @@ const defaultSet = (ex: Exercise): WorkoutSet => {
   return { reps: 10, weight: 0 };
 };
 
-export default function NewPlanPage() {
+function NewPlanInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const editId       = searchParams.get('edit');
@@ -407,5 +407,13 @@ export default function NewPlanPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewPlanPage() {
+  return (
+    <Suspense>
+      <NewPlanInner />
+    </Suspense>
   );
 }
