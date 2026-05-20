@@ -38,7 +38,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="flex flex-col items-center text-center px-6 py-24 gap-6 max-w-3xl mx-auto">
-        <div className="text-6xl">🏋️</div>
         <h1 className="text-5xl font-extrabold leading-tight">
           Track workouts.<br />
           <span style={{ color: ACCENT }}>Build better outcomes.</span>
