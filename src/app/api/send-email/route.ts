@@ -44,9 +44,14 @@ export async function POST(req: NextRequest) {
 
     const { error } = await resend.emails.send({
       from:    'LiftLog <noreply@logthelift.ca>',
+      replyTo: 'noreply@logthelift.ca',
       to:      [to],
       subject: `[LiftLog] ${subject}`,
       html,
+      text:    `${body}\n\n—\nSent by ${fromName} via LiftLog (logthelift.ca)`,
+      headers: {
+        'X-Entity-Ref-ID': `liftlog-pt-msg-${Date.now()}`,
+      },
     });
 
     if (error) {
