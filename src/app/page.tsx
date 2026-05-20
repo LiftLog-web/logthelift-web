@@ -27,7 +27,10 @@ export default function Home() {
 
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 max-w-6xl mx-auto w-full">
-        <span className="text-xl font-bold" style={{ color: TEAL }}>LiftLog</span>
+        <div className="flex items-center gap-2">
+          <Image src="/Logo.png" alt="LiftLog" width={36} height={36} className="rounded-lg" />
+          <span className="text-xl font-bold" style={{ color: TEAL }}>LiftLog</span>
+        </div>
         <a
           href="https://apps.apple.com/app/id6762567982"
           target="_blank"
@@ -41,14 +44,17 @@ export default function Home() {
 
       {/* Hero */}
       <section className="flex flex-col items-center text-center px-6 py-20 gap-6 max-w-3xl mx-auto">
-        <Image
-          src="/Logo.png"
-          alt="LiftLog logo"
-          width={140}
-          height={140}
-          priority
-          className="drop-shadow-lg"
-        />
+        {/* Kettlebell */}
+        <svg width="110" height="120" viewBox="0 0 110 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          {/* Handle */}
+          <path d="M 38 58 Q 36 18 55 18 Q 74 18 72 58" stroke={TEAL} strokeWidth="11" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          {/* Collar */}
+          <rect x="33" y="54" width="44" height="12" rx="5" fill={PURPLE}/>
+          {/* Body */}
+          <circle cx="55" cy="88" r="30" fill={PURPLE}/>
+          {/* Shine */}
+          <ellipse cx="43" cy="76" rx="9" ry="6" fill={YELLOW} fillOpacity="0.35" transform="rotate(-20 43 76)"/>
+        </svg>
         <h1 className="text-5xl font-extrabold leading-tight">
           Track workouts.<br />
           <span style={{ color: YELLOW }}>Build better outcomes.</span>
