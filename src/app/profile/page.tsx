@@ -228,6 +228,15 @@ export default function ProfilePage() {
                 View Progress
               </a>
             </div>
+            <div style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}30`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Friends</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>View friend activity, react to workouts, and add new friends.</p>
+              </div>
+              <a href="/friends" style={{ background: PURPLE, color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
+                View Friends
+              </a>
+            </div>
           </div>
         )}
 
