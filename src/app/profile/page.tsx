@@ -17,6 +17,7 @@ interface Profile {
   role: 'patient' | 'practitioner';
   approved: boolean;
   is_gym_owner: boolean;
+  avatar_url: string | null;
 }
 
 interface Practitioner {
@@ -52,7 +53,7 @@ export default function ProfilePage() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('id, display_name, email, role, approved, is_gym_owner')
+        .select('id, display_name, email, role, approved, is_gym_owner, avatar_url')
         .eq('id', userId)
         .single();
 
@@ -130,8 +131,10 @@ export default function ProfilePage() {
 
         {/* Profile card */}
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? `${PURPLE}33` : `${TEAL}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
-            {isPractitioner ? '🩺' : '🏋️'}
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? `${PURPLE}33` : `${TEAL}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (isPractitioner ? '🩺' : '🏋️')}
           </div>
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
