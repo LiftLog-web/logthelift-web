@@ -186,17 +186,36 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Log Workout CTA (patients only) */}
+        {/* Patient quick actions */}
         {!isPractitioner && (
-          <div style={{ marginTop: 32, background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Log a Workout</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Record your session from your computer — choose a plan or log free-form.</p>
+          <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+            <div style={{ background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Log a Workout</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Record your session from your computer.</p>
+              </div>
+              <a href="/log" style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
+                Log Workout
+              </a>
             </div>
-            <a href="/log"
-              style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
-              Log Workout
-            </a>
+            <div style={{ background: `${PURPLE}11`, border: `1px solid ${PURPLE}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>My Plans</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>View plans assigned by your practitioner.</p>
+              </div>
+              <a href="/my-plans" style={{ background: PURPLE, color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
+                View Plans
+              </a>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Workout History</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Review your past sessions and progress.</p>
+              </div>
+              <a href="/history" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center', border: '1px solid rgba(255,255,255,0.15)' }}>
+                View History
+              </a>
+            </div>
           </div>
         )}
 

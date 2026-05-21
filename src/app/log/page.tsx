@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
@@ -77,8 +77,10 @@ function renderStars(rating: number, onClick: (v: number) => void) {
   );
 }
 
-export default function LogWorkoutPage() {
-  const router = useRouter();
+function LogWorkoutInner() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const presetPlanId = searchParams.get('planId');
 
   const [userId,       setUserId]       = useState('');
   const [authed,       setAuthed]       = useState(false);
@@ -110,7 +112,24 @@ export default function LogWorkoutPage() {
         .eq('patient_id', uid)
         .order('created_at', { ascending: false });
 
-      setPlans((rawPlans ?? []) as Plan[]);
+      const loadedPlans = (rawPlans ?? []) as Plan[];
+      setPlans(loadedPlans);
+
+      if (presetPlanId) {
+        const preset = loadedPlans.find(p => p.id === presetPlanId);
+        if (preset) {
+          const exs = preset.exercises.map(pe => ({
+            id: pe.id,
+            exercise: pe.exercise,
+            sets: pe.sets.map((_, i) => ({ id: `${pe.id}-${i}` })),
+            notes: '',
+            practitionerNotes: pe.notes || undefined,
+            targetSets: pe.sets.map(s => ({ reps: s.reps, weight: s.weight, duration: s.seconds, cardioduration: s.minutes })),
+          }));
+          setSelectedPlan(preset);
+          setLoggedExs(exs);
+        }
+      }
     });
   }, [router]);
 
@@ -409,5 +428,13 @@ export default function LogWorkoutPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function LogWorkoutPage() {
+  return (
+    <Suspense>
+      <LogWorkoutInner />
+    </Suspense>
   );
 }
