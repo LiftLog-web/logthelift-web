@@ -69,7 +69,12 @@ function exStatus(ex: LoggedExercise): ExStatus {
   return 'partial';
 }
 
-const SATISFACTION = ['', '😫', '😕', '😐', '💪', '🔥'];
+function renderStars(rating: number): string {
+  const full  = Math.floor(rating);
+  const half  = rating - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+}
 const STATUS_COLOR: Record<ExStatus, string> = {
   completed: TEAL,
   partial:   YELLOW,
@@ -272,7 +277,7 @@ export default function PatientProgressPage() {
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
+          <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
           <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
             / <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a> / {patientName}
           </span>
@@ -314,7 +319,7 @@ export default function PatientProgressPage() {
             { label: 'Total Workouts',   value: String(totalWorkouts),                    color: TEAL   },
             { label: 'Plan Workouts',    value: String(withPlan.length),                  color: PURPLE },
             { label: 'Completion Rate',  value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
-            { label: 'Avg Satisfaction', value: avgRating ? `${SATISFACTION[Math.round(Number(avgRating))]} ${avgRating}` : '—', color: TEAL },
+            { label: 'Avg Satisfaction', value: avgRating ? `${renderStars(Number(avgRating))} ${avgRating}/5` : '—', color: TEAL },
           ].map(s => (
             <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
@@ -370,7 +375,7 @@ export default function PatientProgressPage() {
 
                     {/* Satisfaction */}
                     {w.satisfactionRating && (
-                      <span style={{ fontSize: 16 }}>{SATISFACTION[w.satisfactionRating]}</span>
+                      <span style={{ fontSize: 13, color: YELLOW, fontWeight: 600 }}>{renderStars(w.satisfactionRating)} {w.satisfactionRating}/5</span>
                     )}
 
                     {/* Mini completion bars */}

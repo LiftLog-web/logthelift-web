@@ -43,7 +43,12 @@ const TIER_LABELS: Record<string, string> = {
   large: 'Large',
 };
 
-const SATISFACTION_EMOJIS = ['😫', '😕', '😐', '💪', '🔥'];
+function renderStars(rating: number): string {
+  const full  = Math.floor(rating);
+  const half  = rating - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+}
 
 function statusBadge(status: string) {
   const styles: Record<string, { bg: string; color: string; label: string }> = {
@@ -353,7 +358,7 @@ export default function DashboardPage() {
                       <td style={{ padding: '16px 24px' }}>
                         {pt.status === 'accepted' && pt.avgSatisfaction !== null ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 18 }}>{SATISFACTION_EMOJIS[Math.round(pt.avgSatisfaction) - 1]}</span>
+                            <span style={{ color: YELLOW, fontSize: 14 }}>{renderStars(pt.avgSatisfaction)}</span>
                             <span style={{ color: TEAL, fontWeight: 700 }}>{pt.avgSatisfaction.toFixed(1)}</span>
                             <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>/5</span>
                           </span>

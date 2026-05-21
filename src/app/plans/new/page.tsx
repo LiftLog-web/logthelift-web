@@ -15,6 +15,7 @@ interface WorkoutSet {
   weight?: number;
   seconds?: number;
   minutes?: number;
+  rest?: number; // rest after set, in minutes
 }
 
 interface PlanExercise {
@@ -186,7 +187,7 @@ function NewPlanInner() {
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
+          <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
           <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a> / {editId ? 'Edit' : 'New'}</span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -325,20 +326,16 @@ function NewPlanInner() {
                   {/* Sets header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>SETS</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <button
-                          key={n}
-                          onClick={() => updateTargetSets(pe.id, n)}
-                          style={{
-                            width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                            background: pe.targetSets === n ? TEAL : 'rgba(255,255,255,0.08)',
-                            color: pe.targetSets === n ? '#0f1117' : 'rgba(255,255,255,0.5)',
-                          }}
-                        >
-                          {n}
-                        </button>
-                      ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => updateTargetSets(pe.id, Math.max(1, pe.targetSets - 1))}
+                        style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+                      >−</button>
+                      <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 16, color: TEAL }}>{pe.targetSets}</span>
+                      <button
+                        onClick={() => updateTargetSets(pe.id, Math.min(12, pe.targetSets + 1))}
+                        style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+                      >+</button>
                     </div>
                   </div>
 
@@ -390,6 +387,15 @@ function NewPlanInner() {
                             />
                           </label>
                         )}
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>Rest (min)</span>
+                          <input
+                            type="number" min={0} step={0.5} value={s.rest ?? 1}
+                            onChange={e => updateSet(pe.id, si, 'rest', Number(e.target.value))}
+                            style={{ width: 60, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.6)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                          />
+                        </label>
                       </div>
                     ))}
                   </div>

@@ -113,7 +113,7 @@ export default function ProfilePage() {
 
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 900, margin: '0 auto' }}>
-        <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
+        <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {isPractitioner && (
             <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>
@@ -185,6 +185,20 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Log Workout CTA (patients only) */}
+        {!isPractitioner && (
+          <div style={{ marginTop: 32, background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Log a Workout</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Record your session from your computer — choose a plan or log free-form.</p>
+            </div>
+            <a href="/log"
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+              Log Workout
+            </a>
+          </div>
+        )}
 
         {/* App CTA */}
         <div style={{ marginTop: 32, background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
