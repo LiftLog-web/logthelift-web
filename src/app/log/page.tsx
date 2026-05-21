@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -93,6 +94,8 @@ function LogWorkoutInner() {
   const [saving,       setSaving]       = useState(false);
   const [saveError,    setSaveError]    = useState('');
   const [saved,        setSaved]        = useState(false);
+  const [exSearch,     setExSearch]     = useState('');
+  const [exMuscle,     setExMuscle]     = useState('All');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -171,6 +174,17 @@ function LogWorkoutInner() {
       if (ex.id !== exId) return ex;
       return { ...ex, sets: ex.sets.filter((_, i) => i !== setIdx) };
     }));
+  };
+
+  const addFreeExercise = useCallback((ex: typeof EXERCISES[0]) => {
+    setLoggedExs(prev => {
+      if (prev.some(e => e.exercise.id === ex.id)) return prev;
+      return [...prev, { id: `free-${ex.id}`, exercise: ex, sets: [{ id: String(Date.now()) }], notes: '' }];
+    });
+  }, []);
+
+  const removeFreeExercise = (exId: string) => {
+    setLoggedExs(prev => prev.filter(e => e.id !== exId));
   };
 
   const handleSave = async () => {
@@ -287,17 +301,81 @@ function LogWorkoutInner() {
               </button>
             </div>
 
-            {/* Exercises */}
-            {loggedExs.length === 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14, marginBottom: 24 }}>
-                This is a free workout — no exercises assigned. Log your session notes and rating below.
+            {/* Exercise picker — free workout only */}
+            {selectedPlan.id === '' && (() => {
+              const filtered = EXERCISES.filter(ex => {
+                const matchMuscle = exMuscle === 'All' || ex.muscleGroup === exMuscle;
+                const matchSearch = ex.name.toLowerCase().includes(exSearch.toLowerCase());
+                return matchMuscle && matchSearch;
+              });
+              return (
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: '0 0 12px' }}>Add Exercises</p>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <input
+                      value={exSearch}
+                      onChange={e => setExSearch(e.target.value)}
+                      placeholder="Search exercises…"
+                      style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
+                    />
+                    <select
+                      value={exMuscle}
+                      onChange={e => setExMuscle(e.target.value)}
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+                    >
+                      <option value="All" style={{ background: '#1a1d26' }}>All muscles</option>
+                      {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg} style={{ background: '#1a1d26' }}>{mg}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {filtered.map(ex => {
+                      const added = loggedExs.some(e => e.exercise.id === ex.id);
+                      return (
+                        <button
+                          key={ex.id}
+                          onClick={() => addFreeExercise(ex)}
+                          disabled={added}
+                          style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            textAlign: 'left', background: added ? `${TEAL}0d` : 'transparent',
+                            border: `1px solid ${added ? `${TEAL}40` : 'transparent'}`,
+                            borderRadius: 8, padding: '8px 12px', cursor: added ? 'default' : 'pointer',
+                          }}
+                          onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                          onMouseLeave={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                        >
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: added ? TEAL : '#fff' }}>{ex.name}</span>
+                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>{ex.muscleGroup} · {ex.equipment}</span>
+                          </div>
+                          {added ? <span style={{ fontSize: 11, color: TEAL }}>✓ Added</span> : <span style={{ fontSize: 18, color: TEAL, lineHeight: 1 }}>+</span>}
+                        </button>
+                      );
+                    })}
+                    {filtered.length === 0 && <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', padding: 16 }}>No exercises found</p>}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {loggedExs.length === 0 && selectedPlan.id === '' && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 32, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14, marginBottom: 24 }}>
+                Search and add exercises above to get started.
               </div>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
               {loggedExs.map(ex => (
                 <div key={ex.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}30`, borderRadius: 14, padding: '18px 20px' }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{ex.exercise.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.exercise.name}</div>
+                    {selectedPlan.id === '' && (
+                      <button onClick={() => removeFreeExercise(ex.id)}
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', borderRadius: 6, padding: '2px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: ex.practitionerNotes ? 8 : 14 }}>
                     {ex.exercise.muscleGroup} · {ex.exercise.equipment}
                   </div>
