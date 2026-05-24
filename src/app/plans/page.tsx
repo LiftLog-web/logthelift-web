@@ -124,6 +124,12 @@ export default function PlansPage() {
             Exercise Library
           </button>
           <button
+            onClick={() => router.push('/media-library')}
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+          >
+            Video Library
+          </button>
+          <button
             onClick={() => router.push('/import')}
             style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
           >
