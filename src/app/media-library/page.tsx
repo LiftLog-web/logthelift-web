@@ -26,6 +26,12 @@ interface CoverageItem {
   mediaItem: MediaItem | undefined;
 }
 
+interface ViewMedia {
+  url: string;
+  type: 'photo' | 'video';
+  name: string;
+}
+
 type ModalMode = 'url' | 'upload';
 type View = 'library' | 'coverage';
 
@@ -33,14 +39,16 @@ export default function MediaLibraryPage() {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [authed,   setAuthed]   = useState(false);
-  const [userId,   setUserId]   = useState('');
-  const [items,    setItems]    = useState<MediaItem[]>([]);
-  const [coverage, setCoverage] = useState<CoverageItem[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [view,     setView]     = useState<View>('library');
-  const [search,   setSearch]   = useState('');
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [authed,      setAuthed]      = useState(false);
+  const [userId,      setUserId]      = useState('');
+  const [items,       setItems]       = useState<MediaItem[]>([]);
+  const [signedUrls,  setSignedUrls]  = useState<Record<string, string>>({});
+  const [coverage,    setCoverage]    = useState<CoverageItem[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [view,        setView]        = useState<View>('library');
+  const [search,      setSearch]      = useState('');
+  const [deleting,    setDeleting]    = useState<string | null>(null);
+  const [viewMedia,   setViewMedia]   = useState<ViewMedia | null>(null);
 
   // Modal
   const [showModal,      setShowModal]      = useState(false);
@@ -85,11 +93,20 @@ export default function MediaLibraryPage() {
     const mediaItems: MediaItem[] = mediaRes.data ?? [];
     setItems(mediaItems);
 
-    // Build a name → media item lookup
+    // Generate signed URLs for all uploaded (non-link) items
+    const uploadedItems = mediaItems.filter(m => m.media_type !== 'link' && m.file_path);
+    const urlEntries = await Promise.all(
+      uploadedItems.map(async m => {
+        const { data } = await sb.storage.from('exercise-media').createSignedUrl(m.file_path, 3600);
+        return data?.signedUrl ? ([m.id, data.signedUrl] as const) : null;
+      }),
+    );
+    setSignedUrls(Object.fromEntries(urlEntries.filter(Boolean) as [string, string][]));
+
+    // Build coverage: exercise names from plans + custom exercises + existing demos
     const byName: Record<string, MediaItem> = {};
     for (const m of mediaItems) byName[m.exercise_name] = m;
 
-    // Collect all unique exercise names from plans
     const namesSet = new Set<string>();
     for (const plan of (plansRes.data ?? [])) {
       if (Array.isArray(plan.exercises)) {
@@ -98,26 +115,18 @@ export default function MediaLibraryPage() {
         }
       }
     }
-    // Also include custom exercises
     for (const ex of (customRes.data ?? [])) {
       if (ex.name) namesSet.add(ex.name);
     }
-    // Also include any exercises that already have demos (in case they're not in any plan yet)
     for (const m of mediaItems) namesSet.add(m.exercise_name);
 
     const coverageList: CoverageItem[] = Array.from(namesSet)
       .sort((a, b) => a.localeCompare(b))
       .map(name => {
         const mediaItem = byName[name];
-        return {
-          name,
-          hasDemo: !!mediaItem,
-          demoType: mediaItem?.media_type ?? null,
-          mediaItem,
-        };
+        return { name, hasDemo: !!mediaItem, demoType: mediaItem?.media_type ?? null, mediaItem };
       });
 
-    // Sort: missing demos first, then covered — alphabetical within each group
     coverageList.sort((a, b) => {
       if (a.hasDemo === b.hasDemo) return a.name.localeCompare(b.name);
       return a.hasDemo ? 1 : -1;
@@ -221,24 +230,20 @@ export default function MediaLibraryPage() {
     setDeleting(null);
   }
 
-  // Library view helpers
-  const filteredItems = items.filter(m =>
-    m.exercise_name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const linkCount   = items.filter(m => m.media_type === 'link').length;
-  const uploadCount = items.filter(m => m.media_type !== 'link').length;
+  // Library helpers
+  const filteredItems   = items.filter(m => m.exercise_name.toLowerCase().includes(search.toLowerCase()));
+  const linkCount       = items.filter(m => m.media_type === 'link').length;
+  const uploadCount     = items.filter(m => m.media_type !== 'link').length;
 
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
   const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Uploaded video' : 'Uploaded photo';
   const typeColor = (t: string) => t === 'link' ? TEAL : t === 'video' ? PURPLE : '#F9F295';
 
-  // Coverage view helpers
-  const filteredCoverage = coverage.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const coveredCount = coverage.filter(c => c.hasDemo).length;
-  const missingCount = coverage.length - coveredCount;
-  const coveragePct  = coverage.length > 0 ? Math.round((coveredCount / coverage.length) * 100) : 0;
+  // Coverage helpers
+  const filteredCoverage = coverage.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const coveredCount     = coverage.filter(c => c.hasDemo).length;
+  const missingCount     = coverage.length - coveredCount;
+  const coveragePct      = coverage.length > 0 ? Math.round((coveredCount / coverage.length) * 100) : 0;
 
   if (!authed || loading) {
     return (
@@ -297,7 +302,6 @@ export default function MediaLibraryPage() {
                 color: view === v ? '#fff' : 'rgba(255,255,255,0.4)',
                 fontWeight: view === v ? 700 : 500,
                 fontSize: 14, padding: '8px 20px', cursor: 'pointer',
-                transition: 'all 0.15s',
               }}
             >
               {v === 'library' ? 'My Library' : `Coverage${coverage.length > 0 ? ` · ${coveredCount}/${coverage.length}` : ''}`}
@@ -308,13 +312,11 @@ export default function MediaLibraryPage() {
         {/* ── LIBRARY VIEW ── */}
         {view === 'library' && (
           <>
-            {/* Tip banner */}
             <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
                 <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
-                Patients tap the link in the app to open it in their browser.
-                Demos sync instantly to the LiftLog app.
+                Patients tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
               </p>
             </div>
 
@@ -323,11 +325,7 @@ export default function MediaLibraryPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search exercises…"
-                style={{
-                  width: '100%', boxSizing: 'border-box', marginBottom: 20,
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none',
-                }}
+                style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
               />
             )}
 
@@ -337,21 +335,11 @@ export default function MediaLibraryPage() {
                 <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No demos yet</h2>
                 <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 28, fontSize: 15 }}>
                   Add a video link or upload a file to get started.<br />
-                  Or switch to <strong style={{ color: TEAL }}>Coverage</strong> to see which exercises in your plans need demos.
+                  Switch to <strong style={{ color: TEAL }}>Coverage</strong> to see which exercises in your plans need demos.
                 </p>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => openUploadModal()}
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
-                  >
-                    Upload File
-                  </button>
-                  <button
-                    onClick={() => openUrlModal()}
-                    style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
-                  >
-                    + Add Video Link
-                  </button>
+                  <button onClick={() => openUploadModal()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
+                  <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
                 </div>
               </div>
             ) : filteredItems.length === 0 ? (
@@ -363,6 +351,7 @@ export default function MediaLibraryPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Type</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Link / File</th>
@@ -371,38 +360,78 @@ export default function MediaLibraryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item, i) => (
-                      <tr key={item.id} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                        <td style={{ padding: '16px 24px', fontWeight: 600 }}>{item.exercise_name}</td>
-                        <td style={{ padding: '16px 24px' }}>
-                          <span style={{ background: `${typeColor(item.media_type)}18`, color: typeColor(item.media_type), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            {typeIcon(item.media_type)} {typeLabel(item.media_type)}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px 24px', maxWidth: 320 }}>
-                          {item.media_type === 'link' && item.url_link ? (
-                            <a href={item.url_link} target="_blank" rel="noopener noreferrer" style={{ color: TEAL, fontSize: 13, wordBreak: 'break-all', textDecoration: 'none' }} title={item.url_link}>
-                              {item.url_link.length > 55 ? item.url_link.slice(0, 55) + '…' : item.url_link}
-                            </a>
-                          ) : (
-                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>{item.file_path ? item.file_path.split('/').pop() : '—'}</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
-                          {new Date(item.created_at).toLocaleDateString('en-CA')}
-                        </td>
-                        <td style={{ padding: '16px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {item.media_type === 'link' && (
-                            <button onClick={() => openUrlModal({ item })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
-                              Edit
+                    {filteredItems.map((item, i) => {
+                      const signedUrl = signedUrls[item.id];
+                      return (
+                        <tr key={item.id} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+
+                          {/* Preview */}
+                          <td style={{ padding: '12px 24px' }}>
+                            {item.media_type === 'photo' && signedUrl ? (
+                              <img
+                                src={signedUrl}
+                                alt={item.exercise_name}
+                                onClick={() => setViewMedia({ url: signedUrl, type: 'photo', name: item.exercise_name })}
+                                style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', display: 'block' }}
+                              />
+                            ) : item.media_type === 'video' && signedUrl ? (
+                              <button
+                                onClick={() => setViewMedia({ url: signedUrl, type: 'video', name: item.exercise_name })}
+                                style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18 }}
+                              >
+                                ▶
+                              </button>
+                            ) : item.media_type === 'link' ? (
+                              <div style={{ width: 64, height: 48, background: '#0f2a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
+                            ) : (
+                              <div style={{ width: 64, height: 48, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 16, height: 16, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                              </div>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', fontWeight: 600 }}>{item.exercise_name}</td>
+
+                          <td style={{ padding: '12px 24px' }}>
+                            <span style={{ background: `${typeColor(item.media_type)}18`, color: typeColor(item.media_type), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {typeIcon(item.media_type)} {typeLabel(item.media_type)}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '12px 24px', maxWidth: 260 }}>
+                            {item.media_type === 'link' && item.url_link ? (
+                              <a href={item.url_link} target="_blank" rel="noopener noreferrer" style={{ color: TEAL, fontSize: 13, wordBreak: 'break-all', textDecoration: 'none' }} title={item.url_link}>
+                                {item.url_link.length > 45 ? item.url_link.slice(0, 45) + '…' : item.url_link}
+                              </a>
+                            ) : signedUrl ? (
+                              <button
+                                onClick={() => setViewMedia({ url: signedUrl, type: item.media_type as 'photo' | 'video', name: item.exercise_name })}
+                                style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                              >
+                                {item.media_type === 'photo' ? 'View photo' : 'Play video'}
+                              </button>
+                            ) : (
+                              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>{item.file_path.split('/').pop()}</span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
+                            {new Date(item.created_at).toLocaleDateString('en-CA')}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {item.media_type === 'link' && (
+                              <button onClick={() => openUrlModal({ item })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
+                                Edit
+                              </button>
+                            )}
+                            <button onClick={() => handleDelete(item)} disabled={deleting === item.id} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}>
+                              {deleting === item.id ? 'Removing…' : 'Remove'}
                             </button>
-                          )}
-                          <button onClick={() => handleDelete(item)} disabled={deleting === item.id} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}>
-                            {deleting === item.id ? 'Removing…' : 'Remove'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -413,7 +442,6 @@ export default function MediaLibraryPage() {
         {/* ── COVERAGE VIEW ── */}
         {view === 'coverage' && (
           <>
-            {/* Progress summary */}
             {coverage.length > 0 && (
               <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -423,24 +451,21 @@ export default function MediaLibraryPage() {
                       {coveredCount} of {coverage.length} exercises have a demo
                     </span>
                   </div>
-                  {missingCount > 0 && (
+                  {missingCount > 0 ? (
                     <span style={{ background: '#EF444420', color: '#EF4444', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 999 }}>
                       {missingCount} missing
                     </span>
-                  )}
-                  {missingCount === 0 && (
+                  ) : (
                     <span style={{ background: `${GREEN}20`, color: GREEN, fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 999 }}>
                       All covered ✓
                     </span>
                   )}
                 </div>
-                {/* Progress bar */}
                 <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${coveragePct}%`, background: coveragePct === 100 ? GREEN : TEAL, borderRadius: 999, transition: 'width 0.4s ease' }} />
+                  <div style={{ height: '100%', width: `${coveragePct}%`, background: coveragePct === 100 ? GREEN : TEAL, borderRadius: 999 }} />
                 </div>
                 <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 10, marginBottom: 0 }}>
-                  Includes all exercises used across your patient plans and custom exercise library.
-                  Exercises missing demos are shown first.
+                  Includes all exercises used across your patient plans and custom exercise library. Missing demos are shown first.
                 </p>
               </div>
             )}
@@ -450,11 +475,7 @@ export default function MediaLibraryPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search exercises…"
-                style={{
-                  width: '100%', boxSizing: 'border-box', marginBottom: 20,
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none',
-                }}
+                style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
               />
             )}
 
@@ -476,74 +497,78 @@ export default function MediaLibraryPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Demo Status</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Demo Type</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Type</th>
                       <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 600 }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCoverage.map((c, i) => (
-                      <tr key={c.name} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                        <td style={{ padding: '14px 24px', fontWeight: 600, color: c.hasDemo ? '#fff' : 'rgba(255,255,255,0.7)' }}>
-                          {c.name}
-                        </td>
-                        <td style={{ padding: '14px 24px' }}>
-                          {c.hasDemo ? (
-                            <span style={{ background: `${GREEN}18`, color: GREEN, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                              ✓ Has demo
-                            </span>
-                          ) : (
-                            <span style={{ background: '#EF444418', color: '#EF4444', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                              ✗ Missing
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 24px' }}>
-                          {c.demoType ? (
-                            <span style={{ background: `${typeColor(c.demoType)}18`, color: typeColor(c.demoType), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                              {typeIcon(c.demoType)} {typeLabel(c.demoType)}
-                            </span>
-                          ) : (
-                            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {c.hasDemo ? (
-                            <>
-                              {c.mediaItem?.media_type === 'link' && (
-                                <button onClick={() => openUrlModal({ item: c.mediaItem })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
-                                  Edit link
-                                </button>
-                              )}
-                              {c.mediaItem?.url_link && (
-                                <a href={c.mediaItem.url_link} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, textDecoration: 'none', marginRight: 16 }}>
-                                  Open ↗
-                                </a>
-                              )}
-                              <button onClick={() => c.mediaItem && handleDelete(c.mediaItem)} disabled={!!deleting} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>
-                                Remove
-                              </button>
-                            </>
-                          ) : (
-                            <div style={{ display: 'inline-flex', gap: 8 }}>
-                              <button
-                                onClick={() => openUploadModal(c.name)}
-                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
-                              >
-                                Upload
-                              </button>
-                              <button
-                                onClick={() => openUrlModal({ prefillName: c.name })}
-                                style={{ background: TEAL, color: '#0f1117', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer' }}
-                              >
-                                + Add Link
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredCoverage.map((c, i) => {
+                      const signedUrl = c.mediaItem ? signedUrls[c.mediaItem.id] : undefined;
+                      return (
+                        <tr key={c.name} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+
+                          {/* Preview */}
+                          <td style={{ padding: '12px 24px' }}>
+                            {c.demoType === 'photo' && signedUrl ? (
+                              <img src={signedUrl} alt={c.name} onClick={() => setViewMedia({ url: signedUrl, type: 'photo', name: c.name })} style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', display: 'block' }} />
+                            ) : c.demoType === 'video' && signedUrl ? (
+                              <button onClick={() => setViewMedia({ url: signedUrl, type: 'video', name: c.name })} style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18 }}>▶</button>
+                            ) : c.demoType === 'link' ? (
+                              <div style={{ width: 64, height: 48, background: '#0f2a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
+                            ) : (
+                              <div style={{ width: 64, height: 48, background: 'rgba(239,68,68,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>—</div>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', fontWeight: 600, color: c.hasDemo ? '#fff' : 'rgba(255,255,255,0.7)' }}>{c.name}</td>
+
+                          <td style={{ padding: '12px 24px' }}>
+                            {c.hasDemo ? (
+                              <span style={{ background: `${GREEN}18`, color: GREEN, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>✓ Has demo</span>
+                            ) : (
+                              <span style={{ background: '#EF444418', color: '#EF4444', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>✗ Missing</span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 24px' }}>
+                            {c.demoType ? (
+                              <span style={{ background: `${typeColor(c.demoType)}18`, color: typeColor(c.demoType), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                {typeIcon(c.demoType)} {typeLabel(c.demoType)}
+                              </span>
+                            ) : (
+                              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>—</span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {c.hasDemo ? (
+                              <>
+                                {c.demoType === 'link' && c.mediaItem && (
+                                  <button onClick={() => openUrlModal({ item: c.mediaItem })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>Edit link</button>
+                                )}
+                                {c.mediaItem?.url_link && (
+                                  <a href={c.mediaItem.url_link} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, textDecoration: 'none', marginRight: 16 }}>Open ↗</a>
+                                )}
+                                {(c.demoType === 'photo' || c.demoType === 'video') && signedUrl && (
+                                  <button onClick={() => setViewMedia({ url: signedUrl, type: c.demoType as 'photo' | 'video', name: c.name })} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
+                                    {c.demoType === 'photo' ? 'View' : 'Play'}
+                                  </button>
+                                )}
+                                <button onClick={() => c.mediaItem && handleDelete(c.mediaItem)} disabled={!!deleting} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>Remove</button>
+                              </>
+                            ) : (
+                              <div style={{ display: 'inline-flex', gap: 8 }}>
+                                <button onClick={() => openUploadModal(c.name)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Upload</button>
+                                <button onClick={() => openUrlModal({ prefillName: c.name })} style={{ background: TEAL, color: '#0f1117', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer' }}>+ Add Link</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -552,7 +577,28 @@ export default function MediaLibraryPage() {
         )}
       </main>
 
-      {/* Modal */}
+      {/* ── MEDIA VIEWER ── */}
+      {viewMedia && (
+        <div
+          onClick={() => setViewMedia(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewMedia.name}</p>
+              <button onClick={() => setViewMedia(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            {viewMedia.type === 'photo' ? (
+              <img src={viewMedia.url} alt={viewMedia.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />
+            ) : (
+              <video src={viewMedia.url} controls autoPlay style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', background: '#000' }} />
+            )}
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD/EDIT MODAL ── */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
           <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
@@ -564,8 +610,8 @@ export default function MediaLibraryPage() {
             </div>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 28 }}>
               {modalMode === 'url'
-                ? 'Paste any video URL — YouTube, Vimeo, Instagram, or anything else. The exercise name must match exactly what\'s used in the app.'
-                : 'Upload a photo or video file. The exercise name must match exactly what\'s used in the app.'}
+                ? "Paste any video URL — YouTube, Vimeo, Instagram, or anything else. The exercise name must match exactly what's used in the app."
+                : "Upload a photo or video file. The exercise name must match exactly what's used in the app."}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -576,17 +622,10 @@ export default function MediaLibraryPage() {
                   onChange={e => setExerciseName(e.target.value)}
                   placeholder="e.g. Barbell Squat"
                   disabled={nameLocked}
-                  style={{
-                    background: nameLocked ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
-                    padding: '11px 14px', color: nameLocked ? 'rgba(255,255,255,0.5)' : '#fff',
-                    fontSize: 15, outline: 'none', cursor: nameLocked ? 'not-allowed' : 'text',
-                  }}
+                  style={{ background: nameLocked ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: nameLocked ? 'rgba(255,255,255,0.5)' : '#fff', fontSize: 15, outline: 'none', cursor: nameLocked ? 'not-allowed' : 'text' }}
                 />
                 {!nameLocked && (
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
-                    Must match the exercise name exactly as it appears in the app (case-sensitive).
-                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>Must match the exercise name exactly as it appears in the app (case-sensitive).</span>
                 )}
               </label>
 
@@ -605,10 +644,7 @@ export default function MediaLibraryPage() {
               ) : (
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
-                  <div
-                    onClick={() => fileRef.current?.click()}
-                    style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}
-                  >
+                  <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
                     {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
                   </div>
                   <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
@@ -619,9 +655,7 @@ export default function MediaLibraryPage() {
               {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
 
               <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
-                  Cancel
-                </button>
+                <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                   {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
                 </button>
@@ -630,6 +664,8 @@ export default function MediaLibraryPage() {
           </div>
         </div>
       )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
