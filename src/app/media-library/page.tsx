@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
-const TEAL   = '#5fcfbf';
-const PURPLE = '#C471ED';
-const GREEN  = '#22c55e';
+const TEAL      = '#5fcfbf';
+const PURPLE    = '#C471ED';
+const GREEN     = '#22c55e';
+const MEDIA_CAP = 30;
 
 interface MediaItem {
   id: string;
@@ -137,6 +138,10 @@ export default function MediaLibraryPage() {
   }
 
   function openUrlModal(opts?: { item?: MediaItem; prefillName?: string }) {
+    if (!opts?.item && atCap) {
+      alert(`You've reached the ${MEDIA_CAP}-demo limit. Remove an existing demo to add a new one.`);
+      return;
+    }
     const item = opts?.item ?? null;
     setEditItem(item);
     setModalMode('url');
@@ -150,6 +155,10 @@ export default function MediaLibraryPage() {
   }
 
   function openUploadModal(prefillName?: string) {
+    if (atCap) {
+      alert(`You've reached the ${MEDIA_CAP}-demo limit. Remove an existing demo to add a new one.`);
+      return;
+    }
     setEditItem(null);
     setModalMode('upload');
     setExerciseName(prefillName ?? '');
@@ -234,6 +243,9 @@ export default function MediaLibraryPage() {
   const filteredItems   = items.filter(m => m.exercise_name.toLowerCase().includes(search.toLowerCase()));
   const linkCount       = items.filter(m => m.media_type === 'link').length;
   const uploadCount     = items.filter(m => m.media_type !== 'link').length;
+  const atCap           = items.length >= MEDIA_CAP;
+  const usagePct        = Math.min(100, (items.length / MEDIA_CAP) * 100);
+  const usageBarColor   = atCap ? '#EF4444' : usagePct >= 80 ? '#F97316' : TEAL;
 
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
   const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Uploaded video' : 'Uploaded photo';
@@ -267,13 +279,15 @@ export default function MediaLibraryPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => openUploadModal()}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+            disabled={atCap}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: atCap ? 'not-allowed' : 'pointer' }}
           >
             Upload File
           </button>
           <button
             onClick={() => openUrlModal()}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+            disabled={atCap}
+            style={{ background: atCap ? 'rgba(255,255,255,0.1)' : TEAL, color: atCap ? 'rgba(255,255,255,0.3)' : '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: atCap ? 'not-allowed' : 'pointer' }}
           >
             + Add Video Link
           </button>
@@ -285,9 +299,18 @@ export default function MediaLibraryPage() {
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Exercise Video Library</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 8, marginBottom: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 8, marginBottom: 16 }}>
             {items.length} demo{items.length !== 1 ? 's' : ''} · {linkCount} video link{linkCount !== 1 ? 's' : ''} · {uploadCount} upload{uploadCount !== 1 ? 's' : ''}
           </p>
+          {/* Usage bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${usagePct}%`, background: usageBarColor, borderRadius: 999, transition: 'width 0.3s ease' }} />
+            </div>
+            <span style={{ color: atCap ? '#EF4444' : 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: atCap ? 700 : 500, whiteSpace: 'nowrap' }}>
+              {items.length} of {MEDIA_CAP} demo slots used{atCap ? ' — limit reached' : ''}
+            </span>
+          </div>
         </div>
 
         {/* Tab toggle */}
