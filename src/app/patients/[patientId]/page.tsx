@@ -187,7 +187,10 @@ export default function PatientProgressPage() {
         .filter(Boolean);
 
       setWorkouts(logs);
-      setExpandedWeeks(new Set(logs.map(w => getWeekStartDate(w.date))));
+      const allWeekKeys = new Set(logs.map(w => getWeekStartDate(w.date)));
+      const storedCollapsed = localStorage.getItem(`patient-weeks-collapsed-${patientId}`);
+      const collapsed: Set<string> = storedCollapsed ? new Set(JSON.parse(storedCollapsed)) : new Set();
+      setExpandedWeeks(new Set([...allWeekKeys].filter(k => !collapsed.has(k))));
       setAuthed(true);
       setLoading(false);
     });
@@ -225,7 +228,16 @@ export default function PatientProgressPage() {
     setExpandedEx(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const toggleWeek = (key: string) =>
-    setExpandedWeeks(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setExpandedWeeks(prev => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      const storedCollapsed: string[] = JSON.parse(localStorage.getItem(`patient-weeks-collapsed-${patientId}`) ?? '[]');
+      const updated = n.has(key)
+        ? storedCollapsed.filter(k => k !== key)
+        : [...new Set([...storedCollapsed, key])];
+      localStorage.setItem(`patient-weeks-collapsed-${patientId}`, JSON.stringify(updated));
+      return n;
+    });
 
   /* ── Week groups ── */
   const weekMap = new Map<string, WorkoutLog[]>();
@@ -235,6 +247,52 @@ export default function PatientProgressPage() {
     weekMap.get(key)!.push(w);
   }
   const sortedWeekKeys = [...weekMap.keys()].sort().reverse();
+  const chronoWeekKeys = [...sortedWeekKeys].reverse(); // oldest → newest
+
+  /* ── Progress chart data ── */
+  const weekTrends = chronoWeekKeys.map(key => {
+    const ws  = weekMap.get(key)!;
+    const exs = ws.flatMap(w => w.exercises ?? []);
+    const withT = exs.filter(e => (e.targetSets ?? []).length > 0);
+    const done  = withT.filter(e => exStatus(e) === 'completed').length;
+    const rate  = withT.length > 0 ? Math.round((done / withT.length) * 100) : null;
+    const totalSets = exs.reduce((a, e) => a + e.sets.length, 0);
+    const { badge } = weekLabel(key);
+    const shortLabel = new Date(key + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+    return { key, shortLabel, badge, rate, totalSets };
+  });
+
+  // Best weight / duration per exercise per week
+  const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
+  for (const key of chronoWeekKeys) {
+    const bestPerEx: Record<string, { best: number; unit?: string; type: string }> = {};
+    for (const w of weekMap.get(key)!) {
+      for (const ex of w.exercises ?? []) {
+        const name = ex.exercise.name;
+        const type = ex.exercise.type;
+        if (type === 'weighted') {
+          const maxW = Math.max(0, ...ex.sets.map(s => s.weight ?? 0));
+          if (maxW > 0) {
+            const unit = ex.sets.find(s => s.weight)?.unit ?? 'kg';
+            if (!bestPerEx[name] || maxW > bestPerEx[name].best) bestPerEx[name] = { best: maxW, unit, type };
+          }
+        } else if (type === 'duration') {
+          const maxD = Math.max(0, ...ex.sets.map(s => s.duration ?? 0));
+          if (maxD > 0) {
+            if (!bestPerEx[name] || maxD > bestPerEx[name].best) bestPerEx[name] = { best: maxD, type };
+          }
+        }
+      }
+    }
+    for (const [name, data] of Object.entries(bestPerEx)) {
+      if (!exProgressMap[name]) exProgressMap[name] = [];
+      exProgressMap[name].push({ weekKey: key, ...data });
+    }
+  }
+  const progressExercises = Object.entries(exProgressMap)
+    .filter(([, e]) => e.length >= 2)
+    .sort(([, a], [, b]) => b.length - a.length)
+    .slice(0, 8);
 
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
@@ -371,6 +429,112 @@ export default function PatientProgressPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Progress section ── */}
+        {weekTrends.length >= 2 && (
+          <div style={{ marginBottom: 36 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>Progress Over Time</p>
+
+            {/* Trend charts row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+
+              {/* Completion rate */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
+                  {weekTrends.map(wt => {
+                    const h = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
+                    const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
+                    return (
+                      <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.rate}%</span>}
+                        <div title={`${wt.shortLabel}: ${wt.rate ?? '—'}%`} style={{ width: '100%', height: h, background: col, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                  {weekTrends.map(wt => (
+                    <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                      <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>{wt.badge ?? wt.shortLabel}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Volume */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
+                {(() => {
+                  const max = Math.max(...weekTrends.map(wt => wt.totalSets), 1);
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
+                        {weekTrends.map(wt => {
+                          const h = Math.max(4, (wt.totalSets / max) * 64);
+                          return (
+                            <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.totalSets}</span>
+                              <div title={`${wt.shortLabel}: ${wt.totalSets} sets`} style={{ width: '100%', height: h, background: PURPLE, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                        {weekTrends.map(wt => (
+                          <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                            <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)' }}>{wt.badge ?? wt.shortLabel}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Exercise progression */}
+            {progressExercises.length > 0 && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {progressExercises.map(([name, entries]) => {
+                    const latest    = entries[entries.length - 1];
+                    const prev      = entries[entries.length - 2];
+                    const isW       = latest.type === 'weighted';
+                    const fmt       = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
+                    const delta     = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
+                    const trend     = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
+                    const trendCol  = delta > 1 ? TEAL : delta < -1 ? '#EF4444' : 'rgba(255,255,255,0.3)';
+                    const maxVal    = Math.max(...entries.map(e => e.best), 1);
+                    return (
+                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+                            {fmt(prev)} → <span style={{ color: '#fff', fontWeight: 600 }}>{fmt(latest)}</span>
+                            {Math.abs(delta) >= 1 && (
+                              <span style={{ marginLeft: 8, color: trendCol, fontWeight: 700 }}>
+                                {delta > 0 ? '+' : ''}{Math.round(delta)}%
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        {/* Sparkline */}
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32, flexShrink: 0 }}>
+                          {entries.map((e, i) => (
+                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'rgba(255,255,255,0.18)', borderRadius: 2 }} />
+                          ))}
+                        </div>
+                        <div style={{ width: 26, textAlign: 'center', fontSize: 20, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Workout list — grouped by week */}
         {workouts.length === 0 ? (
