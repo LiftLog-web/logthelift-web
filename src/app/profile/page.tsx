@@ -210,19 +210,10 @@ export default function ProfilePage() {
                 View Plans
               </a>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Workout History</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Review your past sessions and progress.</p>
-              </div>
-              <a href="/history" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center', border: '1px solid rgba(255,255,255,0.15)' }}>
-                View History
-              </a>
-            </div>
             <div style={{ background: `${YELLOW}0d`, border: `1px solid ${YELLOW}30`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Progress Charts</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Track strength gains and body weight over time.</p>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Progress</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Track your consistency, strength gains, and workout history.</p>
               </div>
               <a href="/progress" style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
                 View Progress
