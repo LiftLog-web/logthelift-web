@@ -262,6 +262,12 @@ export default function PatientProgressPage() {
     return { key, shortLabel, badge, rate, totalSets };
   });
 
+  // Trend summary
+  const recentRates = weekTrends.slice(-3).map(wt => wt.rate).filter((r): r is number => r !== null);
+  const rateChange = recentRates.length >= 2 ? recentRates[recentRates.length - 1] - recentRates[recentRates.length - 2] : null;
+  const trendSummaryText = rateChange === null ? null : rateChange > 5 ? 'Completion trending up ↑' : rateChange < -5 ? 'Completion trending down ↓' : 'Completion stable →';
+  const trendSummaryColor = rateChange === null ? 'rgba(255,255,255,0.35)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'rgba(255,255,255,0.45)';
+
   // Best weight / duration per exercise per week
   const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
   for (const key of chronoWeekKeys) {
@@ -433,7 +439,11 @@ export default function PatientProgressPage() {
         {/* ── Progress section ── */}
         {weekTrends.length >= 2 && (
           <div style={{ marginBottom: 36 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>Progress Over Time</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Progress Over Time</p>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{weekTrends.length} week{weekTrends.length !== 1 ? 's' : ''} tracked</span>
+              {trendSummaryText && <span style={{ fontSize: 12, fontWeight: 700, color: trendSummaryColor, marginLeft: 'auto' }}>{trendSummaryText}</span>}
+            </div>
 
             {/* Trend charts row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -454,11 +464,16 @@ export default function PatientProgressPage() {
                   })}
                 </div>
                 <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                  {weekTrends.map(wt => (
-                    <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
-                      <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>{wt.badge ?? wt.shortLabel}</span>
-                    </div>
-                  ))}
+                  {weekTrends.map((wt, i) => {
+                    const showLabel = weekTrends.length <= 5 || wt.badge !== null || i === 0;
+                    return (
+                      <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>
+                          {showLabel ? (wt.badge ?? wt.shortLabel) : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -472,20 +487,32 @@ export default function PatientProgressPage() {
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                         {weekTrends.map(wt => {
                           const h = Math.max(4, (wt.totalSets / max) * 64);
+                          const isCurrent = wt.badge === 'This Week';
                           return (
                             <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                               <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.totalSets}</span>
-                              <div title={`${wt.shortLabel}: ${wt.totalSets} sets`} style={{ width: '100%', height: h, background: PURPLE, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
+                              <div
+                                title={`${wt.shortLabel}: ${wt.totalSets} sets${isCurrent ? ' (week in progress)' : ''}`}
+                                style={{ width: '100%', height: h, background: isCurrent ? `${PURPLE}35` : PURPLE, borderRadius: 3, opacity: isCurrent ? 1 : wt.badge ? 1 : 0.55, border: isCurrent ? `1.5px dashed ${PURPLE}` : 'none', boxSizing: 'border-box' }}
+                              />
                             </div>
                           );
                         })}
                       </div>
                       <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                        {weekTrends.map(wt => (
-                          <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
-                            <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)' }}>{wt.badge ?? wt.shortLabel}</span>
-                          </div>
-                        ))}
+                        {weekTrends.map((wt, i) => {
+                          const showLabel = weekTrends.length <= 5 || wt.badge !== null || i === 0;
+                          return (
+                            <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                              {showLabel && (
+                                <>
+                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
+                                  {wt.badge === 'This Week' && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', display: 'block' }}>so far</span>}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   );
@@ -505,7 +532,7 @@ export default function PatientProgressPage() {
                     const fmt       = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
                     const delta     = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
                     const trend     = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
-                    const trendCol  = delta > 1 ? TEAL : delta < -1 ? '#EF4444' : 'rgba(255,255,255,0.3)';
+                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'rgba(255,255,255,0.3)';
                     const maxVal    = Math.max(...entries.map(e => e.best), 1);
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
