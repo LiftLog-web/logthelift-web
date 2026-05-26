@@ -10,6 +10,69 @@ const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const YELLOW = '#F9F295';
 
+/* ── Types ─────────────────────────────────────────────────── */
+interface WorkoutSet {
+  reps?: number; weight?: number; unit?: 'kg' | 'lbs';
+  duration?: number; cardioduration?: number;
+}
+interface LoggedExercise {
+  id: string;
+  exercise: { id: string; name: string; type: string };
+  sets: WorkoutSet[];
+  targetSets?: WorkoutSet[];
+  notes: string;
+}
+interface WorkoutLog {
+  id: string; date: string;
+  exercises: LoggedExercise[];
+  satisfactionRating?: 1 | 2 | 3 | 4 | 5;
+  planId?: string;
+}
+type ExStatus = 'completed' | 'partial' | 'none';
+
+/* ── Helpers ────────────────────────────────────────────────── */
+function exStatus(ex: LoggedExercise): ExStatus {
+  const targets = ex.targetSets ?? [];
+  if (targets.length === 0) return ex.sets.length > 0 ? 'completed' : 'none';
+  let met = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i]; const a = ex.sets[i];
+    if (!a) break;
+    if (t.reps !== undefined) { if ((a.reps ?? 0) >= t.reps && (a.weight ?? 0) >= (t.weight ?? 0)) met++; }
+    else if (t.duration !== undefined) { if ((a.duration ?? 0) >= t.duration) met++; }
+    else if (t.cardioduration !== undefined) { if ((a.cardioduration ?? 0) >= t.cardioduration) met++; }
+    else met++;
+  }
+  if (met === 0 && ex.sets.length === 0) return 'none';
+  if (met >= targets.length) return 'completed';
+  return 'partial';
+}
+
+function getWeekStartDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().split('T')[0];
+}
+
+function weekLabel(weekStartStr: string): { range: string; badge: string | null } {
+  const start = new Date(weekStartStr + 'T12:00:00');
+  const end   = new Date(weekStartStr + 'T12:00:00');
+  end.setDate(end.getDate() + 6);
+  const today = new Date();
+  const curDay = today.getDay();
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - (curDay === 0 ? 6 : curDay - 1));
+  thisMonday.setHours(12, 0, 0, 0);
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(lastMonday.getDate() - 7);
+  const fmt = (d: Date) => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+  const badge =
+    start.getTime() === thisMonday.getTime() ? 'This Week' :
+    start.getTime() === lastMonday.getTime() ? 'Last Week' : null;
+  return { range: `${fmt(start)} – ${fmt(end)}`, badge };
+}
+
 /* ── Chart geometry ──────────────────────────────────────── */
 const CW = 600, CH = 200;
 const PAD = { top: 20, right: 16, bottom: 38, left: 50 };
@@ -25,10 +88,8 @@ function fmtDate(d: string) {
 }
 
 function SvgChart({ data, color, yFmt = (v: number) => String(Math.round(v)), chartId }: {
-  data: DataPoint[];
-  color: string;
-  yFmt?: (v: number) => string;
-  chartId: string;
+  data: DataPoint[]; color: string;
+  yFmt?: (v: number) => string; chartId: string;
 }) {
   if (data.length === 0) return (
     <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>
@@ -40,29 +101,18 @@ function SvgChart({ data, color, yFmt = (v: number) => String(Math.round(v)), ch
       One session logged — keep going to see your trend!
     </div>
   );
-
-  const ys    = data.map(d => d.value);
-  const minY  = Math.min(...ys), maxY = Math.max(...ys);
+  const ys = data.map(d => d.value);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
   const range = maxY === minY ? 1 : maxY - minY;
-  const pMin  = minY - range * 0.1;
-  const pMax  = maxY + range * 0.1;
-  const pRng  = pMax - pMin;
-
+  const pMin = minY - range * 0.1, pMax = maxY + range * 0.1, pRng = pMax - pMin;
   const tx = (i: number) => PAD.left + (i / (data.length - 1)) * IW;
   const ty = (y: number) => PAD.top  + (1 - (y - pMin) / pRng) * IH;
-
   const linePts = data.map((d, i) => `${tx(i)},${ty(d.value)}`).join(' ');
-  const areaPts = [
-    `${PAD.left},${PAD.top + IH}`,
-    ...data.map((d, i) => `${tx(i)},${ty(d.value)}`),
-    `${PAD.left + IW},${PAD.top + IH}`,
-  ].join(' ');
-
-  const yTicks  = [0, 0.25, 0.5, 0.75, 1].map(t => ({ v: pMin + t * pRng, cy: PAD.top + (1 - t) * IH }));
-  const xStep   = Math.max(1, Math.ceil(data.length / 7));
-  const xTicks  = data.map((d, i) => ({ d, i })).filter(({ i }) => i % xStep === 0 || i === data.length - 1);
-  const gid     = `grad-${chartId}`;
-
+  const areaPts = [`${PAD.left},${PAD.top + IH}`, ...data.map((d, i) => `${tx(i)},${ty(d.value)}`), `${PAD.left + IW},${PAD.top + IH}`].join(' ');
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({ v: pMin + t * pRng, cy: PAD.top + (1 - t) * IH }));
+  const xStep  = Math.max(1, Math.ceil(data.length / 7));
+  const xTicks = data.map((d, i) => ({ d, i })).filter(({ i }) => i % xStep === 0 || i === data.length - 1);
+  const gid = `grad-${chartId}`;
   return (
     <svg viewBox={`0 0 ${CW} ${CH}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
       <defs>
@@ -71,30 +121,17 @@ function SvgChart({ data, color, yFmt = (v: number) => String(Math.round(v)), ch
           <stop offset="100%" stopColor={color} stopOpacity={0.02} />
         </linearGradient>
       </defs>
-
-      {/* Grid + y-labels */}
       {yTicks.map((t, i) => (
         <g key={i}>
-          <line x1={PAD.left} y1={t.cy} x2={PAD.left + IW} y2={t.cy}
-            stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-          <text x={PAD.left - 6} y={t.cy + 4} textAnchor="end" fontSize={10} fill="rgba(255,255,255,0.35)">
-            {yFmt(t.v)}
-          </text>
+          <line x1={PAD.left} y1={t.cy} x2={PAD.left + IW} y2={t.cy} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+          <text x={PAD.left - 6} y={t.cy + 4} textAnchor="end" fontSize={10} fill="rgba(255,255,255,0.35)">{yFmt(t.v)}</text>
         </g>
       ))}
-
-      {/* X-labels */}
       {xTicks.map(({ d, i }) => (
-        <text key={i} x={tx(i)} y={PAD.top + IH + 16} textAnchor="middle" fontSize={10} fill="rgba(255,255,255,0.35)">
-          {fmtDate(d.date)}
-        </text>
+        <text key={i} x={tx(i)} y={PAD.top + IH + 16} textAnchor="middle" fontSize={10} fill="rgba(255,255,255,0.35)">{fmtDate(d.date)}</text>
       ))}
-
-      {/* Area + line */}
       <polygon points={areaPts} fill={`url(#${gid})`} />
       <polyline points={linePts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
-
-      {/* Dots */}
       {data.map((d, i) => (
         <g key={i}>
           <circle cx={tx(i)} cy={ty(d.value)} r={3.5} fill={color} />
@@ -111,6 +148,7 @@ export default function ProgressPage() {
 
   const [authed,    setAuthed]    = useState(false);
   const [userId,    setUserId]    = useState('');
+  const [workouts,  setWorkouts]  = useState<WorkoutLog[]>([]);
 
   /* exercise progress */
   const [exercises, setExercises] = useState<{ id: string; name: string; type: string }[]>([]);
@@ -137,7 +175,6 @@ export default function ProgressPage() {
       setUserId(uid);
       setAuthed(true);
 
-      /* ── Load workout history ── */
       const { data: rows } = await sb
         .from('synced_workouts')
         .select('date, data')
@@ -145,30 +182,25 @@ export default function ProgressPage() {
         .order('date', { ascending: true })
         .limit(500);
 
-      const exMap:  Record<string, { id: string; name: string; type: string }> = {};
+      const logs: WorkoutLog[] = (rows ?? []).map((r: any) => r.data as WorkoutLog).filter(Boolean);
+      setWorkouts(logs);
+
+      const exMap:   Record<string, { id: string; name: string; type: string }> = {};
       const dataMap: Record<string, DataPoint[]> = {};
 
       (rows ?? []).forEach((row: any) => {
-        const w    = row.data;
+        const w = row.data;
         const date: string = row.date || w?.date;
         if (!date) return;
-
         (w?.exercises ?? []).forEach((e: any) => {
           const ex = e.exercise;
           if (!ex?.id || !ex?.name) return;
-
           if (!exMap[ex.id]) exMap[ex.id] = { id: ex.id, name: ex.name, type: ex.type ?? 'weighted' };
-
           const sets: any[] = e.sets ?? [];
           let value = 0;
-          if (ex.type === 'weighted') {
-            value = Math.max(0, ...sets.map((s: any) => s.weight ?? 0));
-          } else if (ex.type === 'duration') {
-            value = Math.max(0, ...sets.map((s: any) => s.duration ?? s.seconds ?? 0));
-          } else if (ex.type === 'cardio') {
-            value = sets.reduce((sum: number, s: any) => sum + (s.cardioduration ?? s.minutes ?? 0), 0);
-          }
-
+          if (ex.type === 'weighted')     value = Math.max(0, ...sets.map((s: any) => s.weight ?? 0));
+          else if (ex.type === 'duration') value = Math.max(0, ...sets.map((s: any) => s.duration ?? s.seconds ?? 0));
+          else if (ex.type === 'cardio')   value = sets.reduce((sum: number, s: any) => sum + (s.cardioduration ?? s.minutes ?? 0), 0);
           if (value > 0) {
             if (!dataMap[ex.id]) dataMap[ex.id] = [];
             const existing = dataMap[ex.id].find(p => p.date === date);
@@ -183,7 +215,6 @@ export default function ProgressPage() {
       setExData(dataMap);
       if (exList.length > 0) setSelExId(exList[0].id);
 
-      /* ── Load body weight ── */
       const { data: bw } = await sb
         .from('body_weight_logs')
         .select('id, date, weight_kg')
@@ -200,13 +231,11 @@ export default function ProgressPage() {
     const sb  = getSupabase();
     const kg  = wtUnit === 'kg' ? parseFloat(newWt) : parseFloat(newWt) / 2.20462;
     const rounded = Math.round(kg * 10) / 10;
-
     const { data, error } = await sb
       .from('body_weight_logs')
       .upsert({ user_id: userId, date: newWtDate, weight_kg: rounded }, { onConflict: 'user_id,date' })
       .select('id, date, weight_kg')
       .single();
-
     setSavingWt(false);
     if (error) { setWtError(error.message); return; }
     if (data) {
@@ -218,12 +247,79 @@ export default function ProgressPage() {
     }
   };
 
-  /* ── Derived ── */
+  /* ── Week-over-week computation ── */
+  const weekMap = new Map<string, WorkoutLog[]>();
+  for (const w of workouts) {
+    const key = getWeekStartDate(w.date);
+    if (!weekMap.has(key)) weekMap.set(key, []);
+    weekMap.get(key)!.push(w);
+  }
+  const sortedWeekKeys = [...weekMap.keys()].sort().reverse();
+  const chronoWeekKeys = [...sortedWeekKeys].reverse();
+
+  const weekTrends = chronoWeekKeys.map(key => {
+    const ws   = weekMap.get(key)!;
+    const exs  = ws.flatMap(w => w.exercises ?? []);
+    const withT = exs.filter(e => (e.targetSets ?? []).length > 0);
+    const done  = withT.filter(e => exStatus(e) === 'completed').length;
+    const rate  = withT.length > 0 ? Math.round((done / withT.length) * 100) : null;
+    const totalSets = exs.reduce((a, e) => a + e.sets.length, 0);
+    const { badge } = weekLabel(key);
+    const shortLabel = new Date(key + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+    return { key, shortLabel, badge, rate, totalSets };
+  });
+
+  const recentRates = weekTrends.slice(-3).map(wt => wt.rate).filter((r): r is number => r !== null);
+  const rateChange = recentRates.length >= 2 ? recentRates[recentRates.length - 1] - recentRates[recentRates.length - 2] : null;
+  const trendSummaryText = rateChange === null ? null : rateChange > 5 ? 'Completion trending up ↑' : rateChange < -5 ? 'Completion trending down ↓' : 'Completion stable →';
+  const trendSummaryColor = rateChange === null ? 'rgba(255,255,255,0.35)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'rgba(255,255,255,0.45)';
+
+  const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
+  for (const key of chronoWeekKeys) {
+    const bestPerEx: Record<string, { best: number; unit?: string; type: string }> = {};
+    for (const w of weekMap.get(key)!) {
+      for (const ex of w.exercises ?? []) {
+        const name = ex.exercise.name;
+        const type = ex.exercise.type;
+        if (type === 'weighted') {
+          const maxW = Math.max(0, ...ex.sets.map(s => s.weight ?? 0));
+          if (maxW > 0) {
+            const unit = ex.sets.find(s => s.weight)?.unit ?? 'kg';
+            if (!bestPerEx[name] || maxW > bestPerEx[name].best) bestPerEx[name] = { best: maxW, unit, type };
+          }
+        } else if (type === 'duration') {
+          const maxD = Math.max(0, ...ex.sets.map(s => s.duration ?? 0));
+          if (maxD > 0) {
+            if (!bestPerEx[name] || maxD > bestPerEx[name].best) bestPerEx[name] = { best: maxD, type };
+          }
+        }
+      }
+    }
+    for (const [name, d] of Object.entries(bestPerEx)) {
+      if (!exProgressMap[name]) exProgressMap[name] = [];
+      exProgressMap[name].push({ weekKey: key, ...d });
+    }
+  }
+  const progressExercises = Object.entries(exProgressMap)
+    .filter(([, e]) => e.length >= 2)
+    .sort(([, a], [, b]) => b.length - a.length)
+    .slice(0, 8);
+
+  /* ── Overall stats ── */
+  const totalWorkouts  = workouts.length;
+  const withPlan       = workouts.filter(w => w.planId);
+  const allExercises   = workouts.flatMap(w => w.exercises ?? []);
+  const withTargets    = allExercises.filter(e => (e.targetSets ?? []).length > 0);
+  const completedCount = withTargets.filter(e => exStatus(e) === 'completed').length;
+  const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
+  const ratings        = workouts.map(w => w.satisfactionRating).filter((r): r is 1|2|3|4|5 => !!r);
+  const avgRating      = ratings.length ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1) : null;
+
+  /* ── Derived for detailed exercise chart ── */
   const selEx     = exercises.find(e => e.id === selExId);
   const chartData = exData[selExId] ?? [];
   const exBest    = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : null;
   const exLast    = chartData.length > 0 ? chartData[chartData.length - 1] : null;
-
   const exYFmt = (v: number) => {
     if (!selEx) return String(Math.round(v));
     if (selEx.type === 'weighted') return `${v % 1 === 0 ? v : v.toFixed(1)}kg`;
@@ -232,8 +328,7 @@ export default function ProgressPage() {
   };
   const exMetricLabel =
     selEx?.type === 'weighted' ? 'Max weight per session' :
-    selEx?.type === 'duration' ? 'Max duration per session (sec)' :
-    'Total cardio per session (min)';
+    selEx?.type === 'duration' ? 'Max duration per session (sec)' : 'Total cardio per session (min)';
 
   const bwChartData: DataPoint[] = bodyWts.map(b => ({
     date: b.date,
@@ -245,7 +340,6 @@ export default function ProgressPage() {
   const bwChangeDisplay = bwChangeKg === null ? null
     : wtUnit === 'kg' ? `${bwChangeKg > 0 ? '+' : ''}${bwChangeKg}kg`
     : `${bwChangeKg > 0 ? '+' : ''}${Math.round(bwChangeKg * 2.20462 * 10) / 10}lbs`;
-
   const bwYFmt = (v: number) => `${v.toFixed(1)}${wtUnit}`;
 
   if (!authed) return (
@@ -271,11 +365,151 @@ export default function ProgressPage() {
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 6px' }}>Progress</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 44px' }}>
-          Track your strength gains and body weight over time.
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 32px' }}>
+          Track your consistency, strength gains, and body weight over time.
         </p>
 
-        {/* ── Exercise Progress ─────────────────────────── */}
+        {/* ── Stats cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 36 }}>
+          {[
+            { label: 'Total Workouts',  value: String(totalWorkouts),                                color: TEAL   },
+            { label: 'Plan Workouts',   value: String(withPlan.length),                              color: PURPLE },
+            { label: 'Completion Rate', value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
+            { label: 'Avg Satisfaction',value: avgRating ? `${avgRating}/5` : '—',                  color: TEAL   },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
+              <p style={{ fontSize: 20, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Weekly summary ── */}
+        {weekTrends.length >= 2 && (
+          <section style={{ marginBottom: 52 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
+              <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Weekly Summary</h2>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{weekTrends.length} weeks tracked</span>
+              {trendSummaryText && <span style={{ fontSize: 12, fontWeight: 700, color: trendSummaryColor, marginLeft: 'auto' }}>{trendSummaryText}</span>}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+
+              {/* Completion rate bars */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
+                  {weekTrends.map(wt => {
+                    const h   = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
+                    const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
+                    return (
+                      <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.rate}%</span>}
+                        <div title={`${wt.shortLabel}: ${wt.rate ?? '—'}%`} style={{ width: '100%', height: h, background: col, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                  {weekTrends.map((wt, i) => {
+                    const showLabel = weekTrends.length <= 5 || wt.badge !== null || i === 0;
+                    return (
+                      <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>
+                          {showLabel ? (wt.badge ?? wt.shortLabel) : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sets per week bars */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
+                {(() => {
+                  const max = Math.max(...weekTrends.map(wt => wt.totalSets), 1);
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
+                        {weekTrends.map(wt => {
+                          const h = Math.max(4, (wt.totalSets / max) * 64);
+                          const isCurrent = wt.badge === 'This Week';
+                          return (
+                            <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.totalSets}</span>
+                              <div
+                                title={`${wt.shortLabel}: ${wt.totalSets} sets${isCurrent ? ' (week in progress)' : ''}`}
+                                style={{ width: '100%', height: h, background: isCurrent ? `${PURPLE}35` : PURPLE, borderRadius: 3, opacity: isCurrent ? 1 : wt.badge ? 1 : 0.55, border: isCurrent ? `1.5px dashed ${PURPLE}` : 'none', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                        {weekTrends.map((wt, i) => {
+                          const showLabel = weekTrends.length <= 5 || wt.badge !== null || i === 0;
+                          return (
+                            <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
+                              {showLabel && (
+                                <>
+                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
+                                  {wt.badge === 'This Week' && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', display: 'block' }}>so far</span>}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Exercise progression */}
+            {progressExercises.length > 0 && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {progressExercises.map(([name, entries]) => {
+                    const latest   = entries[entries.length - 1];
+                    const prev     = entries[entries.length - 2];
+                    const isW      = latest.type === 'weighted';
+                    const fmt      = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
+                    const delta    = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
+                    const trend    = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
+                    const trendCol = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'rgba(255,255,255,0.3)';
+                    const maxVal   = Math.max(...entries.map(e => e.best), 1);
+                    return (
+                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+                            {fmt(prev)} → <span style={{ color: '#fff', fontWeight: 600 }}>{fmt(latest)}</span>
+                            {Math.abs(delta) >= 1 && (
+                              <span style={{ marginLeft: 8, color: trendCol, fontWeight: 700 }}>
+                                {delta > 0 ? '+' : ''}{Math.round(delta)}%
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32, flexShrink: 0 }}>
+                          {entries.map((e, i) => (
+                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'rgba(255,255,255,0.18)', borderRadius: 2 }} />
+                          ))}
+                        </div>
+                        <div style={{ width: 26, textAlign: 'center', fontSize: 20, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Exercise Progress (detailed line chart) ─────── */}
         <section style={{ marginBottom: 52 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Exercise Progress</h2>
@@ -300,13 +534,10 @@ export default function ProgressPage() {
               </div>
             ) : (
               <>
-                {/* Stat pills */}
                 <div style={{ display: 'flex', gap: 28, marginBottom: 24, flexWrap: 'wrap' }}>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Personal Best</p>
-                    <p style={{ fontSize: 24, fontWeight: 800, color: TEAL, margin: 0 }}>
-                      {exBest !== null ? exYFmt(exBest) : '—'}
-                    </p>
+                    <p style={{ fontSize: 24, fontWeight: 800, color: TEAL, margin: 0 }}>{exBest !== null ? exYFmt(exBest) : '—'}</p>
                   </div>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Sessions</p>
@@ -314,15 +545,12 @@ export default function ProgressPage() {
                   </div>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Last Logged</p>
-                    <p style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>
-                      {exLast ? fmtDate(exLast.date) : '—'}
-                    </p>
+                    <p style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{exLast ? fmtDate(exLast.date) : '—'}</p>
                   </div>
                   <div style={{ alignSelf: 'flex-end', paddingBottom: 4 }}>
                     <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: 0 }}>{exMetricLabel}</p>
                   </div>
                 </div>
-
                 <SvgChart data={chartData} color={TEAL} yFmt={exYFmt} chartId="exercise" />
               </>
             )}
@@ -333,24 +561,18 @@ export default function ProgressPage() {
         <section>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Body Weight</h2>
-
-            {/* Log weight controls */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
-                type="date"
-                value={newWtDate}
-                onChange={e => setNewWtDate(e.target.value)}
+                type="date" value={newWtDate} onChange={e => setNewWtDate(e.target.value)}
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
               />
               <input
-                type="number" min={0} step={0.1}
-                value={newWt}
+                type="number" min={0} step={0.1} value={newWt}
                 onChange={e => setNewWt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveWeight()}
                 placeholder={`Weight (${wtUnit})`}
                 style={{ width: 130, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
               />
-              {/* kg / lbs toggle */}
               <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}>
                 {(['kg', 'lbs'] as const).map(u => (
                   <button key={u} onClick={() => setWtUnit(u)}
@@ -360,8 +582,7 @@ export default function ProgressPage() {
                 ))}
               </div>
               <button
-                onClick={saveWeight}
-                disabled={savingWt || !newWt}
+                onClick={saveWeight} disabled={savingWt || !newWt}
                 style={{ background: PURPLE, color: '#fff', borderRadius: 8, padding: '7px 18px', fontWeight: 700, fontSize: 13, border: 'none', cursor: (!newWt || savingWt) ? 'not-allowed' : 'pointer', opacity: (!newWt || savingWt) ? 0.55 : 1 }}
               >
                 {savingWt ? '…' : 'Log'}
@@ -377,16 +598,12 @@ export default function ProgressPage() {
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Current</p>
                   <p style={{ fontSize: 24, fontWeight: 800, color: PURPLE, margin: 0 }}>
-                    {wtUnit === 'kg'
-                      ? `${bwLatest.weight_kg}kg`
-                      : `${Math.round(bwLatest.weight_kg * 2.20462 * 10) / 10}lbs`}
+                    {wtUnit === 'kg' ? `${bwLatest.weight_kg}kg` : `${Math.round(bwLatest.weight_kg * 2.20462 * 10) / 10}lbs`}
                   </p>
                 </div>
                 {bwChangeDisplay !== null && (
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
-                      Change since start
-                    </p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Change since start</p>
                     <p style={{ fontSize: 24, fontWeight: 800, margin: 0, color: bwChangeKg! < 0 ? TEAL : bwChangeKg! > 0 ? YELLOW : 'rgba(255,255,255,0.6)' }}>
                       {bwChangeDisplay}
                     </p>
@@ -398,9 +615,7 @@ export default function ProgressPage() {
                 </div>
               </div>
             )}
-
             <SvgChart data={bwChartData} color={PURPLE} yFmt={bwYFmt} chartId="bodyweight" />
-
             {bodyWts.length === 0 && (
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', marginTop: 8 }}>
                 Log your first weight entry using the form above.
