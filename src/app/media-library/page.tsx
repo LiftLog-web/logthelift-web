@@ -680,7 +680,16 @@ export default function MediaLibraryPage() {
           ...EXERCISES.map(e => ({ name: e.name, sub: `${e.muscleGroup} · ${e.equipment}`, custom: false })),
           ...customExNames.map(n => ({ name: n, sub: 'Custom exercise', custom: true })),
         ].sort((a, b) => a.name.localeCompare(b.name));
-        const filtered = allEx.filter(e => e.name.toLowerCase().includes(query));
+        const filtered = allEx
+          .filter(e => e.name.toLowerCase().includes(query))
+          .sort((a, b) => {
+            const aLow = a.name.toLowerCase();
+            const bLow = b.name.toLowerCase();
+            const aStarts = aLow.startsWith(query);
+            const bStarts = bLow.startsWith(query);
+            if (aStarts !== bStarts) return aStarts ? -1 : 1;
+            return aLow.localeCompare(bLow);
+          });
         const hasExactMatch = allEx.some(e => e.name.toLowerCase() === query);
         const showCreate = query.length > 1 && !hasExactMatch;
         const listOpen = exDropdownOpen && (filtered.length > 0 || showCreate);
