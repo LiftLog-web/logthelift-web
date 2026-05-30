@@ -76,7 +76,8 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
-  const [mediaMap,     setMediaMap]     = useState<Record<string, string>>({});
+  const [mediaMap,     setMediaMap]     = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
+  const [demoPreview,  setDemoPreview]  = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
@@ -99,13 +100,20 @@ function NewPlanInner() {
       setPractId(uid);
       setAuthed(true);
 
-      // Load media map so exercise cards can show demo badges
+      // Load media map so exercise cards can show demo badges + previews
       const { data: mediaItems } = await sb
         .from('exercise_media')
-        .select('exercise_name, media_type')
+        .select('exercise_name, media_type, file_path, url_link')
         .eq('practitioner_id', uid);
-      const map: Record<string, string> = {};
-      for (const m of (mediaItems ?? [])) map[m.exercise_name] = m.media_type;
+      const map: Record<string, { type: string; signedUrl?: string; urlLink?: string }> = {};
+      await Promise.all((mediaItems ?? []).map(async m => {
+        let signedUrl: string | undefined;
+        if (m.media_type !== 'link' && m.file_path) {
+          const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(m.file_path, 3600);
+          signedUrl = su?.signedUrl ?? undefined;
+        }
+        map[m.exercise_name] = { type: m.media_type, signedUrl, urlLink: m.url_link ?? undefined };
+      }));
       setMediaMap(map);
 
       const { data: links } = await sb
@@ -533,11 +541,18 @@ function NewPlanInner() {
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
                                 {pe.exercise.muscleGroup} · {pe.exercise.equipment}
                               </span>
-                              {mediaMap[pe.exercise.name] && (
-                                <span style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, verticalAlign: 'middle' }}>
-                                  {mediaMap[pe.exercise.name] === 'link' ? '🔗' : mediaMap[pe.exercise.name] === 'video' ? '📹' : '📷'} Demo
-                                </span>
-                              )}
+                              {mediaMap[pe.exercise.name] && (() => {
+                                const m = mediaMap[pe.exercise.name];
+                                return (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setDemoPreview({ name: pe.exercise.name, ...m }); }}
+                                    style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                                    title="Click to preview demo"
+                                  >
+                                    {m.type === 'link' ? '🔗' : m.type === 'video' ? '📹' : '📷'} Demo
+                                  </button>
+                                );
+                              })()}
                             </div>
                             {isSuperset && (
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${PURPLE}22`, color: PURPLE, flexShrink: 0 }}>SS</span>
@@ -757,6 +772,37 @@ function NewPlanInner() {
                 Saved privately to your library — not visible to the patient
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Demo preview modal */}
+      {demoPreview && (
+        <div
+          onClick={() => setDemoPreview(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
+              </div>
+              <button onClick={() => setDemoPreview(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            {demoPreview.type === 'photo' && demoPreview.signedUrl ? (
+              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: '#0f1117', display: 'block' }} />
+            ) : demoPreview.type === 'video' && demoPreview.signedUrl ? (
+              <video src={demoPreview.signedUrl} controls autoPlay style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block' }} />
+            ) : demoPreview.type === 'link' && demoPreview.urlLink ? (
+              <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                <p style={{ fontSize: 36, marginBottom: 12 }}>🔗</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
+                <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
+                  Open video ↗
+                </a>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
