@@ -55,9 +55,11 @@ function NewPlanInner() {
   const [planExercises,setPlanExercises]= useState<PlanExercise[]>([]);
   const [search,       setSearch]       = useState('');
   const [muscleFilter, setMuscleFilter] = useState('All');
-  const [saving,       setSaving]       = useState(false);
-  const [saveError,    setSaveError]    = useState('');
-  const [draggedId,    setDraggedId]    = useState<string | null>(null);
+  const [saving,        setSaving]        = useState(false);
+  const [saveError,     setSaveError]     = useState('');
+  const [saveToLibrary, setSaveToLibrary] = useState(false);
+  const [libraryName,   setLibraryName]   = useState('');
+  const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
 
@@ -246,6 +248,17 @@ function NewPlanInner() {
 
     setSaving(false);
     if (error) { setSaveError(error.message); return; }
+
+    if (saveToLibrary && !editId) {
+      const libName = libraryName.trim() || planName.trim();
+      await sb.from('plan_templates').insert({
+        practitioner_id: practId,
+        name: libName,
+        description: description.trim() || null,
+        exercises: planExercises,
+      });
+    }
+
     router.push('/plans');
   };
 
@@ -580,6 +593,61 @@ function NewPlanInner() {
           )}
         </div>
       </div>
+
+      {/* Save to Library bar — only on new plans, not edits */}
+      {!editId && (
+        <div style={{
+          position: 'sticky', bottom: 0, left: 0, right: 0,
+          background: 'rgba(15,17,23,0.97)', borderTop: '1px solid rgba(255,255,255,0.1)',
+          padding: '14px 32px', zIndex: 50,
+        }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            {/* Toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <div
+                onClick={() => {
+                  setSaveToLibrary(v => !v);
+                  if (!saveToLibrary && !libraryName) setLibraryName(planName);
+                }}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, position: 'relative', cursor: 'pointer', flexShrink: 0,
+                  background: saveToLibrary ? TEAL : 'rgba(255,255,255,0.15)',
+                  transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, left: saveToLibrary ? 21 : 3,
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </div>
+              <span style={{ color: saveToLibrary ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontWeight: 600 }}>
+                📋 Also save to my Plan Library
+              </span>
+            </label>
+
+            {/* Library name input */}
+            {saveToLibrary && (
+              <input
+                value={libraryName}
+                onChange={e => setLibraryName(e.target.value)}
+                placeholder="Library name (can differ from patient plan name)"
+                style={{
+                  flex: 1, minWidth: 220,
+                  background: 'rgba(255,255,255,0.07)', border: `1px solid ${TEAL}60`,
+                  borderRadius: 10, padding: '9px 14px', color: '#fff', fontSize: 14, outline: 'none',
+                }}
+              />
+            )}
+
+            {saveToLibrary && (
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, flexShrink: 0 }}>
+                Saved privately to your library — not visible to the patient
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
