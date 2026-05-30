@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -269,13 +270,7 @@ export default function MediaLibraryPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
-      {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/plans" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textDecoration: 'none' }}>← Plans</a>
-          <span style={{ color: TEAL, fontWeight: 800, fontSize: 20, marginLeft: 8 }}>LiftLog</span>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Video Library</span>
-        </div>
+      <PractitionerNav rightSlot={
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => openUploadModal()}
@@ -292,7 +287,7 @@ export default function MediaLibraryPage() {
             + Add Video Link
           </button>
         </div>
-      </nav>
+      } />
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 

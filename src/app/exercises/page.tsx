@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -150,19 +151,14 @@ export default function ExercisesPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/plans" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textDecoration: 'none' }}>← Plans</a>
-          <span style={{ color: TEAL, fontWeight: 800, fontSize: 20, marginLeft: 8 }}>LiftLog</span>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Exercise Library</span>
-        </div>
+      <PractitionerNav rightSlot={
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
           style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
         >
           + Add Exercise
         </button>
-      </nav>
+      } />
 
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Exercise Library</h1>

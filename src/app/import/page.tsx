@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -132,16 +133,9 @@ export default function ImportPage() {
   const invalidRows = rows.filter(r => !r.valid);
 
   return (
-    <div className="min-h-screen bg-[#0f1117] text-white px-4 py-10">
-      <div className="max-w-2xl mx-auto">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => router.push('/plans')} className="text-white/40 hover:text-white/70 transition-colors text-sm">
-            ← Plans
-          </button>
-          <span style={{ color: TEAL }} className="text-2xl font-bold">LiftLog</span>
-        </div>
+    <div className="min-h-screen bg-[#0f1117] text-white">
+      <PractitionerNav />
+      <div className="max-w-2xl mx-auto px-4 py-10">
 
         <h1 className="text-2xl font-bold mb-1">Import Patients</h1>
         <p className="text-white/50 text-sm mb-8">
