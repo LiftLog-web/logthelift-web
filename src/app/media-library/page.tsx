@@ -27,6 +27,13 @@ interface CoverageItem {
   mediaItem: MediaItem | undefined;
 }
 
+interface PlanViewer {
+  planId: string;
+  planName: string;
+  patientId: string;
+  patientName: string;
+}
+
 interface ViewMedia {
   url: string;
   type: 'photo' | 'video';
@@ -50,6 +57,9 @@ export default function MediaLibraryPage() {
   const [search,      setSearch]      = useState('');
   const [deleting,    setDeleting]    = useState<string | null>(null);
   const [viewMedia,   setViewMedia]   = useState<ViewMedia | null>(null);
+  const [viewersItem, setViewersItem] = useState<MediaItem | null>(null);
+  const [allPlans,    setAllPlans]    = useState<Array<{ id: string; name: string; patient_id: string; exercises: unknown[] }>>([]);
+  const [patientNames, setPatientNames] = useState<Record<string, string>>({});
 
   // Modal
   const [showModal,      setShowModal]      = useState(false);
@@ -84,7 +94,7 @@ export default function MediaLibraryPage() {
         .eq('practitioner_id', uid)
         .order('exercise_name', { ascending: true }),
       sb.from('workout_plans')
-        .select('exercises')
+        .select('id, name, patient_id, exercises, patient:patient_id(display_name)')
         .eq('practitioner_id', uid),
       sb.from('custom_exercises')
         .select('name')
@@ -134,6 +144,23 @@ export default function MediaLibraryPage() {
     });
 
     setCoverage(coverageList);
+
+    // Build plan viewers map
+    const plans = (plansRes.data ?? []).map(p => {
+      const patientRow = Array.isArray(p.patient) ? p.patient[0] : p.patient;
+      return {
+        id: p.id as string,
+        name: p.name as string,
+        patient_id: p.patient_id as string,
+        patientName: (patientRow as { display_name?: string } | null)?.display_name ?? 'Unknown Patient',
+        exercises: (p.exercises ?? []) as unknown[],
+      };
+    });
+    setAllPlans(plans as never);
+    const nameMap: Record<string, string> = {};
+    for (const p of plans) nameMap[p.patient_id] = p.patientName;
+    setPatientNames(nameMap);
+
     setLoading(false);
   }
 
@@ -250,6 +277,24 @@ export default function MediaLibraryPage() {
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
   const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Uploaded video' : 'Uploaded photo';
   const typeColor = (t: string) => t === 'link' ? TEAL : t === 'video' ? PURPLE : '#F9F295';
+
+  function getViewers(exerciseName: string): PlanViewer[] {
+    return (allPlans as Array<{ id: string; name: string; patient_id: string; patientName: string; exercises: unknown[] }>)
+      .filter(plan =>
+        Array.isArray(plan.exercises) &&
+        plan.exercises.some(ex => {
+          const e = ex as Record<string, unknown>;
+          const nested = (e?.exercise as Record<string, unknown> | undefined)?.name;
+          return nested === exerciseName || e?.name === exerciseName;
+        }),
+      )
+      .map(plan => ({
+        planId: plan.id,
+        planName: plan.name,
+        patientId: plan.patient_id,
+        patientName: patientNames[plan.patient_id] ?? plan.patientName,
+      }));
+  }
 
   // Coverage helpers
   const filteredCoverage = coverage.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
@@ -436,6 +481,13 @@ export default function MediaLibraryPage() {
                           </td>
 
                           <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <button
+                              onClick={() => setViewersItem(item)}
+                              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}
+                              title="See which patients have this exercise"
+                            >
+                              👥 Viewers
+                            </button>
                             {item.media_type === 'link' && (
                               <button onClick={() => openUrlModal({ item })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
                                 Edit
@@ -680,6 +732,67 @@ export default function MediaLibraryPage() {
           </div>
         </div>
       )}
+
+      {/* ── VIEWERS MODAL ── */}
+      {viewersItem && (() => {
+        const viewers = getViewers(viewersItem.exercise_name);
+        return (
+          <div
+            onClick={() => setViewersItem(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
+          >
+            <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div>
+                  <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>{viewersItem.exercise_name}</h2>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                    Patients who have this exercise in one of their plans
+                  </p>
+                </div>
+                <button onClick={() => setViewersItem(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', marginTop: 20 }}>
+                {viewers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
+                    <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
+                    No patients have this exercise in any active plan yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {viewers.map(v => (
+                      <div
+                        key={v.planId}
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{v.patientName}</div>
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>📋 {v.planName}</div>
+                        </div>
+                        <a
+                          href={`/patients/${v.patientId}`}
+                          style={{ color: TEAL, fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', marginLeft: 12 }}
+                        >
+                          View →
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+                  {viewers.length} patient{viewers.length !== 1 ? 's' : ''} · {viewers.length} plan{viewers.length !== 1 ? 's' : ''}
+                </span>
+                <button onClick={() => setViewersItem(null)} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
