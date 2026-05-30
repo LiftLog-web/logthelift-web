@@ -59,7 +59,7 @@ export default function PlanLibraryPage() {
     setCreating(true);
     const { data, error } = await getSupabase()
       .from('plan_templates')
-      .insert({ practitioner_id: userId, name: 'New Template', description: null, exercises: [] })
+      .insert({ practitioner_id: userId, name: '', description: null, exercises: [] })
       .select()
       .single();
     if (!error && data) {
@@ -70,7 +70,7 @@ export default function PlanLibraryPage() {
   };
 
   const handleDelete = async (t: Template) => {
-    if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete "${t.name || 'Untitled template'}"? This cannot be undone.`)) return;
     setDeleting(t.id);
     await getSupabase().from('plan_templates').delete().eq('id', t.id);
     setTemplates(prev => prev.filter(x => x.id !== t.id));
@@ -158,7 +158,9 @@ export default function PlanLibraryPage() {
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 700, fontSize: 16 }}>{t.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, color: t.name ? '#fff' : 'rgba(255,255,255,0.3)', fontStyle: t.name ? 'normal' : 'italic' }}>
+                        {t.name || 'Untitled template'}
+                      </span>
                       <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
