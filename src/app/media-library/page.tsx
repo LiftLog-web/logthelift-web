@@ -683,6 +683,7 @@ export default function MediaLibraryPage() {
         const filtered = allEx.filter(e => e.name.toLowerCase().includes(query));
         const hasExactMatch = allEx.some(e => e.name.toLowerCase() === query);
         const showCreate = query.length > 1 && !hasExactMatch;
+        const listOpen = exDropdownOpen && (filtered.length > 0 || showCreate);
 
         const selectExercise = (name: string) => {
           setExerciseName(name); setExSearch(''); setExDropdownOpen(false);
@@ -697,8 +698,11 @@ export default function MediaLibraryPage() {
         };
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
-            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}
+            onKeyDown={e => { if (e.key === 'Escape') closeModal(); }}
+          >
+            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
                   {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
@@ -711,7 +715,7 @@ export default function MediaLibraryPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Exercise picker */}
+                {/* Exercise picker — inline, no absolute overlay */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Exercise *</span>
                   {nameLocked ? (
@@ -719,21 +723,19 @@ export default function MediaLibraryPage() {
                       {exerciseName}
                     </div>
                   ) : (
-                    <div style={{ position: 'relative' }}>
+                    <>
                       <input
                         value={exerciseName && !exDropdownOpen ? exerciseName : exSearch}
                         onChange={e => { setExSearch(e.target.value); setExerciseName(''); setExDropdownOpen(true); }}
                         onFocus={() => { setExDropdownOpen(true); if (exerciseName) setExSearch(exerciseName); }}
+                        onKeyDown={e => { if (e.key === 'Escape') { setExDropdownOpen(false); setExSearch(''); } }}
                         placeholder="Search exercises…"
-                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: exDropdownOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
                       />
-                      {exDropdownOpen && (
-                        <div style={{ position: 'absolute', left: 0, right: 0, background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
-                          {/* Scrollable results */}
-                          <div style={{ maxHeight: 144, overflowY: 'auto' }}>
-                            {filtered.length === 0 && !showCreate && (
-                              <div style={{ padding: '12px 14px', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>No exercises match</div>
-                            )}
+                      {listOpen && (
+                        <div style={{ background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
+                          {/* Scrollable results — capped so Create is always in view */}
+                          <div style={{ maxHeight: 168, overflowY: 'auto' }}>
                             {filtered.map(ex => (
                               <button
                                 key={ex.name}
@@ -742,16 +744,16 @@ export default function MediaLibraryPage() {
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                               >
-                                <div style={{ fontSize: 14, fontWeight: 600, color: ex.name === exerciseName ? TEAL : '#fff' }}>{ex.name}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ex.name}</div>
                                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{ex.sub}</div>
                               </button>
                             ))}
                           </div>
-                          {/* Pinned create option — always visible, never scrolled away */}
+                          {/* Create option — outside the scroll container, always visible */}
                           {showCreate && (
                             <button
                               onMouseDown={e => { e.preventDefault(); createCustom(); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '10px 14px', cursor: 'pointer' }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: filtered.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', padding: '10px 14px', cursor: 'pointer' }}
                               onMouseEnter={e => (e.currentTarget.style.background = `${TEAL}12`)}
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
@@ -761,41 +763,45 @@ export default function MediaLibraryPage() {
                           )}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
 
-                {/* URL / File */}
-                {modalMode === 'url' ? (
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
-                    <input
-                      value={urlInput}
-                      onChange={e => setUrlInput(e.target.value)}
-                      placeholder="https://youtube.com/watch?v=... or any video link"
-                      type="url"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
-                    />
-                  </label>
-                ) : (
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
-                    <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                      {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
+                {/* URL / File — only shown when exercise list is closed or an exercise is selected */}
+                {(!listOpen || exerciseName) && (
+                  <>
+                    {modalMode === 'url' ? (
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
+                        <input
+                          value={urlInput}
+                          onChange={e => setUrlInput(e.target.value)}
+                          placeholder="https://youtube.com/watch?v=... or any video link"
+                          type="url"
+                          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                        />
+                      </label>
+                    ) : (
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
+                        <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                          {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
+                        </div>
+                        <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
+                      </label>
+                    )}
+
+                    {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
+                    {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                      <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                        {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
+                      </button>
                     </div>
-                    <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
-                  </label>
+                  </>
                 )}
-
-                {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
-                {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
-
-                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                  <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                    {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -808,6 +814,7 @@ export default function MediaLibraryPage() {
         return (
           <div
             onClick={() => setViewersItem(null)}
+            onKeyDown={e => { if (e.key === 'Escape') setViewersItem(null); }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
           >
             <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
