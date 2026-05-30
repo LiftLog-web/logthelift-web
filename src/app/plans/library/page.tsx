@@ -43,6 +43,7 @@ export default function PlanLibraryPage() {
   const [previewTpl,     setPreviewTpl]     = useState<Template | null>(null);
   const [bodyFilter,     setBodyFilter]     = useState('');
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
+  const [bodySearch,     setBodySearch]     = useState('');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -91,7 +92,13 @@ export default function PlanLibraryPage() {
     const tags = (t as any).tags ?? [];
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTag && !tags.includes(activeTag)) return false;
-    if (bodyFilter && !tags.includes(bodyFilter)) return false;
+    if (bodyFilter) {
+      const inTags = tags.includes(bodyFilter);
+      const inExercises = t.exercises.some((ex: any) =>
+        ex?.exercise?.muscleGroup === bodyFilter || ex?.muscleGroup === bodyFilter
+      );
+      if (!inTags && !inExercises) return false;
+    }
     return true;
   });
 
@@ -136,19 +143,29 @@ export default function PlanLibraryPage() {
                 {bodyFilterOpen && (
                   <div
                     style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, zIndex: 50, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-                    onMouseLeave={() => setBodyFilterOpen(false)}
                   >
+                    {/* Search inside dropdown */}
+                    <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <input
+                        autoFocus
+                        value={bodySearch}
+                        onChange={e => setBodySearch(e.target.value)}
+                        placeholder="Search body parts…"
+                        onKeyDown={e => { if (e.key === 'Escape') { setBodyFilterOpen(false); setBodySearch(''); } }}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 10px', color: '#fff', fontSize: 13, outline: 'none' }}
+                      />
+                    </div>
                     <button
-                      onMouseDown={() => { setBodyFilter(''); setBodyFilterOpen(false); }}
-                      style={{ textAlign: 'left', padding: '10px 16px', background: !bodyFilter ? `${TEAL}18` : 'none', border: 'none', color: !bodyFilter ? TEAL : 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                      onMouseDown={() => { setBodyFilter(''); setBodyFilterOpen(false); setBodySearch(''); }}
+                      style={{ textAlign: 'left', padding: '9px 16px', background: !bodyFilter ? `${TEAL}18` : 'none', border: 'none', color: !bodyFilter ? TEAL : 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       All body parts
                     </button>
-                    <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                      {BODY_PART_TAGS.map(tag => (
+                    <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                      {BODY_PART_TAGS.filter(tag => tag.toLowerCase().includes(bodySearch.toLowerCase())).map(tag => (
                         <button
                           key={tag}
-                          onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); }}
+                          onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? `${TEAL}18` : 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)', color: bodyFilter === tag ? TEAL : '#fff', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
                           onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
                           onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
