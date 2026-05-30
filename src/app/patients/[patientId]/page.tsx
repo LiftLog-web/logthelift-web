@@ -139,6 +139,9 @@ export default function PatientProgressPage() {
   const [expandedEx,    setExpandedEx]    = useState<Set<string>>(new Set());
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [noAccess,      setNoAccess]      = useState(false);
+  const [exerciseDemos, setExerciseDemos] = useState<Array<{ id: string; exercise_name: string; media_type: string; file_path: string; url_link: string | null }>>([]);
+  const [demoSignedUrls, setDemoSignedUrls] = useState<Record<string, string>>({});
+  const [viewDemo,      setViewDemo]      = useState<{ url: string; type: 'photo' | 'video'; name: string } | null>(null);
 
   // Email modal state
   const [emailOpen,    setEmailOpen]    = useState(false);
@@ -191,6 +194,46 @@ export default function PatientProgressPage() {
       const storedCollapsed = localStorage.getItem(`patient-weeks-collapsed-${patientId}`);
       const collapsed: Set<string> = storedCollapsed ? new Set(JSON.parse(storedCollapsed)) : new Set();
       setExpandedWeeks(new Set([...allWeekKeys].filter(k => !collapsed.has(k))));
+
+      // Load exercise demos for this patient's plans
+      const { data: plans } = await sb
+        .from('workout_plans')
+        .select('exercises')
+        .eq('patient_id', patientId)
+        .eq('practitioner_id', uid);
+
+      const exerciseNames = new Set<string>();
+      for (const plan of (plans ?? [])) {
+        if (Array.isArray(plan.exercises)) {
+          for (const ex of plan.exercises as Record<string, unknown>[]) {
+            const name = (ex?.exercise as Record<string, unknown> | undefined)?.name ?? ex?.name;
+            if (typeof name === 'string') exerciseNames.add(name);
+          }
+        }
+      }
+
+      if (exerciseNames.size > 0) {
+        const { data: media } = await sb
+          .from('exercise_media')
+          .select('id, exercise_name, media_type, file_path, url_link')
+          .eq('practitioner_id', uid)
+          .in('exercise_name', [...exerciseNames])
+          .order('exercise_name', { ascending: true });
+
+        const demoItems = media ?? [];
+        const signedDemoUrls: Record<string, string> = {};
+        await Promise.all(
+          demoItems
+            .filter(m => m.media_type !== 'link' && m.file_path)
+            .map(async m => {
+              const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(m.file_path, 3600);
+              if (su?.signedUrl) signedDemoUrls[m.id] = su.signedUrl;
+            }),
+        );
+        setExerciseDemos(demoItems);
+        setDemoSignedUrls(signedDemoUrls);
+      }
+
       setAuthed(true);
       setLoading(false);
     });
@@ -561,6 +604,54 @@ export default function PatientProgressPage() {
           </div>
         )}
 
+        {/* Exercise Demos */}
+        {exerciseDemos.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
+              Exercise Demos · {exerciseDemos.length}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
+              {exerciseDemos.map(demo => {
+                const signedUrl = demoSignedUrls[demo.id];
+                return (
+                  <div key={demo.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
+                    {demo.media_type === 'photo' && signedUrl ? (
+                      <img
+                        src={signedUrl}
+                        alt={demo.exercise_name}
+                        onClick={() => setViewDemo({ url: signedUrl, type: 'photo', name: demo.exercise_name })}
+                        style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                      />
+                    ) : demo.media_type === 'video' && signedUrl ? (
+                      <div
+                        onClick={() => setViewDemo({ url: signedUrl, type: 'video', name: demo.exercise_name })}
+                        style={{ width: '100%', height: 120, background: '#1a1a2e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#fff' }}
+                      >▶</div>
+                    ) : (
+                      <div style={{ width: '100%', height: 120, background: '#0f2a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🔗</div>
+                    )}
+                    <div style={{ padding: '12px 14px' }}>
+                      <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px', color: '#fff' }}>{demo.exercise_name}</p>
+                      {demo.media_type === 'link' && demo.url_link ? (
+                        <a href={demo.url_link} target="_blank" rel="noopener noreferrer" style={{ color: TEAL, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                          Watch video ↗
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => signedUrl && setViewDemo({ url: signedUrl, type: demo.media_type as 'photo' | 'video', name: demo.exercise_name })}
+                          style={{ background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                        >
+                          {demo.media_type === 'photo' ? 'View photo' : 'Play video'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Workout list — grouped by week */}
         {workouts.length === 0 ? (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
@@ -744,6 +835,27 @@ export default function PatientProgressPage() {
           </div>
         )}
       </main>
+
+      {/* Demo viewer */}
+      {viewDemo && (
+        <div
+          onClick={() => setViewDemo(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewDemo.name}</p>
+              <button onClick={() => setViewDemo(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            {viewDemo.type === 'photo' ? (
+              <img src={viewDemo.url} alt={viewDemo.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />
+            ) : (
+              <video src={viewDemo.url} controls autoPlay style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', background: '#000' }} />
+            )}
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
