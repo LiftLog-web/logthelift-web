@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -270,31 +269,30 @@ export default function MediaLibraryPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
-      <PractitionerNav rightSlot={
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => openUploadModal()}
-            disabled={atCap}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: atCap ? 'not-allowed' : 'pointer' }}
-          >
-            Upload File
-          </button>
-          <button
-            onClick={() => openUrlModal()}
-            disabled={atCap}
-            style={{ background: atCap ? 'rgba(255,255,255,0.1)' : TEAL, color: atCap ? 'rgba(255,255,255,0.3)' : '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: atCap ? 'not-allowed' : 'pointer' }}
-          >
-            + Add Video Link
-          </button>
-        </div>
-      } />
-
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Exercise Video Library</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Exercise Video Library</h1>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+              <button
+                onClick={() => openUploadModal()}
+                disabled={atCap}
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atCap ? 'not-allowed' : 'pointer' }}
+              >
+                Upload File
+              </button>
+              <button
+                onClick={() => openUrlModal()}
+                disabled={atCap}
+                style={{ background: atCap ? 'rgba(255,255,255,0.1)' : TEAL, color: atCap ? 'rgba(255,255,255,0.3)' : '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: atCap ? 'not-allowed' : 'pointer' }}
+              >
+                + Add Video Link
+              </button>
+            </div>
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 0, marginBottom: 16 }}>
             {items.length} demo{items.length !== 1 ? 's' : ''} · {linkCount} video link{linkCount !== 1 ? 's' : ''} · {uploadCount} upload{uploadCount !== 1 ? 's' : ''}
           </p>
           {/* Usage bar */}

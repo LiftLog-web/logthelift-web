@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -100,16 +99,6 @@ export default function PlanLibraryPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-      <PractitionerNav rightSlot={
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
-        >
-          {creating ? 'Creating…' : '+ New Template'}
-        </button>
-      } />
-
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
@@ -119,14 +108,23 @@ export default function PlanLibraryPage() {
               Reusable templates with week-by-week progression
             </p>
           </div>
-          {templates.length > 0 && (
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search templates…"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 220 }}
-            />
-          )}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {templates.length > 0 && (
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search templates…"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 220 }}
+              />
+            )}
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
+            >
+              {creating ? 'Creating…' : '+ New Template'}
+            </button>
+          </div>
         </div>
 
         {/* Tag filter chips — only shown when at least one template has tags */}

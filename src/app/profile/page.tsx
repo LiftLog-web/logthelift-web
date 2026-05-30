@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -113,17 +112,13 @@ export default function ProfilePage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
-      {isPractitioner
-        ? <PractitionerNav rightSlot={
-            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>
-                Sign Out
-              </button>
-          } />
-        : <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>Sign Out</button>
-          </nav>
-      }
+      {/* Patient-only nav (practitioners get NavShell from layout) */}
+      {!isPractitioner && (
+        <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
+          <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>Sign Out</button>
+        </nav>
+      )}
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
 
@@ -135,7 +130,10 @@ export default function ProfilePage() {
               : (isPractitioner ? '🩺' : '🏋️')}
           </div>
           <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
+              <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.55)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
+            </div>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ background: isPractitioner ? `${PURPLE}22` : `${TEAL}22`, color: isPractitioner ? PURPLE : TEAL, padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
