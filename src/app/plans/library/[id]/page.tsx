@@ -94,6 +94,7 @@ export default function TemplateEditorPage() {
   const [saving,      setSaving]      = useState(false);
   const [name,        setName]        = useState('');
   const [description, setDescription] = useState('');
+  const [tags,        setTags]        = useState<string[]>([]);
   const [exercises,   setExercises]   = useState<TemplateExercise[]>([]);
   const [activeWeek,  setActiveWeek]  = useState(1);
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
@@ -140,6 +141,7 @@ export default function TemplateEditorPage() {
 
       setName(tpl.name);
       setDescription(tpl.description ?? '');
+      setTags(tpl.tags ?? []);
       const loadedExercises: TemplateExercise[] = (tpl.exercises ?? []).map((e: any) => ({
         id: e.id ?? uid(),
         exercise: e.exercise,
@@ -361,7 +363,7 @@ export default function TemplateEditorPage() {
     setSaving(true);
     const { error } = await getSupabase()
       .from('plan_templates')
-      .update({ name: name.trim(), description: description.trim() || null, exercises })
+      .update({ name: name.trim(), description: description.trim() || null, exercises, tags })
       .eq('id', templateId);
     setSaving(false);
     if (error) { alert('Could not save: ' + error.message); return; }
@@ -501,6 +503,40 @@ export default function TemplateEditorPage() {
             placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters"
             style={{ background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 14, width: '100%', padding: 0 }}
           />
+        </div>
+
+        {/* Tag picker */}
+        <div style={{ marginBottom: 28 }}>
+          {[
+            { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
+            { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
+          ].map(group => (
+            <div key={group.label} style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
+                {group.label}
+              </span>
+              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {group.tags.map(t => {
+                  const on = tags.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
+                      style={{
+                        padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                        border: `1px solid ${on ? TEAL : 'rgba(255,255,255,0.18)'}`,
+                        background: on ? `${TEAL}22` : 'transparent',
+                        color: on ? TEAL : 'rgba(255,255,255,0.45)',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Week tabs */}

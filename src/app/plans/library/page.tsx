@@ -38,6 +38,7 @@ export default function PlanLibraryPage() {
   const [deleting,   setDeleting]   = useState<string | null>(null);
   const [search,     setSearch]     = useState('');
   const [hoveredId,  setHoveredId]  = useState<string | null>(null);
+  const [activeTag,  setActiveTag]  = useState<string | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -79,7 +80,14 @@ export default function PlanLibraryPage() {
     setDeleting(null);
   };
 
-  const filtered = templates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+  // Collect all unique tags across templates for the filter row
+  const allTags = Array.from(new Set(templates.flatMap(t => (t as any).tags ?? []))).sort() as string[];
+
+  const filtered = templates.filter(t => {
+    const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
+    const matchesTag = !activeTag || ((t as any).tags ?? []).includes(activeTag);
+    return matchesSearch && matchesTag;
+  });
 
   if (!authed || loading) {
     return (
@@ -120,6 +128,39 @@ export default function PlanLibraryPage() {
             />
           )}
         </div>
+
+        {/* Tag filter chips — only shown when at least one template has tags */}
+        {allTags.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16, marginBottom: 4 }}>
+            <button
+              onClick={() => setActiveTag(null)}
+              style={{
+                padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                border: `1px solid ${!activeTag ? TEAL : 'rgba(255,255,255,0.18)'}`,
+                background: !activeTag ? `${TEAL}22` : 'transparent',
+                color: !activeTag ? TEAL : 'rgba(255,255,255,0.45)',
+                cursor: 'pointer',
+              }}
+            >
+              All
+            </button>
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                style={{
+                  padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                  border: `1px solid ${activeTag === tag ? TEAL : 'rgba(255,255,255,0.18)'}`,
+                  background: activeTag === tag ? `${TEAL}22` : 'transparent',
+                  color: activeTag === tag ? TEAL : 'rgba(255,255,255,0.45)',
+                  cursor: 'pointer',
+                }}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Empty state */}
         {templates.length === 0 ? (
@@ -187,6 +228,20 @@ export default function PlanLibraryPage() {
                     </div>
                     {t.description && (
                       <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: '6px 0 0 0' }}>{t.description}</p>
+                    )}
+                    {/* Tags */}
+                    {((t as any).tags ?? []).length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {((t as any).tags as string[]).map((tag: string) => (
+                          <span
+                            key={tag}
+                            onClick={e => { e.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
+                            style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', border: activeTag === tag ? `1px solid ${TEAL}` : '1px solid transparent' }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                     <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, margin: '4px 0 0 0' }}>
                       Created {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
