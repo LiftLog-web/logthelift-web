@@ -674,100 +674,133 @@ export default function MediaLibraryPage() {
       )}
 
       {/* ── ADD/EDIT MODAL ── */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
-          <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
-                {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
-              </h2>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
-            </div>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 28 }}>
-              {modalMode === 'url'
-                ? "Paste any video URL — YouTube, Vimeo, Instagram, or anything else. The exercise name must match exactly what's used in the app."
-                : "Upload a photo or video file. The exercise name must match exactly what's used in the app."}
-            </p>
+      {showModal && (() => {
+        const query = exSearch.toLowerCase();
+        const allEx = [
+          ...EXERCISES.map(e => ({ name: e.name, sub: `${e.muscleGroup} · ${e.equipment}`, custom: false })),
+          ...customExNames.map(n => ({ name: n, sub: 'Custom exercise', custom: true })),
+        ].sort((a, b) => a.name.localeCompare(b.name));
+        const filtered = allEx.filter(e => e.name.toLowerCase().includes(query));
+        const hasExactMatch = allEx.some(e => e.name.toLowerCase() === query);
+        const showCreate = query.length > 1 && !hasExactMatch;
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Exercise Name *</span>
-                {nameLocked ? (
-                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '11px 14px', color: 'rgba(255,255,255,0.5)', fontSize: 15 }}>
-                    {exerciseName}
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      value={exSearch || exerciseName}
-                      onChange={e => { setExSearch(e.target.value); setExerciseName(''); setExDropdownOpen(true); }}
-                      onFocus={() => setExDropdownOpen(true)}
-                      placeholder="Search exercises…"
-                      style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: exDropdownOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
-                    />
-                    {exDropdownOpen && (() => {
-                      const query = (exSearch || exerciseName).toLowerCase();
-                      const standardNames = EXERCISES.map(e => e.name);
-                      const allNames = [...new Set([...standardNames, ...customExNames])].sort((a, b) => a.localeCompare(b));
-                      const filtered = allNames.filter(n => n.toLowerCase().includes(query));
-                      return filtered.length > 0 ? (
-                        <div style={{ position: 'absolute', left: 0, right: 0, background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', maxHeight: 200, overflowY: 'auto', zIndex: 10 }}>
-                          {filtered.map(name => (
+        const selectExercise = (name: string) => {
+          setExerciseName(name); setExSearch(''); setExDropdownOpen(false);
+        };
+
+        const createCustom = async () => {
+          const name = exSearch.trim();
+          if (!name) return;
+          await getSupabase().from('custom_exercises').insert({ creator_id: userId, name, muscle_group: 'Custom', equipment: '—', type: 'weighted' });
+          setCustomExNames(prev => [...prev, name]);
+          selectExercise(name);
+        };
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
+            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
+                  {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
+                </h2>
+                <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 28 }}>
+                {modalMode === 'url' ? 'Paste any video URL — YouTube, Vimeo, Instagram, or anything else.' : 'Upload a photo or video file.'}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Exercise picker */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Exercise *</span>
+                  {nameLocked ? (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '11px 14px', color: 'rgba(255,255,255,0.5)', fontSize: 15 }}>
+                      {exerciseName}
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        value={exerciseName && !exDropdownOpen ? exerciseName : exSearch}
+                        onChange={e => { setExSearch(e.target.value); setExerciseName(''); setExDropdownOpen(true); }}
+                        onFocus={() => { setExDropdownOpen(true); if (exerciseName) setExSearch(exerciseName); }}
+                        placeholder="Search exercises…"
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: exDropdownOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
+                      />
+                      {exDropdownOpen && (
+                        <div style={{ position: 'absolute', left: 0, right: 0, background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
+                          {/* Scrollable results */}
+                          <div style={{ maxHeight: 196, overflowY: 'auto' }}>
+                            {filtered.length === 0 && !showCreate && (
+                              <div style={{ padding: '12px 14px', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>No exercises match</div>
+                            )}
+                            {filtered.map(ex => (
+                              <button
+                                key={ex.name}
+                                onMouseDown={e => { e.preventDefault(); selectExercise(ex.name); }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '9px 14px', cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                <div style={{ fontSize: 14, fontWeight: 600, color: ex.name === exerciseName ? TEAL : '#fff' }}>{ex.name}</div>
+                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{ex.sub}</div>
+                              </button>
+                            ))}
+                          </div>
+                          {/* Pinned create option — always visible, never scrolled away */}
+                          {showCreate && (
                             <button
-                              key={name}
-                              onMouseDown={e => { e.preventDefault(); setExerciseName(name); setExSearch(''); setExDropdownOpen(false); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '10px 14px', color: name === exerciseName ? TEAL : '#fff', fontSize: 14, cursor: 'pointer', fontWeight: name === exerciseName ? 700 : 400 }}
-                              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                              onMouseDown={e => { e.preventDefault(); createCustom(); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '10px 14px', cursor: 'pointer' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = `${TEAL}12`)}
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
-                              {name}
+                              <div style={{ fontSize: 14, fontWeight: 700, color: TEAL }}>+ Create &ldquo;{exSearch.trim()}&rdquo;</div>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Add as a new custom exercise</div>
                             </button>
-                          ))}
+                          )}
                         </div>
-                      ) : null;
-                    })()}
-                  </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* URL / File */}
+                {modalMode === 'url' ? (
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
+                    <input
+                      value={urlInput}
+                      onChange={e => setUrlInput(e.target.value)}
+                      placeholder="https://youtube.com/watch?v=... or any video link"
+                      type="url"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    />
+                  </label>
+                ) : (
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
+                    <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                      {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
+                    </div>
+                    <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
+                  </label>
                 )}
-                {!nameLocked && exerciseName && (
-                  <span style={{ color: TEAL, fontSize: 12 }}>✓ {exerciseName} selected</span>
-                )}
-              </div>
 
-              {modalMode === 'url' ? (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
-                  <input
-                    value={urlInput}
-                    onChange={e => setUrlInput(e.target.value)}
-                    placeholder="https://youtube.com/watch?v=... or any video link"
-                    type="url"
-                    autoFocus
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
-                  />
-                </label>
-              ) : (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
-                  <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                    {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
-                  </div>
-                  <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
-                </label>
-              )}
+                {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
+                {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
 
-              {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
-              {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
-
-              <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
-                </button>
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                    {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── VIEWERS MODAL ── */}
       {viewersItem && (() => {
