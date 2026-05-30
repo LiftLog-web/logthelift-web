@@ -36,8 +36,9 @@ export default function PlanLibraryPage() {
   const [creating,   setCreating]   = useState(false);
   const [deleting,   setDeleting]   = useState<string | null>(null);
   const [search,     setSearch]     = useState('');
-  const [hoveredId,  setHoveredId]  = useState<string | null>(null);
-  const [activeTag,  setActiveTag]  = useState<string | null>(null);
+  const [hoveredId,    setHoveredId]    = useState<string | null>(null);
+  const [activeTag,    setActiveTag]    = useState<string | null>(null);
+  const [previewTpl,   setPreviewTpl]   = useState<Template | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -184,7 +185,8 @@ export default function PlanLibraryPage() {
               return (
                 <div
                   key={t.id}
-                  style={{ position: 'relative', background: hoveredId === t.id ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s' }}
+                  onClick={() => setPreviewTpl(t)}
+                  style={{ position: 'relative', background: hoveredId === t.id ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s', cursor: 'pointer' }}
                   onMouseEnter={() => setHoveredId(t.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
@@ -247,18 +249,18 @@ export default function PlanLibraryPage() {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     <button
                       onClick={() => router.push(`/plans/library/${t.id}`)}
                       style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                     >
-                      Edit
+                      View / Edit
                     </button>
                     <button
                       onClick={() => router.push(`/plans/new?template=${t.id}`)}
                       style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                     >
-                      Use for Patient →
+                      Assign to Patient
                     </button>
                     <button
                       onClick={() => handleDelete(t)}
@@ -274,6 +276,79 @@ export default function PlanLibraryPage() {
           </div>
         )}
       </main>
+
+      {/* Template preview modal */}
+      {previewTpl && (
+        <div
+          onClick={() => setPreviewTpl(null)}
+          onKeyDown={e => { if (e.key === 'Escape') setPreviewTpl(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <h2 style={{ fontWeight: 800, fontSize: 20, margin: '0 0 6px' }}>
+                    {previewTpl.name || 'Untitled template'}
+                  </h2>
+                  {previewTpl.description && (
+                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 8px' }}>{previewTpl.description}</p>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                      {previewTpl.exercises.length} exercise{previewTpl.exercises.length !== 1 ? 's' : ''}
+                    </span>
+                    <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                      {numWeeks(previewTpl.exercises)}-week program
+                    </span>
+                  </div>
+                </div>
+                <button onClick={() => setPreviewTpl(null)} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', color: 'rgba(255,255,255,0.5)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              </div>
+            </div>
+
+            {/* Exercise list */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 28px' }}>
+              {previewTpl.exercises.length === 0 ? (
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, textAlign: 'center', padding: '24px 0' }}>No exercises added yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {previewTpl.exercises.map((ex: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < previewTpl.exercises.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                      <div>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{i + 1}. {ex.exercise?.name ?? '—'}</span>
+                        {ex.exercise?.muscleGroup && (
+                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginLeft: 8 }}>{ex.exercise.muscleGroup}</span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
+                        {ex.sets?.length ?? ex.targetSets ?? 0} sets
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div style={{ padding: '16px 28px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => router.push(`/plans/library/${previewTpl.id}`)}
+                style={{ flex: 1, background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                View / Edit
+              </button>
+              <button
+                onClick={() => router.push(`/plans/new?template=${previewTpl.id}`)}
+                style={{ flex: 1, background: PURPLE, color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Assign to Patient
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
