@@ -76,6 +76,7 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
+  const [mediaMap,     setMediaMap]     = useState<Record<string, string>>({});
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
@@ -97,6 +98,15 @@ function NewPlanInner() {
       const uid = data.session.user.id;
       setPractId(uid);
       setAuthed(true);
+
+      // Load media map so exercise cards can show demo badges
+      const { data: mediaItems } = await sb
+        .from('exercise_media')
+        .select('exercise_name, media_type')
+        .eq('practitioner_id', uid);
+      const map: Record<string, string> = {};
+      for (const m of (mediaItems ?? [])) map[m.exercise_name] = m.media_type;
+      setMediaMap(map);
 
       const { data: links } = await sb
         .from('patient_links')
@@ -523,6 +533,11 @@ function NewPlanInner() {
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
                                 {pe.exercise.muscleGroup} · {pe.exercise.equipment}
                               </span>
+                              {mediaMap[pe.exercise.name] && (
+                                <span style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, verticalAlign: 'middle' }}>
+                                  {mediaMap[pe.exercise.name] === 'link' ? '🔗' : mediaMap[pe.exercise.name] === 'video' ? '📹' : '📷'} Demo
+                                </span>
+                              )}
                             </div>
                             {isSuperset && (
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${PURPLE}22`, color: PURPLE, flexShrink: 0 }}>SS</span>
