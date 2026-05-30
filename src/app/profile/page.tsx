@@ -185,6 +185,19 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Practitioner utilities */}
+        {isPractitioner && (
+          <div style={{ marginTop: 28, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import Patients</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
+            </div>
+            <a href="/import" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap' }}>
+              Import Patients
+            </a>
+          </div>
+        )}
+
         {/* Patient quick actions */}
         {!isPractitioner && (
           <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>

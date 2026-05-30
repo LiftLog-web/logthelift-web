@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { href: '/plans',         label: 'Patients',     icon: '📋' },
   { href: '/plans/library', label: 'Plan Library',  icon: '📚' },
   { href: '/media-library', label: 'Video Library', icon: '🎬' },
-  { href: '/import',        label: 'Import',        icon: '📥' },
   { href: '/profile',       label: 'Profile',       icon: '👤' },
 ];
 
