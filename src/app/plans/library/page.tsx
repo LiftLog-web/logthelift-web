@@ -106,18 +106,39 @@ export default function PlanLibraryPage() {
     return true;
   });
 
-  // Group same-named templates so duplicates appear as one row
+  // Ordered list of exercise IDs — detects same-exercise templates even with
+  // different names or different reps/weights (progressions of the same plan)
+  const exerciseFingerprint = (exercises: any[]): string =>
+    exercises.map((ex: any) => ex.exercise?.id ?? ex.exercise?.name ?? '').join('|');
+
+  // Group by name first, then by exercise fingerprint for different-named templates
   const groupedFiltered: Array<{ canonical: Template; variants: Template[] }> = [];
-  const nameGroupIndex = new Map<string, number>();
+  const nameIndex = new Map<string, number>();
+  const fpIndex   = new Map<string, number>();
+
   for (const t of filtered) {
-    if (t.name) {
-      const existing = nameGroupIndex.get(t.name);
-      if (existing !== undefined) {
-        groupedFiltered[existing].variants.push(t);
-        continue;
-      }
-      nameGroupIndex.set(t.name, groupedFiltered.length);
+    const fp = exerciseFingerprint(t.exercises);
+
+    // 1. Same name → add to existing group
+    if (t.name && nameIndex.has(t.name)) {
+      const idx = nameIndex.get(t.name)!;
+      groupedFiltered[idx].variants.push(t);
+      if (fp && !fpIndex.has(fp)) fpIndex.set(fp, idx);
+      continue;
     }
+
+    // 2. Same exercises, different name → still the same plan at a different progression
+    if (fp && fpIndex.has(fp)) {
+      const idx = fpIndex.get(fp)!;
+      groupedFiltered[idx].variants.push(t);
+      if (t.name && !nameIndex.has(t.name)) nameIndex.set(t.name, idx);
+      continue;
+    }
+
+    // 3. New group
+    const idx = groupedFiltered.length;
+    if (t.name) nameIndex.set(t.name, idx);
+    if (fp)     fpIndex.set(fp, idx);
     groupedFiltered.push({ canonical: t, variants: [] });
   }
 
@@ -263,10 +284,14 @@ export default function PlanLibraryPage() {
               const allVersions = [t, ...variants];
               const isGrouped = variants.length > 0;
               const weeks = numWeeks(t.exercises);
+              // For preview, show the version with the most weeks (most complete progression)
+              const bestPreview = allVersions.reduce((best, curr) =>
+                numWeeks(curr.exercises) >= numWeeks(best.exercises) ? curr : best
+              );
               return (
                 <div
                   key={t.id}
-                  onClick={() => setPreviewTpl(t)}
+                  onClick={() => { setPreviewWeek(1); setPreviewTpl(bestPreview); }}
                   style={{ position: 'relative', background: hoveredId === t.id ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s', cursor: 'pointer' }}
                   onMouseEnter={() => setHoveredId(t.id)}
                   onMouseLeave={() => setHoveredId(null)}
@@ -304,17 +329,20 @@ export default function PlanLibraryPage() {
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
                       {isGrouped ? (
-                        // Multiple versions: show each as a clickable week-count badge
+                        // Multiple versions: each badge navigates to that version's editor
                         allVersions.map(v => {
                           const vWeeks = numWeeks(v.exercises);
+                          const label = vWeeks === 1 ? '1 week' : `${vWeeks} weeks`;
+                          // Show the template name in tooltip if names differ from the group canonical
+                          const tooltipName = v.name && v.name !== t.name ? v.name : undefined;
                           return (
                             <button
                               key={v.id}
                               onClick={e => { e.stopPropagation(); router.push(`/plans/library/${v.id}`); }}
                               style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
-                              title={`View / Edit ${vWeeks}-week version`}
+                              title={tooltipName ? `${label} — ${tooltipName}` : `View / Edit ${label} version`}
                             >
-                              {vWeeks}-week
+                              {label}
                             </button>
                           );
                         })
