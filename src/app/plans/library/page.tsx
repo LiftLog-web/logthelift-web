@@ -41,9 +41,12 @@ export default function PlanLibraryPage() {
   const [hoveredId,      setHoveredId]      = useState<string | null>(null);
   const [activeTag,      setActiveTag]      = useState<string | null>(null);
   const [previewTpl,     setPreviewTpl]     = useState<Template | null>(null);
+  const [previewWeek,    setPreviewWeek]    = useState(1);
   const [bodyFilter,     setBodyFilter]     = useState('');
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
   const [bodySearch,     setBodySearch]     = useState('');
+  const [nameModal,      setNameModal]      = useState(false);
+  const [newName,        setNewName]        = useState('');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -64,17 +67,18 @@ export default function PlanLibraryPage() {
   }, [router]);
 
   const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
     setCreating(true);
+    setNameModal(false);
     const { data, error } = await getSupabase()
       .from('plan_templates')
-      .insert({ practitioner_id: userId, name: '', description: null, exercises: [] })
+      .insert({ practitioner_id: userId, name, description: null, exercises: [] })
       .select()
       .single();
-    if (!error && data) {
-      router.push(`/plans/library/${data.id}`);
-    } else {
-      setCreating(false);
-    }
+    if (!error && data) router.push(`/plans/library/${data.id}`);
+    else setCreating(false);
+    setNewName('');
   };
 
   const handleDelete = async (t: Template) => {
@@ -101,6 +105,21 @@ export default function PlanLibraryPage() {
     }
     return true;
   });
+
+  // Group same-named templates so duplicates appear as one row
+  const groupedFiltered: Array<{ canonical: Template; variants: Template[] }> = [];
+  const nameGroupIndex = new Map<string, number>();
+  for (const t of filtered) {
+    if (t.name) {
+      const existing = nameGroupIndex.get(t.name);
+      if (existing !== undefined) {
+        groupedFiltered[existing].variants.push(t);
+        continue;
+      }
+      nameGroupIndex.set(t.name, groupedFiltered.length);
+    }
+    groupedFiltered.push({ canonical: t, variants: [] });
+  }
 
   if (!authed || loading) {
     return (
@@ -179,7 +198,7 @@ export default function PlanLibraryPage() {
               </div>
             )}
             <button
-              onClick={handleCreate}
+              onClick={() => { setNewName(''); setNameModal(true); }}
               disabled={creating}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
             >
@@ -229,7 +248,7 @@ export default function PlanLibraryPage() {
               No templates yet. Create your first reusable plan template.
             </p>
             <button
-              onClick={handleCreate}
+              onClick={() => { setNewName(''); setNameModal(true); }}
               disabled={creating}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
             >
@@ -240,7 +259,9 @@ export default function PlanLibraryPage() {
           <p style={{ color: 'rgba(255,255,255,0.3)', marginTop: 40, textAlign: 'center' }}>No templates match "{search}"</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28 }}>
-            {filtered.map(t => {
+            {groupedFiltered.map(({ canonical: t, variants }) => {
+              const allVersions = [t, ...variants];
+              const isGrouped = variants.length > 0;
               const weeks = numWeeks(t.exercises);
               return (
                 <div
@@ -282,9 +303,34 @@ export default function PlanLibraryPage() {
                       <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
-                      <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
-                        {weeks}-week program
-                      </span>
+                      {isGrouped ? (
+                        // Multiple versions: show each as a clickable week-count badge
+                        allVersions.map(v => {
+                          const vWeeks = numWeeks(v.exercises);
+                          return (
+                            <button
+                              key={v.id}
+                              onClick={e => { e.stopPropagation(); router.push(`/plans/library/${v.id}`); }}
+                              style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                              title={`View / Edit ${vWeeks}-week version`}
+                            >
+                              {vWeeks}-week
+                            </button>
+                          );
+                        })
+                      ) : (
+                        // Single template: show per-week preview buttons
+                        Array.from({ length: weeks }, (_, i) => i + 1).map(w => (
+                          <button
+                            key={w}
+                            onClick={e => { e.stopPropagation(); setPreviewTpl(t); setPreviewWeek(w); }}
+                            style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                            title={`Preview Week ${w}`}
+                          >
+                            W{w}
+                          </button>
+                        ))
+                      )}
                     </div>
                     {t.description && (
                       <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: '6px 0 0 0' }}>{t.description}</p>
@@ -309,26 +355,42 @@ export default function PlanLibraryPage() {
                   </div>
 
                   {/* Actions */}
-                  <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button
-                      onClick={() => router.push(`/plans/library/${t.id}`)}
-                      style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      View / Edit
-                    </button>
+                  <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {!isGrouped && (
+                      <button
+                        onClick={() => router.push(`/plans/library/${t.id}`)}
+                        style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        View / Edit
+                      </button>
+                    )}
                     <button
                       onClick={() => router.push(`/plans/new?template=${t.id}`)}
                       style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Assign to Patient
                     </button>
-                    <button
-                      onClick={() => handleDelete(t)}
-                      disabled={deleting === t.id}
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
-                    >
-                      Delete
-                    </button>
+                    {isGrouped ? (
+                      // Delete per version
+                      allVersions.map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => handleDelete(v)}
+                          disabled={deleting === v.id}
+                          style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deleting === v.id ? 0.5 : 1 }}
+                        >
+                          Del {numWeeks(v.exercises)}wk
+                        </button>
+                      ))
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(t)}
+                        disabled={deleting === t.id}
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -337,8 +399,42 @@ export default function PlanLibraryPage() {
         )}
       </main>
 
+      {/* Name modal for new template */}
+      {nameModal && (
+        <div onClick={() => setNameModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 6px' }}>Name your template</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>Give it a descriptive name so it's easy to find later.</p>
+            <input
+              autoFocus
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) handleCreate(); if (e.key === 'Escape') setNameModal(false); }}
+              placeholder="e.g. Knee Rehab Phase 1"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setNameModal(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleCreate} disabled={!newName.trim() || creating} style={{ flex: 2, background: newName.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: newName.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: newName.trim() ? 'pointer' : 'not-allowed' }}>
+                {creating ? 'Creating…' : 'Create Template'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Template preview modal */}
-      {previewTpl && (
+      {previewTpl && (() => {
+        const totalWeeks = numWeeks(previewTpl.exercises);
+        const weekSets = (ex: any, week: number) => week === 1 ? ex.sets ?? [] : ex.weeks?.find((w: any) => w.week === week)?.sets ?? ex.sets ?? [];
+        const fmtSets = (sets: any[]) => {
+          const n = sets.length; const s = sets[0];
+          if (!s || n === 0) return '—';
+          if (s.seconds !== undefined) return `${n} × ${s.seconds}s`;
+          if (s.reps !== undefined) return `${n} × ${s.reps} reps`;
+          return `${n} sets`;
+        };
+        return (
         <div
           onClick={() => setPreviewTpl(null)}
           onKeyDown={e => { if (e.key === 'Escape') setPreviewTpl(null); }}
@@ -346,35 +442,42 @@ export default function PlanLibraryPage() {
         >
           <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Header */}
-            <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
                 <div>
                   <h2 style={{ fontWeight: 800, fontSize: 20, margin: '0 0 6px' }}>
                     {previewTpl.name || 'Untitled template'}
                   </h2>
                   {previewTpl.description && (
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 8px' }}>{previewTpl.description}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 6px' }}>{previewTpl.description}</p>
                   )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
-                      {previewTpl.exercises.length} exercise{previewTpl.exercises.length !== 1 ? 's' : ''}
-                    </span>
-                    <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
-                      {numWeeks(previewTpl.exercises)}-week program
-                    </span>
-                  </div>
+                  <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                    {previewTpl.exercises.length} exercise{previewTpl.exercises.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
                 <button onClick={() => setPreviewTpl(null)} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', color: 'rgba(255,255,255,0.5)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
+              {/* Week tabs */}
+              {totalWeeks > 1 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+                    <button key={w} onClick={() => setPreviewWeek(w)} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `1px solid ${previewWeek === w ? PURPLE : 'rgba(255,255,255,0.15)'}`, background: previewWeek === w ? `${PURPLE}22` : 'transparent', color: previewWeek === w ? PURPLE : 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
+                      Week {w}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Exercise list */}
+            {/* Exercise list for selected week */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 28px' }}>
               {previewTpl.exercises.length === 0 ? (
                 <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14, textAlign: 'center', padding: '24px 0' }}>No exercises added yet.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {previewTpl.exercises.map((ex: any, i: number) => (
+                  {previewTpl.exercises.map((ex: any, i: number) => {
+                    const sets = weekSets(ex, previewWeek);
+                    return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < previewTpl.exercises.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                       <div>
                         <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{i + 1}. {ex.exercise?.name ?? '—'}</span>
