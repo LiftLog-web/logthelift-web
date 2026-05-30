@@ -549,7 +549,7 @@ function NewPlanInner() {
                                     style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
                                     title="Click to preview demo"
                                   >
-                                    {m.type === 'link' ? '🔗' : m.type === 'video' ? '📹' : '📷'} Demo
+                                    {m.type === 'link' ? '🔗 Link' : m.type === 'video' ? '📹 Video' : '📷 Photo'}
                                   </button>
                                 );
                               })()}
