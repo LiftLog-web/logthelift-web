@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback, Suspense, Fragment } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
@@ -10,9 +10,12 @@ import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 
+type WeightUnit = 'lbs' | 'kg';
+
 interface WorkoutSet {
   reps?: number;
   weight?: number;
+  unit?: WeightUnit;   // stored per-set so mobile app reads it
   seconds?: number;
   minutes?: number;
   rest?: number; // rest after set, in minutes
@@ -25,6 +28,17 @@ interface PlanExercise {
   targetSets: number;
   notes: string;
   supersetWithId?: string;
+  unit?: WeightUnit;   // per-exercise unit preference
+}
+
+// Rest is stored in minutes (fractional). These helpers convert for display.
+function toMinSec(restMin: number): { m: number; s: number } {
+  const m = Math.floor(restMin);
+  const s = Math.round((restMin - m) * 60);
+  return { m, s };
+}
+function fromMinSec(m: number, s: number): number {
+  return m + s / 60;
 }
 
 interface Patient {
@@ -62,6 +76,8 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
+  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>('lbs');
+  const preferredUnitRef = useRef<WeightUnit>('lbs');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -101,7 +117,11 @@ function NewPlanInner() {
             sets: (e.sets ?? [{ reps: 10, weight: 0 }]).map((s: any) => ({ ...s })),
             targetSets: e.sets?.length ?? 3,
             notes: e.notes ?? '',
+            unit: e.unit ?? undefined,
           }));
+          // Seed preferred unit from template
+          const tplUnit = loaded[0]?.unit;
+          if (tplUnit) setPreferredUnit(tplUnit);
           setPlanExercises(loaded);
         }
       }
@@ -124,7 +144,10 @@ function NewPlanInner() {
             targetSets: e.targetSets ?? e.sets?.length ?? 3,
             notes: e.notes ?? '',
             supersetWithId: e.supersetWithId,
+            unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
           }));
+          const planUnit = loaded[0]?.unit;
+          if (planUnit) setPreferredUnit(planUnit);
           setPlanExercises(loaded);
         }
       }
@@ -137,13 +160,25 @@ function NewPlanInner() {
     return matchesMuscle && matchesSearch;
   });
 
+  // Keep ref in sync so addExercise (memoised) always reads the latest unit
+  useEffect(() => { preferredUnitRef.current = preferredUnit; }, [preferredUnit]);
+
   const addExercise = useCallback((ex: Exercise) => {
     setPlanExercises(prev => {
       if (prev.some(pe => pe.exercise.id === ex.id)) return prev;
-      const sets = [defaultSet(ex), defaultSet(ex), defaultSet(ex)];
-      return [...prev, { id: String(Date.now()), exercise: ex, sets, targetSets: 3, notes: '' }];
+      const sets = [defaultSet(ex), defaultSet(ex), defaultSet(ex)].map(s => ({ ...s, rest: 1 }));
+      return [...prev, { id: String(Date.now()), exercise: ex, sets, targetSets: 3, notes: '', unit: preferredUnitRef.current }];
     });
   }, []);
+
+  const toggleUnit = (peId: string) => {
+    setPlanExercises(prev => prev.map(pe => {
+      if (pe.id !== peId) return pe;
+      const next: WeightUnit = (pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs';
+      setPreferredUnit(next);
+      return { ...pe, unit: next };
+    }));
+  };
 
   const removeExercise = (id: string) => setPlanExercises(prev => prev.filter(pe => pe.id !== id));
 
@@ -474,6 +509,15 @@ function NewPlanInner() {
                                 style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}35`, color: PURPLE, borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                               >Superset</button>
                             )}
+                            {pe.exercise.type === 'weighted' && (
+                              <button
+                                onClick={() => toggleUnit(pe.id)}
+                                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+                                title="Toggle weight unit"
+                              >
+                                {pe.unit ?? preferredUnit} ⇄ {(pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                              </button>
+                            )}
                             <button
                               onClick={() => removeExercise(pe.id)}
                               style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
@@ -514,10 +558,11 @@ function NewPlanInner() {
                                     />
                                   </label>
                                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Weight (kg)</span>
+                                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Weight ({pe.unit ?? preferredUnit})</span>
                                     <input
                                       type="number" min={0} step={0.5} value={s.weight ?? 0}
                                       onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value))}
+                                      onFocus={e => e.target.select()}
                                       style={{ width: 70, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                   </label>
@@ -546,14 +591,25 @@ function NewPlanInner() {
                                 </label>
                               )}
 
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>Rest (min)</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>Rest</span>
                                 <input
-                                  type="number" min={0} step={0.5} value={s.rest ?? 1}
-                                  onChange={e => updateSet(pe.id, si, 'rest', Number(e.target.value))}
-                                  style={{ width: 60, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.6)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                  type="number" min={0} max={59}
+                                  value={toMinSec(s.rest ?? 1).m}
+                                  onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(Number(e.target.value), toMinSec(s.rest ?? 1).s))}
+                                  onFocus={e => e.target.select()}
+                                  style={{ width: 42, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 6px', color: 'rgba(255,255,255,0.7)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                 />
-                              </label>
+                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>m</span>
+                                <input
+                                  type="number" min={0} max={59}
+                                  value={toMinSec(s.rest ?? 1).s}
+                                  onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(toMinSec(s.rest ?? 1).m, Number(e.target.value)))}
+                                  onFocus={e => e.target.select()}
+                                  style={{ width: 42, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 6px', color: 'rgba(255,255,255,0.7)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>s</span>
+                              </div>
                             </div>
                           ))}
                         </div>
