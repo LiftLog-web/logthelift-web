@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -36,6 +37,7 @@ export default function PlanLibraryPage() {
   const [creating,   setCreating]   = useState(false);
   const [deleting,   setDeleting]   = useState<string | null>(null);
   const [search,     setSearch]     = useState('');
+  const [hoveredId,  setHoveredId]  = useState<string | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -90,25 +92,15 @@ export default function PlanLibraryPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-      {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ </span>
-          <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none' }}>Plans</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Library</span>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <a href="/profile" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>Profile</a>
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
-          >
-            {creating ? 'Creating…' : '+ New Template'}
-          </button>
-        </div>
-      </nav>
+      <PractitionerNav rightSlot={
+        <button
+          onClick={handleCreate}
+          disabled={creating}
+          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
+        >
+          {creating ? 'Creating…' : '+ New Template'}
+        </button>
+      } />
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
         {/* Page header */}
@@ -153,8 +145,33 @@ export default function PlanLibraryPage() {
               return (
                 <div
                   key={t.id}
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20 }}
+                  style={{ position: 'relative', background: hoveredId === t.id ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s' }}
+                  onMouseEnter={() => setHoveredId(t.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                 >
+                  {/* Hover preview panel */}
+                  {hoveredId === t.id && t.exercises.length > 0 && (
+                    <div style={{
+                      position: 'absolute', right: 'calc(100% + 12px)', top: 0,
+                      width: 240, background: '#1a1d26', border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 12, padding: '14px 16px', zIndex: 50,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      pointerEvents: 'none',
+                    }}>
+                      <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
+                      </p>
+                      {t.exercises.slice(0, 8).map((ex: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < Math.min(t.exercises.length, 8) - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                          <span style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>{ex.exercise?.name ?? '—'}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>{ex.sets?.length ?? 0} sets</span>
+                        </div>
+                      ))}
+                      {t.exercises.length > 8 && (
+                        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>+{t.exercises.length - 8} more…</p>
+                      )}
+                    </div>
+                  )}
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

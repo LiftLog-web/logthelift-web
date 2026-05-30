@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -110,45 +111,14 @@ export default function PlansPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Plans</span>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <a href="/profile" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>Profile</a>
-          <button
-            onClick={() => router.push('/exercises')}
-            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-          >
-            Exercise Library
-          </button>
-          <button
-            onClick={() => router.push('/media-library')}
-            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-          >
-            Video Library
-          </button>
-          <button
-            onClick={() => router.push('/import')}
-            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-          >
-            Import Patients
-          </button>
-          <button
-            onClick={() => router.push('/plans/library')}
-            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-          >
-            📋 Plan Library
-          </button>
-          <button
-            onClick={() => router.push('/plans/new')}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
-          >
-            + New Plan
-          </button>
-        </div>
-      </nav>
+      <PractitionerNav rightSlot={
+        <button
+          onClick={() => router.push('/plans/new')}
+          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+        >
+          + New Plan
+        </button>
+      } />
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>

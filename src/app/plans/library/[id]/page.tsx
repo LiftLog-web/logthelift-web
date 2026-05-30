@@ -99,7 +99,13 @@ export default function TemplateEditorPage() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,    setDragOverId]    = useState<string | null>(null);
   const [collapsedIds,  setCollapsedIds]  = useState<Set<string>>(new Set());
-  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>('lbs');
+  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('liftlog_weight_unit');
+      if (saved === 'kg' || saved === 'lbs') return saved as WeightUnit;
+    }
+    return 'lbs';
+  });
   const lastRestRef = useRef<number>(60); // seconds; carries to next added exercise
 
   // Add exercise modal
@@ -296,7 +302,8 @@ export default function TemplateEditorPage() {
       if (ex.id !== exId) return ex;
       const current = ex.unit ?? preferredUnit;
       const next: WeightUnit = current === 'lbs' ? 'kg' : 'lbs';
-      setPreferredUnit(next); // carry to future exercises
+      setPreferredUnit(next);
+      localStorage.setItem('liftlog_weight_unit', next);
       return { ...ex, unit: next };
     }));
   };

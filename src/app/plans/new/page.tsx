@@ -76,7 +76,14 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
-  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>('lbs');
+  const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('liftlog_weight_unit');
+      if (saved === 'kg' || saved === 'lbs') return saved;
+    }
+    return 'lbs';
+  });
   const preferredUnitRef = useRef<WeightUnit>('lbs');
 
   useEffect(() => {
@@ -176,6 +183,7 @@ function NewPlanInner() {
       if (pe.id !== peId) return pe;
       const next: WeightUnit = (pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs';
       setPreferredUnit(next);
+      localStorage.setItem('liftlog_weight_unit', next);
       return { ...pe, unit: next };
     }));
   };
@@ -368,10 +376,20 @@ function NewPlanInner() {
       {/* Two-column builder */}
       <div style={{ display: 'flex', height: 'calc(100vh - 170px)', overflow: 'hidden' }}>
 
-        {/* Left: Exercise Library */}
-        <div style={{ width: 320, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 10px', color: 'rgba(255,255,255,0.7)' }}>Exercise Library</p>
+        {/* Left: Exercise Library — collapsible */}
+        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease' }}>
+          {/* Sidebar header with toggle */}
+          <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => setSidebarOpen(v => !v)}
+              title={sidebarOpen ? 'Collapse library' : 'Expand library'}
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+            >
+              {sidebarOpen ? '◀' : '▶'}
+            </button>
+            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
+          </div>
+          {sidebarOpen && <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -388,8 +406,8 @@ function NewPlanInner() {
                 <option key={mg} value={mg} style={{ background: '#1a1d26' }}>{mg}</option>
               ))}
             </select>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+          </div>}
+          {sidebarOpen && <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {filteredExercises.map(ex => {
               const alreadyAdded = planExercises.some(pe => pe.exercise.id === ex.id);
               return (
@@ -419,7 +437,7 @@ function NewPlanInner() {
             {filteredExercises.length === 0 && (
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Right: Plan builder */}
@@ -427,7 +445,9 @@ function NewPlanInner() {
           {planExercises.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, opacity: 0.5 }}>
               <p style={{ fontSize: 36 }}>+</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Click exercises on the left to add them to this plan</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                {sidebarOpen ? 'Click exercises on the left to add them to this plan' : 'Open the exercise library (◀ on the left) to add exercises'}
+              </p>
             </div>
           ) : (
             <>
