@@ -324,6 +324,8 @@ export default function PlanLibraryPage() {
                       </div>
                       <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
                         {ex.sets?.length ?? ex.targetSets ?? 0} sets
+                        {ex.sets?.[0]?.reps ? ` · ${ex.sets[0].reps} reps` : ''}
+                        {ex.sets?.[0]?.duration ? ` · ${ex.sets[0].duration}s` : ''}
                       </span>
                     </div>
                   ))}
