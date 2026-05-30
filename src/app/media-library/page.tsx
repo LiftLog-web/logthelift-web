@@ -698,7 +698,7 @@ export default function MediaLibraryPage() {
 
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
-            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
+            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
                   {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
@@ -730,7 +730,7 @@ export default function MediaLibraryPage() {
                       {exDropdownOpen && (
                         <div style={{ position: 'absolute', left: 0, right: 0, background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', zIndex: 10, display: 'flex', flexDirection: 'column' }}>
                           {/* Scrollable results */}
-                          <div style={{ maxHeight: 196, overflowY: 'auto' }}>
+                          <div style={{ maxHeight: 144, overflowY: 'auto' }}>
                             {filtered.length === 0 && !showCreate && (
                               <div style={{ padding: '12px 14px', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>No exercises match</div>
                             )}
