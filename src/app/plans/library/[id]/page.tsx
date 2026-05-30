@@ -463,14 +463,12 @@ export default function TemplateEditorPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-      {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ </span>
-          <a href="/plans/library" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none' }}>Library</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Edit</span>
-        </div>
+      {/* Sub-header */}
+      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          <a href="/plans/library" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Library</a>
+          {' / Edit'}
+        </span>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => router.push(`/plans/new?template=${templateId}`)}
@@ -486,7 +484,7 @@ export default function TemplateEditorPage() {
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-      </nav>
+      </div>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
         {/* Template name + description */}

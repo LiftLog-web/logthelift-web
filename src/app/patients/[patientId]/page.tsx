@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -383,7 +382,12 @@ export default function PatientProgressPage() {
         </div>
       )}
 
-      <PractitionerNav rightSlot={
+      {/* Sub-header */}
+      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a>
+          {' / '}{patientName}
+        </span>
         <div style={{ display: 'flex', gap: 10 }}>
           {patientEmail && (
             <button
@@ -397,10 +401,10 @@ export default function PatientProgressPage() {
             onClick={() => router.push('/plans')}
             style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
           >
-            ← Back to Plans
+            ← Plans
           </button>
         </div>
-      } />
+      </div>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 

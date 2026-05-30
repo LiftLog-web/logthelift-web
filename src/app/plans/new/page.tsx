@@ -317,12 +317,12 @@ function NewPlanInner() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
 
-      {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a> / {editId ? 'Edit' : 'New'}</span>
-        </div>
+      {/* Sub-header */}
+      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a>
+          {' / '}{editId ? 'Edit' : 'New'}
+        </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {saveError && <span style={{ color: '#EF4444', fontSize: 13 }}>{saveError}</span>}
           <button onClick={() => router.push('/plans')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
@@ -336,7 +336,7 @@ function NewPlanInner() {
             {saving ? 'Saving…' : editId ? 'Save Changes' : 'Create Plan'}
           </button>
         </div>
-      </nav>
+      </div>
 
       {/* Plan meta */}
       <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 32px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -413,20 +413,36 @@ function NewPlanInner() {
               return (
                 <button
                   key={ex.id}
-                  onClick={() => addExercise(ex)}
-                  disabled={alreadyAdded}
+                  onClick={() => {
+                    if (alreadyAdded) {
+                      const pe = planExercises.find(p => p.exercise.id === ex.id);
+                      if (pe) removeExercise(pe.id);
+                    } else {
+                      addExercise(ex);
+                    }
+                  }}
                   style={{
-                    display: 'block', width: '100%', textAlign: 'left', background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent',
+                    display: 'block', width: '100%', textAlign: 'left',
+                    background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent',
                     border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`,
-                    borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: alreadyAdded ? 'default' : 'pointer',
+                    borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer',
                     transition: 'background 0.15s',
                   }}
-                  onMouseEnter={e => { if (!alreadyAdded) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                  onMouseLeave={e => { if (!alreadyAdded) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
+                      ? 'rgba(239,68,68,0.1)'
+                      : 'rgba(255,255,255,0.05)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
+                      ? 'rgba(95,207,191,0.08)'
+                      : 'transparent';
+                  }}
+                  title={alreadyAdded ? 'Click to remove from plan' : 'Click to add to plan'}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : '#fff' }}>{ex.name}</span>
-                    {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓</span>}
+                    {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
                     {ex.muscleGroup} · {ex.equipment}

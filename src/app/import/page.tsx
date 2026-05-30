@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import PractitionerNav from '@/components/PractitionerNav';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -134,7 +133,6 @@ export default function ImportPage() {
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-white">
-      <PractitionerNav />
       <div className="max-w-2xl mx-auto px-4 py-10">
 
         <h1 className="text-2xl font-bold mb-1">Import Patients</h1>
