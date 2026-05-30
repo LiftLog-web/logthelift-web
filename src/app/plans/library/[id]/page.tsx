@@ -92,6 +92,8 @@ export default function TemplateEditorPage() {
   const [description, setDescription] = useState('');
   const [exercises,   setExercises]   = useState<TemplateExercise[]>([]);
   const [activeWeek,  setActiveWeek]  = useState(1);
+  const [draggedId,   setDraggedId]   = useState<string | null>(null);
+  const [dragOverId,  setDragOverId]  = useState<string | null>(null);
 
   // Add exercise modal
   const [showAddModal,   setShowAddModal]   = useState(false);
@@ -207,6 +209,28 @@ export default function TemplateEditorPage() {
       [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
       return next;
     });
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    const tag = (e.target as HTMLElement).tagName.toLowerCase();
+    if (tag === 'input' || tag === 'button' || tag === 'textarea') { e.preventDefault(); return; }
+    setDraggedId(id);
+  };
+  const handleDragEnd   = () => { setDraggedId(null); setDragOverId(null); };
+  const handleDragOver  = (e: React.DragEvent, id: string) => { e.preventDefault(); if (id !== draggedId) setDragOverId(id); };
+  const handleDrop      = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return; }
+    setExercises(prev => {
+      const items = [...prev];
+      const from  = items.findIndex(p => p.id === draggedId);
+      const to    = items.findIndex(p => p.id === targetId);
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      return items;
+    });
+    setDraggedId(null);
+    setDragOverId(null);
   };
 
   // ── Add exercise ──────────────────────────────────────────────────────────
@@ -494,10 +518,29 @@ export default function TemplateEditorPage() {
               const weekExercise = getWeekExercise(ex, activeWeek);
               const weekSets = getWeekSets(ex, activeWeek);
               const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
+              const isDragging = draggedId === ex.id;
+              const isDragOver = dragOverId === ex.id;
               return (
-                <div key={ex.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '18px 20px' }}>
+                <div
+                  key={ex.id}
+                  draggable
+                  onDragStart={e => handleDragStart(e, ex.id)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={e => handleDragOver(e, ex.id)}
+                  onDrop={e => handleDrop(e, ex.id)}
+                  style={{
+                    background: isDragOver ? 'rgba(95,207,191,0.06)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${isDragOver ? `${TEAL}80` : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: 14, padding: '18px 20px',
+                    opacity: isDragging ? 0.4 : 1,
+                    cursor: 'grab',
+                    transition: 'border-color 0.15s, opacity 0.15s',
+                  }}
+                >
                   {/* Exercise header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {/* Drag handle */}
+                    <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
                     {isOverridden && (
                       <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
