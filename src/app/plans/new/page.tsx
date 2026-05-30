@@ -443,10 +443,15 @@ function NewPlanInner() {
         {/* Right: Plan builder */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
           {planExercises.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, opacity: 0.5 }}>
-              <p style={{ fontSize: 36 }}>+</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                {sidebarOpen ? 'Click exercises on the left to add them to this plan' : 'Open the exercise library (◀ on the left) to add exercises'}
+            <div
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, opacity: 0.6, cursor: sidebarOpen ? 'default' : 'pointer' }}
+            >
+              <p style={{ fontSize: 36, margin: 0 }}>+</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', margin: 0 }}>
+                {sidebarOpen
+                  ? 'Click exercises on the left to add them to this plan'
+                  : 'Open the exercise library (◀ on the left) or click here to add exercises'}
               </p>
             </div>
           ) : (
