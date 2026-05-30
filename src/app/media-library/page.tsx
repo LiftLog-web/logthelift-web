@@ -702,7 +702,7 @@ export default function MediaLibraryPage() {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}
             onKeyDown={e => { if (e.key === 'Escape') closeModal(); }}
           >
-            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500 }}>
+            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
                   {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
@@ -735,7 +735,7 @@ export default function MediaLibraryPage() {
                       {listOpen && (
                         <div style={{ background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
                           {/* Scrollable results — capped so Create is always in view */}
-                          <div style={{ maxHeight: 168, overflowY: 'auto' }}>
+                          <div style={{ maxHeight: 111, overflowY: 'auto' }}>
                             {filtered.map(ex => (
                               <button
                                 key={ex.name}
@@ -767,41 +767,37 @@ export default function MediaLibraryPage() {
                   )}
                 </div>
 
-                {/* URL / File — only shown when exercise list is closed or an exercise is selected */}
-                {(!listOpen || exerciseName) && (
-                  <>
-                    {modalMode === 'url' ? (
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
-                        <input
-                          value={urlInput}
-                          onChange={e => setUrlInput(e.target.value)}
-                          placeholder="https://youtube.com/watch?v=... or any video link"
-                          type="url"
-                          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
-                        />
-                      </label>
-                    ) : (
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
-                        <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                          {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
-                        </div>
-                        <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
-                      </label>
-                    )}
-
-                    {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
-                    {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
-
-                    <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                      <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                        {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
-                      </button>
+                {/* URL / File */}
+                {modalMode === 'url' ? (
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
+                    <input
+                      value={urlInput}
+                      onChange={e => setUrlInput(e.target.value)}
+                      placeholder="https://youtube.com/watch?v=... or any video link"
+                      type="url"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    />
+                  </label>
+                ) : (
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
+                    <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                      {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
                     </div>
-                  </>
+                    <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
+                  </label>
                 )}
+
+                {uploadProgress && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{uploadProgress}</p>}
+                {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
+
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                    {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
