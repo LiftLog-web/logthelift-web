@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
@@ -26,12 +26,16 @@ interface WeekData {
   exerciseOverride?: Exercise; // different exercise for this week only
 }
 
+type WeightUnit = 'lbs' | 'kg';
+
 interface TemplateExercise {
   id: string;
   exercise: Exercise;
   sets: WorkoutSet[];     // Week 1 baseline
   notes?: string;
   weeks?: WeekData[];     // Weeks 2+ overrides
+  unit?: WeightUnit;      // per-exercise unit preference
+  rest?: number;          // rest between sets (seconds), same for all weeks
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,8 +96,10 @@ export default function TemplateEditorPage() {
   const [description, setDescription] = useState('');
   const [exercises,   setExercises]   = useState<TemplateExercise[]>([]);
   const [activeWeek,  setActiveWeek]  = useState(1);
-  const [draggedId,   setDraggedId]   = useState<string | null>(null);
-  const [dragOverId,  setDragOverId]  = useState<string | null>(null);
+  const [draggedId,     setDraggedId]     = useState<string | null>(null);
+  const [dragOverId,    setDragOverId]    = useState<string | null>(null);
+  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>('lbs');
+  const lastRestRef = useRef<number>(60); // seconds; carries to next added exercise
 
   // Add exercise modal
   const [showAddModal,   setShowAddModal]   = useState(false);
@@ -127,13 +133,28 @@ export default function TemplateEditorPage() {
 
       setName(tpl.name);
       setDescription(tpl.description ?? '');
-      const loadedExercises = (tpl.exercises ?? []).map((e: any) => ({
+      const loadedExercises: TemplateExercise[] = (tpl.exercises ?? []).map((e: any) => ({
         id: e.id ?? uid(),
         exercise: e.exercise,
-        sets: e.sets ?? [defaultSet(e.exercise)],
+        sets: (e.sets ?? [defaultSet(e.exercise)]).map((s: any) => {
+          const { rest: _r, ...setWithoutRest } = s;
+          return setWithoutRest;
+        }),
         notes: e.notes ?? '',
-        weeks: e.weeks ?? [],
+        weeks: (e.weeks ?? []).map((w: any) => ({
+          ...w,
+          sets: (w.sets ?? []).map((s: any) => { const { rest: _r, ...s2 } = s; return s2; }),
+        })),
+        unit: e.unit ?? undefined,
+        // migrate from old per-set rest if present, else use saved exercise rest
+        rest: e.rest ?? e.sets?.[0]?.rest ?? undefined,
       }));
+      if (loadedExercises.length > 0) {
+        const firstUnit = loadedExercises[0].unit;
+        if (firstUnit) setPreferredUnit(firstUnit);
+        const firstRest = loadedExercises[loadedExercises.length - 1].rest;
+        if (firstRest) lastRestRef.current = firstRest;
+      }
       setExercises(loadedExercises);
       // Auto-open the exercise picker when the template is brand new (no exercises yet)
       if (loadedExercises.length === 0) setShowAddModal(true);
@@ -254,9 +275,26 @@ export default function TemplateEditorPage() {
         week: i + 2,
         sets: [baseSet, baseSet, baseSet].map(s => ({ ...s })),
       })),
+      unit: preferredUnit,
+      rest: lastRestRef.current,
     };
     setExercises(prev => [...prev, newEx]);
     closeAddModal();
+  };
+
+  const toggleUnit = (exId: string) => {
+    setExercises(prev => prev.map(ex => {
+      if (ex.id !== exId) return ex;
+      const current = ex.unit ?? preferredUnit;
+      const next: WeightUnit = current === 'lbs' ? 'kg' : 'lbs';
+      setPreferredUnit(next); // carry to future exercises
+      return { ...ex, unit: next };
+    }));
+  };
+
+  const updateExerciseRest = (exId: string, value: number) => {
+    lastRestRef.current = value;
+    setExercises(prev => prev.map(ex => ex.id === exId ? { ...ex, rest: value } : ex));
   };
 
   const handleAddCustomExercise = () => {
@@ -318,6 +356,7 @@ export default function TemplateEditorPage() {
 
   const renderSetRow = (ex: TemplateExercise, set: WorkoutSet, setIdx: number, totalSets: number) => {
     const exType = getWeekExercise(ex, activeWeek).type;
+    const unit = ex.unit ?? preferredUnit;
     return (
       <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
         <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, width: 24, flexShrink: 0 }}>
@@ -331,6 +370,7 @@ export default function TemplateEditorPage() {
                 type="number"
                 value={set.reps ?? ''}
                 onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))}
+                onFocus={e => e.target.select()}
                 style={inputStyle}
                 placeholder="0"
               />
@@ -342,10 +382,11 @@ export default function TemplateEditorPage() {
                 type="number"
                 value={set.weight ?? ''}
                 onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))}
+                onFocus={e => e.target.select()}
                 style={inputStyle}
                 placeholder="0"
               />
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>kg</span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>{unit}</span>
             </div>
           </>
         )}
@@ -356,23 +397,13 @@ export default function TemplateEditorPage() {
               type="number"
               value={set.seconds ?? ''}
               onChange={e => updateSet(ex.id, setIdx, 'seconds', Number(e.target.value))}
+              onFocus={e => e.target.select()}
               style={inputStyle}
               placeholder="0"
             />
             <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>sec</span>
           </div>
         )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-          <input
-            type="number"
-            value={set.rest ?? ''}
-            onChange={e => updateSet(ex.id, setIdx, 'rest', Number(e.target.value))}
-            style={{ ...inputStyle, width: 44 }}
-            placeholder="0"
-          />
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>s rest</span>
-        </div>
 
         <button
           onClick={() => removeSet(ex.id, setIdx)}
@@ -580,18 +611,29 @@ export default function TemplateEditorPage() {
 
                   {/* Set rows */}
                   <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
                       <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 24 }}>#</span>
                       {weekExercise.type === 'weighted' && (
                         <>
                           <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>Reps</span>
-                          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>Weight (kg)</span>
+                          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>
+                            Weight ({ex.unit ?? preferredUnit})
+                          </span>
                         </>
                       )}
                       {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
                         <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>Duration (s)</span>
                       )}
-                      <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, marginLeft: 8 }}>Rest (s)</span>
+                      {/* Unit toggle — only for weighted exercises */}
+                      {weekExercise.type === 'weighted' && (
+                        <button
+                          onClick={() => toggleUnit(ex.id)}
+                          style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                          title="Toggle weight unit for this exercise"
+                        >
+                          {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                        </button>
+                      )}
                     </div>
                     {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
                     <button
@@ -600,6 +642,20 @@ export default function TemplateEditorPage() {
                     >
                       + Add Set
                     </button>
+
+                    {/* Rest between sets — one per exercise, carries to next */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>Rest between sets:</span>
+                      <input
+                        type="number"
+                        value={ex.rest ?? lastRestRef.current}
+                        onChange={e => updateExerciseRest(ex.id, Number(e.target.value))}
+                        onFocus={e => e.target.select()}
+                        style={{ ...inputStyle, width: 56 }}
+                        min={0}
+                      />
+                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>seconds</span>
+                    </div>
                   </div>
                 </div>
               );
