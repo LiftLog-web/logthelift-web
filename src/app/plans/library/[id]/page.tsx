@@ -97,6 +97,12 @@ export default function TemplateEditorPage() {
   const [showAddModal,   setShowAddModal]   = useState(false);
   const [exSearch,       setExSearch]       = useState('');
   const [exMuscle,       setExMuscle]       = useState('All');
+  // Custom exercise form within the modal
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName,     setCustomName]     = useState('');
+  const [customMuscle,   setCustomMuscle]   = useState(MUSCLE_GROUPS[0]);
+  const [customEquip,    setCustomEquip]    = useState('Bodyweight');
+  const [customType,     setCustomType]     = useState<'weighted' | 'duration' | 'cardio'>('weighted');
 
   // Substitution modal
   const [subTarget,   setSubTarget]   = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
@@ -119,13 +125,16 @@ export default function TemplateEditorPage() {
 
       setName(tpl.name);
       setDescription(tpl.description ?? '');
-      setExercises((tpl.exercises ?? []).map((e: any) => ({
+      const loadedExercises = (tpl.exercises ?? []).map((e: any) => ({
         id: e.id ?? uid(),
         exercise: e.exercise,
         sets: e.sets ?? [defaultSet(e.exercise)],
         notes: e.notes ?? '',
         weeks: e.weeks ?? [],
-      })));
+      }));
+      setExercises(loadedExercises);
+      // Auto-open the exercise picker when the template is brand new (no exercises yet)
+      if (loadedExercises.length === 0) setShowAddModal(true);
       setLoading(false);
     });
   }, [router, templateId]);
@@ -202,6 +211,14 @@ export default function TemplateEditorPage() {
 
   // ── Add exercise ──────────────────────────────────────────────────────────
 
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setExSearch('');
+    setExMuscle('All');
+    setShowCustomForm(false);
+    setCustomName('');
+  };
+
   const handleAddExercise = (ex: Exercise) => {
     if (exercises.some(e => e.exercise.id === ex.id)) return;
     const baseSet = defaultSet(ex);
@@ -215,9 +232,19 @@ export default function TemplateEditorPage() {
       })),
     };
     setExercises(prev => [...prev, newEx]);
-    setShowAddModal(false);
-    setExSearch('');
-    setExMuscle('All');
+    closeAddModal();
+  };
+
+  const handleAddCustomExercise = () => {
+    if (!customName.trim()) return;
+    const ex: Exercise = {
+      id: `custom_${uid()}`,
+      name: customName.trim(),
+      muscleGroup: customMuscle,
+      equipment: customEquip,
+      type: customType,
+    };
+    handleAddExercise(ex);
   };
 
   // ── Substitution ──────────────────────────────────────────────────────────
@@ -557,52 +584,122 @@ export default function TemplateEditorPage() {
 
       {/* ── Add Exercise Modal ─────────────────────────────────────────────── */}
       {showAddModal && (
-        <div style={overlayStyle} onClick={() => setShowAddModal(false)}>
+        <div style={overlayStyle} onClick={closeAddModal}>
           <div style={modalStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Exercise</h3>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer' }}>×</button>
+              <button onClick={closeAddModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer' }}>×</button>
             </div>
-            <input
-              value={exSearch}
-              onChange={e => setExSearch(e.target.value)}
-              placeholder="Search exercises…"
-              autoFocus
-              style={searchInputStyle}
-            />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-              {['All', ...MUSCLE_GROUPS].map(mg => (
+
+            {!showCustomForm ? (
+              <>
+                <input
+                  value={exSearch}
+                  onChange={e => setExSearch(e.target.value)}
+                  placeholder="Search exercises…"
+                  autoFocus
+                  style={searchInputStyle}
+                />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {['All', ...MUSCLE_GROUPS].map(mg => (
+                    <button
+                      key={mg}
+                      onClick={() => setExMuscle(mg)}
+                      style={{
+                        padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                        background: exMuscle === mg ? TEAL : 'rgba(255,255,255,0.08)',
+                        color: exMuscle === mg ? '#0f1117' : 'rgba(255,255,255,0.5)',
+                      }}
+                    >
+                      {mg}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {addCandidates.slice(0, 60).map(ex => (
+                    <button
+                      key={ex.id}
+                      onClick={() => handleAddExercise(ex)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span>
+                        <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
+                      </span>
+                      <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
+                    </button>
+                  ))}
+                  {addCandidates.length === 0 && (
+                    <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 16, marginBottom: 0 }}>No matching exercises</p>
+                  )}
+                </div>
+                {/* Custom exercise CTA */}
                 <button
-                  key={mg}
-                  onClick={() => setExMuscle(mg)}
-                  style={{
-                    padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: exMuscle === mg ? TEAL : 'rgba(255,255,255,0.08)',
-                    color: exMuscle === mg ? '#0f1117' : 'rgba(255,255,255,0.5)',
-                  }}
+                  onClick={() => { setShowCustomForm(true); setCustomName(exSearch); }}
+                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
-                  {mg}
+                  + Create custom exercise{exSearch ? ` "${exSearch}"` : ''}
                 </button>
-              ))}
-            </div>
-            <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-              {addCandidates.slice(0, 60).map(ex => (
+              </>
+            ) : (
+              /* Custom exercise form */
+              <>
                 <button
-                  key={ex.id}
-                  onClick={() => handleAddExercise(ex)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+                  onClick={() => setShowCustomForm(false)}
+                  style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}
                 >
-                  <span>
-                    <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
-                  </span>
-                  <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
+                  ‹ Back to search
                 </button>
-              ))}
-              {addCandidates.length === 0 && (
-                <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 24 }}>No matching exercises</p>
-              )}
-            </div>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 16 }}>
+                  Add an exercise that isn't in the standard library.
+                </p>
+
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="e.g. Bulgarian Split Squat"
+                  autoFocus
+                  style={{ ...searchInputStyle, marginBottom: 14 }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }}
+                />
+
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                  {MUSCLE_GROUPS.map(mg => (
+                    <button key={mg} onClick={() => setCustomMuscle(mg)}
+                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'rgba(255,255,255,0.08)', color: customMuscle === mg ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                    >{mg}</button>
+                  ))}
+                </div>
+
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                  {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
+                    <button key={eq} onClick={() => setCustomEquip(eq)}
+                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'rgba(255,255,255,0.08)', color: customEquip === eq ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                    >{eq}</button>
+                  ))}
+                </div>
+
+                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+                  {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setCustomType(val)}
+                      style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'rgba(255,255,255,0.08)', color: customType === val ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                    >{label}</button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleAddCustomExercise}
+                  disabled={!customName.trim()}
+                  style={{ width: '100%', background: customName.trim() ? TEAL : 'rgba(255,255,255,0.1)', color: customName.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
+                >
+                  Add "{customName.trim() || 'exercise'}" to template
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
