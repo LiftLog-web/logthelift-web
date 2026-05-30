@@ -275,7 +275,7 @@ export default function MediaLibraryPage() {
   const usageBarColor   = atCap ? '#EF4444' : usagePct >= 80 ? '#F97316' : TEAL;
 
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
-  const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Uploaded video' : 'Uploaded photo';
+  const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Video' : 'Photo';
   const typeColor = (t: string) => t === 'link' ? TEAL : t === 'video' ? PURPLE : '#F9F295';
 
   function getViewers(exerciseName: string): PlanViewer[] {
@@ -424,10 +424,16 @@ export default function MediaLibraryPage() {
                     {filteredItems.map((item, i) => {
                       const signedUrl = signedUrls[item.id];
                       return (
-                        <tr key={item.id} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                        <tr
+                          key={item.id}
+                          onClick={() => setViewersItem(item)}
+                          style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(95,207,191,0.05)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)')}
+                        >
 
                           {/* Preview */}
-                          <td style={{ padding: '12px 24px' }}>
+                          <td onClick={e => e.stopPropagation()} style={{ padding: '12px 24px' }}>
                             {item.media_type === 'photo' && signedUrl ? (
                               <img
                                 src={signedUrl}
@@ -459,7 +465,7 @@ export default function MediaLibraryPage() {
                             </span>
                           </td>
 
-                          <td style={{ padding: '12px 24px', maxWidth: 260 }}>
+                          <td onClick={e => e.stopPropagation()} style={{ padding: '12px 24px', maxWidth: 260 }}>
                             {item.media_type === 'link' && item.url_link ? (
                               <a href={item.url_link} target="_blank" rel="noopener noreferrer" style={{ color: TEAL, fontSize: 13, wordBreak: 'break-all', textDecoration: 'none' }} title={item.url_link}>
                                 {item.url_link.length > 45 ? item.url_link.slice(0, 45) + '…' : item.url_link}
@@ -480,14 +486,7 @@ export default function MediaLibraryPage() {
                             {new Date(item.created_at).toLocaleDateString('en-CA')}
                           </td>
 
-                          <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <button
-                              onClick={() => setViewersItem(item)}
-                              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}
-                              title="See which patients have this exercise"
-                            >
-                              👥 Viewers
-                            </button>
+                          <td onClick={e => e.stopPropagation()} style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {item.media_type === 'link' && (
                               <button onClick={() => openUrlModal({ item })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
                                 Edit
