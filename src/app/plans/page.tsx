@@ -136,6 +136,12 @@ export default function PlansPage() {
             Import Patients
           </button>
           <button
+            onClick={() => router.push('/plans/library')}
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
+          >
+            📋 Plan Library
+          </button>
+          <button
             onClick={() => router.push('/plans/new')}
             style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
           >

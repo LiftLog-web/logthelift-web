@@ -42,8 +42,9 @@ const defaultSet = (ex: Exercise): WorkoutSet => {
 function NewPlanInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const editId       = searchParams.get('edit');
+  const editId        = searchParams.get('edit');
   const presetPatient = searchParams.get('patient');
+  const templateId    = searchParams.get('template');
 
   const [authed,       setAuthed]       = useState(false);
   const [practId,      setPractId]      = useState('');
@@ -82,6 +83,26 @@ function NewPlanInner() {
       setPatients(pats);
 
       if (presetPatient) setPatientId(presetPatient);
+
+      if (templateId) {
+        const { data: tpl } = await sb
+          .from('plan_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+        if (tpl) {
+          setPlanName(tpl.name);
+          setDescription(tpl.description ?? '');
+          const loaded: PlanExercise[] = (tpl.exercises ?? []).map((e: any) => ({
+            id: String(Math.random()),
+            exercise: e.exercise,
+            sets: (e.sets ?? [{ reps: 10, weight: 0 }]).map((s: any) => ({ ...s })),
+            targetSets: e.sets?.length ?? 3,
+            notes: e.notes ?? '',
+          }));
+          setPlanExercises(loaded);
+        }
+      }
 
       if (editId) {
         const { data: plan } = await sb
