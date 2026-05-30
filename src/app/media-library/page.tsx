@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { EXERCISES } from '@/data/exercises';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -72,6 +73,9 @@ export default function MediaLibraryPage() {
   const [saving,         setSaving]         = useState(false);
   const [modalError,     setModalError]     = useState('');
   const [uploadProgress, setUploadProgress] = useState('');
+  const [customExNames,  setCustomExNames]  = useState<string[]>([]);
+  const [exSearch,       setExSearch]       = useState('');
+  const [exDropdownOpen, setExDropdownOpen] = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -126,9 +130,11 @@ export default function MediaLibraryPage() {
         }
       }
     }
+    const customNames: string[] = [];
     for (const ex of (customRes.data ?? [])) {
-      if (ex.name) namesSet.add(ex.name);
+      if (ex.name) { namesSet.add(ex.name); customNames.push(ex.name); }
     }
+    setCustomExNames(customNames);
     for (const m of mediaItems) namesSet.add(m.exercise_name);
 
     const coverageList: CoverageItem[] = Array.from(namesSet)
@@ -201,6 +207,8 @@ export default function MediaLibraryPage() {
     setShowModal(false);
     setEditItem(null);
     setMediaFile(null);
+    setExSearch('');
+    setExDropdownOpen(false);
   }
 
   async function handleSaveUrl() {
@@ -682,19 +690,48 @@ export default function MediaLibraryPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Exercise Name *</span>
-                <input
-                  value={exerciseName}
-                  onChange={e => setExerciseName(e.target.value)}
-                  placeholder="e.g. Barbell Squat"
-                  disabled={nameLocked}
-                  style={{ background: nameLocked ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: nameLocked ? 'rgba(255,255,255,0.5)' : '#fff', fontSize: 15, outline: 'none', cursor: nameLocked ? 'not-allowed' : 'text' }}
-                />
-                {!nameLocked && (
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>Must match the exercise name exactly as it appears in the app (case-sensitive).</span>
+                {nameLocked ? (
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '11px 14px', color: 'rgba(255,255,255,0.5)', fontSize: 15 }}>
+                    {exerciseName}
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      value={exSearch || exerciseName}
+                      onChange={e => { setExSearch(e.target.value); setExerciseName(''); setExDropdownOpen(true); }}
+                      onFocus={() => setExDropdownOpen(true)}
+                      placeholder="Search exercises…"
+                      style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: exDropdownOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    />
+                    {exDropdownOpen && (() => {
+                      const query = (exSearch || exerciseName).toLowerCase();
+                      const standardNames = EXERCISES.map(e => e.name);
+                      const allNames = [...new Set([...standardNames, ...customExNames])].sort((a, b) => a.localeCompare(b));
+                      const filtered = allNames.filter(n => n.toLowerCase().includes(query));
+                      return filtered.length > 0 ? (
+                        <div style={{ position: 'absolute', left: 0, right: 0, background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', maxHeight: 200, overflowY: 'auto', zIndex: 10 }}>
+                          {filtered.map(name => (
+                            <button
+                              key={name}
+                              onMouseDown={e => { e.preventDefault(); setExerciseName(name); setExSearch(''); setExDropdownOpen(false); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '10px 14px', color: name === exerciseName ? TEAL : '#fff', fontSize: 14, cursor: 'pointer', fontWeight: name === exerciseName ? 700 : 400 }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
                 )}
-              </label>
+                {!nameLocked && exerciseName && (
+                  <span style={{ color: TEAL, fontSize: 12 }}>✓ {exerciseName} selected</span>
+                )}
+              </div>
 
               {modalMode === 'url' ? (
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
