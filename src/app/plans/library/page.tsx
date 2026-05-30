@@ -9,6 +9,8 @@ import { getSupabase } from '@/lib/supabase';
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 
+const BODY_PART_TAGS = ['Arms','Back','Balance','Calves','Cardio','Chest','Core','Full Body','Glutes','Hamstrings','Hip','Isometrics','Legs','Lower Back','Lower Body','Pilates','Plyometrics','Shoulders','Upper Body','Yoga'];
+
 interface Template {
   id: string;
   name: string;
@@ -36,9 +38,11 @@ export default function PlanLibraryPage() {
   const [creating,   setCreating]   = useState(false);
   const [deleting,   setDeleting]   = useState<string | null>(null);
   const [search,     setSearch]     = useState('');
-  const [hoveredId,    setHoveredId]    = useState<string | null>(null);
-  const [activeTag,    setActiveTag]    = useState<string | null>(null);
-  const [previewTpl,   setPreviewTpl]   = useState<Template | null>(null);
+  const [hoveredId,      setHoveredId]      = useState<string | null>(null);
+  const [activeTag,      setActiveTag]      = useState<string | null>(null);
+  const [previewTpl,     setPreviewTpl]     = useState<Template | null>(null);
+  const [bodyFilter,     setBodyFilter]     = useState('');
+  const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -84,9 +88,11 @@ export default function PlanLibraryPage() {
   const allTags = Array.from(new Set(templates.flatMap(t => (t as any).tags ?? []))).sort() as string[];
 
   const filtered = templates.filter(t => {
-    const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
-    const matchesTag = !activeTag || ((t as any).tags ?? []).includes(activeTag);
-    return matchesSearch && matchesTag;
+    const tags = (t as any).tags ?? [];
+    if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (activeTag && !tags.includes(activeTag)) return false;
+    if (bodyFilter && !tags.includes(bodyFilter)) return false;
+    return true;
   });
 
   if (!authed || loading) {
@@ -109,14 +115,51 @@ export default function PlanLibraryPage() {
               Reusable templates with week-by-week progression
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             {templates.length > 0 && (
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search templates…"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 220 }}
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 200 }}
               />
+            )}
+            {/* Body part filter */}
+            {templates.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setBodyFilterOpen(o => !o)}
+                  style={{ background: bodyFilter ? `${TEAL}22` : 'rgba(255,255,255,0.07)', border: `1px solid ${bodyFilter ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? TEAL : 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: bodyFilter ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {bodyFilter || 'Body Part'} {bodyFilterOpen ? '▲' : '▼'}
+                </button>
+                {bodyFilterOpen && (
+                  <div
+                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, zIndex: 50, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                    onMouseLeave={() => setBodyFilterOpen(false)}
+                  >
+                    <button
+                      onMouseDown={() => { setBodyFilter(''); setBodyFilterOpen(false); }}
+                      style={{ textAlign: 'left', padding: '10px 16px', background: !bodyFilter ? `${TEAL}18` : 'none', border: 'none', color: !bodyFilter ? TEAL : 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      All body parts
+                    </button>
+                    <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                      {BODY_PART_TAGS.map(tag => (
+                        <button
+                          key={tag}
+                          onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? `${TEAL}18` : 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)', color: bodyFilter === tag ? TEAL : '#fff', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
+                          onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                          onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             <button
               onClick={handleCreate}
