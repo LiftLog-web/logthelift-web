@@ -98,6 +98,7 @@ export default function TemplateEditorPage() {
   const [activeWeek,  setActiveWeek]  = useState(1);
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,    setDragOverId]    = useState<string | null>(null);
+  const [collapsedIds,  setCollapsedIds]  = useState<Set<string>>(new Set());
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>('lbs');
   const lastRestRef = useRef<number>(60); // seconds; carries to next added exercise
 
@@ -228,6 +229,14 @@ export default function TemplateEditorPage() {
       const swapIdx = idx + dir;
       if (swapIdx < 0 || swapIdx >= next.length) return prev;
       [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
+  };
+
+  const toggleCollapse = (exId: string) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      next.has(exId) ? next.delete(exId) : next.add(exId);
       return next;
     });
   };
@@ -549,8 +558,15 @@ export default function TemplateEditorPage() {
               const weekExercise = getWeekExercise(ex, activeWeek);
               const weekSets = getWeekSets(ex, activeWeek);
               const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
-              const isDragging = draggedId === ex.id;
-              const isDragOver = dragOverId === ex.id;
+              const isDragging  = draggedId === ex.id;
+              const isDragOver  = dragOverId === ex.id;
+              const isCollapsed = collapsedIds.has(ex.id);
+              const firstSet    = weekSets[0];
+              const collapseSummary = weekSets.length > 0
+                ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
+                  + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
+                  + (ex.rest ? ` · ${ex.rest}s rest` : '')
+                : 'No sets';
               return (
                 <div
                   key={ex.id}
@@ -582,7 +598,15 @@ export default function TemplateEditorPage() {
                     <span style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
                       {weekExercise.equipment}
                     </span>
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {/* Collapse / expand toggle */}
+                      <button
+                        onClick={() => toggleCollapse(ex.id)}
+                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 10px', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
+                        title={isCollapsed ? 'Expand' : 'Minimise'}
+                      >
+                        {isCollapsed ? '▶' : '▼'}
+                      </button>
                       <button
                         onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }}
                         style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
@@ -609,8 +633,13 @@ export default function TemplateEditorPage() {
                     </div>
                   </div>
 
+                  {/* Collapsed summary */}
+                  {isCollapsed && (
+                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>{collapseSummary}</p>
+                  )}
+
                   {/* Set rows */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
+                  {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
                       <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 24 }}>#</span>
                       {weekExercise.type === 'weighted' && (
@@ -656,7 +685,7 @@ export default function TemplateEditorPage() {
                       />
                       <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>seconds</span>
                     </div>
-                  </div>
+                  </div>}
                 </div>
               );
             })}
