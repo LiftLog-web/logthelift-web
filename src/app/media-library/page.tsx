@@ -676,10 +676,13 @@ export default function MediaLibraryPage() {
       {/* ── ADD/EDIT MODAL ── */}
       {showModal && (() => {
         const query = exSearch.toLowerCase();
+        const seenNames = new Set<string>();
         const allEx = [
           ...EXERCISES.map(e => ({ name: e.name, sub: `${e.muscleGroup} · ${e.equipment}`, custom: false })),
           ...customExNames.map(n => ({ name: n, sub: 'Custom exercise', custom: true })),
-        ].sort((a, b) => a.name.localeCompare(b.name));
+        ]
+          .filter(e => { const key = e.name.toLowerCase(); if (seenNames.has(key)) return false; seenNames.add(key); return true; })
+          .sort((a, b) => a.name.localeCompare(b.name));
         const filtered = query.length === 0 ? [] : allEx
           .filter(e => e.name.toLowerCase().includes(query))
           .sort((a, b) => {
