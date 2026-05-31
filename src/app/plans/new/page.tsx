@@ -76,8 +76,11 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
-  const [mediaMap,     setMediaMap]     = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
-  const [demoPreview,  setDemoPreview]  = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
+  const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
+  const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
+  const [addVideoTarget, setAddVideoTarget] = useState<string | null>(null);
+  const [videoUrl,       setVideoUrl]       = useState('');
+  const [savingVideo,    setSavingVideo]    = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
@@ -225,6 +228,21 @@ function NewPlanInner() {
       sets = sets.slice(0, count);
       return { ...pe, sets, targetSets: count };
     }));
+  };
+
+  const handleSaveVideo = async (exerciseName: string, url: string) => {
+    if (!url.trim()) return;
+    setSavingVideo(true);
+    await getSupabase()
+      .from('exercise_media')
+      .upsert(
+        { practitioner_id: practId, exercise_name: exerciseName, media_type: 'link', url_link: url.trim(), file_path: null },
+        { onConflict: 'practitioner_id,exercise_name' }
+      );
+    setMediaMap(prev => ({ ...prev, [exerciseName]: { type: 'link', urlLink: url.trim() } }));
+    setSavingVideo(false);
+    setAddVideoTarget(null);
+    setVideoUrl('');
   };
 
   const updateNotes = (peId: string, notes: string) => {
@@ -541,7 +559,7 @@ function NewPlanInner() {
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
                                 {pe.exercise.muscleGroup} · {pe.exercise.equipment}
                               </span>
-                              {mediaMap[pe.exercise.name] && (() => {
+                              {mediaMap[pe.exercise.name] ? (() => {
                                 const m = mediaMap[pe.exercise.name];
                                 return (
                                   <button
@@ -552,7 +570,15 @@ function NewPlanInner() {
                                     {m.type === 'link' ? '🔗 Link' : m.type === 'video' ? '📹 Video' : '📷 Photo'}
                                   </button>
                                 );
-                              })()}
+                              })() : (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setAddVideoTarget(pe.exercise.name); setVideoUrl(''); }}
+                                  style={{ marginLeft: 10, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer', verticalAlign: 'middle' }}
+                                  title="Add a video demo link"
+                                >
+                                  + Add Video
+                                </button>
+                              )}
                             </div>
                             {isSuperset && (
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${PURPLE}22`, color: PURPLE, flexShrink: 0 }}>SS</span>
@@ -772,6 +798,34 @@ function NewPlanInner() {
                 Saved privately to your library — not visible to the patient
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Add video link modal */}
+      {addVideoTarget && (
+        <div onClick={() => setAddVideoTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
+            <input
+              autoFocus
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
+              placeholder="https://youtube.com/watch?v=..."
+              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
+                disabled={!videoUrl.trim() || savingVideo}
+                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                {savingVideo ? 'Saving…' : 'Save Video Link'}
+              </button>
+            </div>
           </div>
         </div>
       )}

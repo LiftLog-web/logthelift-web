@@ -109,6 +109,13 @@ export default function TemplateEditorPage() {
   });
   const lastRestRef = useRef<number>(60); // seconds; carries to next added exercise
 
+  const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
+  const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
+  const [addVideoTarget, setAddVideoTarget] = useState<string | null>(null);
+  const [videoUrl,       setVideoUrl]       = useState('');
+  const [savingVideo,    setSavingVideo]    = useState(false);
+  const [userId,         setUserId]         = useState('');
+
   // Add exercise modal
   const [showAddModal,   setShowAddModal]   = useState(false);
   const [exSearch,       setExSearch]       = useState('');
@@ -131,6 +138,23 @@ export default function TemplateEditorPage() {
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setAuthed(true);
+      setUserId(data.session.user.id);
+
+      // Load exercise media so cards can show video badges + previews
+      const { data: mediaItems } = await sb
+        .from('exercise_media')
+        .select('exercise_name, media_type, file_path, url_link')
+        .eq('practitioner_id', data.session.user.id);
+      const mediaMapData: Record<string, { type: string; signedUrl?: string; urlLink?: string }> = {};
+      await Promise.all((mediaItems ?? []).map(async (m: any) => {
+        let signedUrl: string | undefined;
+        if (m.media_type !== 'link' && m.file_path) {
+          const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(m.file_path, 3600);
+          signedUrl = su?.signedUrl ?? undefined;
+        }
+        mediaMapData[m.exercise_name] = { type: m.media_type, signedUrl, urlLink: m.url_link ?? undefined };
+      }));
+      setMediaMap(mediaMapData);
 
       const { data: tpl } = await sb
         .from('plan_templates')
@@ -325,6 +349,21 @@ export default function TemplateEditorPage() {
       type: customType,
     };
     handleAddExercise(ex);
+  };
+
+  const handleSaveVideo = async (exerciseName: string, url: string) => {
+    if (!url.trim()) return;
+    setSavingVideo(true);
+    await getSupabase()
+      .from('exercise_media')
+      .upsert(
+        { practitioner_id: userId, exercise_name: exerciseName, media_type: 'link', url_link: url.trim(), file_path: null },
+        { onConflict: 'practitioner_id,exercise_name' }
+      );
+    setMediaMap(prev => ({ ...prev, [exerciseName]: { type: 'link', urlLink: url.trim() } }));
+    setSavingVideo(false);
+    setAddVideoTarget(null);
+    setVideoUrl('');
   };
 
   // ── Substitution ──────────────────────────────────────────────────────────
@@ -639,6 +678,23 @@ export default function TemplateEditorPage() {
                     <span style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
                       {weekExercise.equipment}
                     </span>
+                    {mediaMap[weekExercise.name] ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, border: 'none', cursor: 'pointer' }}
+                        title="Click to preview demo"
+                      >
+                        {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
+                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                        title="Add a video demo link for this exercise"
+                      >
+                        + Add Video
+                      </button>
+                    )}
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
                       {/* Collapse / expand toggle */}
                       <button
@@ -929,6 +985,62 @@ export default function TemplateEditorPage() {
               {subCandidates.length === 0 && (
                 <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 24 }}>No alternatives found for {subMuscle}</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demo preview modal */}
+      {demoPreview && (
+        <div onClick={() => setDemoPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
+              </div>
+              <button onClick={() => setDemoPreview(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            {demoPreview.type === 'photo' && demoPreview.signedUrl ? (
+              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: '#0f1117', display: 'block' }} />
+            ) : demoPreview.type === 'video' && demoPreview.signedUrl ? (
+              <video src={demoPreview.signedUrl} controls autoPlay style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block' }} />
+            ) : demoPreview.type === 'link' && demoPreview.urlLink ? (
+              <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                <p style={{ fontSize: 36, marginBottom: 12 }}>🔗</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
+                <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
+                  Open video ↗
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Add video link modal */}
+      {addVideoTarget && (
+        <div onClick={() => setAddVideoTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
+            <input
+              autoFocus
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
+              placeholder="https://youtube.com/watch?v=..."
+              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
+                disabled={!videoUrl.trim() || savingVideo}
+                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                {savingVideo ? 'Saving…' : 'Save Video Link'}
+              </button>
             </div>
           </div>
         </div>
