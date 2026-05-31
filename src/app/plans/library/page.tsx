@@ -326,6 +326,7 @@ export default function PlanLibraryPage() {
                   )}
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Row 1: name + exercise count + single-template week previews */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, fontSize: 16, color: t.name ? '#fff' : 'rgba(255,255,255,0.3)', fontStyle: t.name ? 'normal' : 'italic' }}>
                         {t.name || 'Untitled template'}
@@ -333,38 +334,36 @@ export default function PlanLibraryPage() {
                       <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
-                      {isGrouped ? (
-                        // Multiple versions: each badge navigates to that version's editor
-                        allVersions.map(v => {
+                      {!isGrouped && Array.from({ length: weeks }, (_, i) => i + 1).map(w => (
+                        <button
+                          key={w}
+                          onClick={e => { e.stopPropagation(); setPreviewTpl(t); setPreviewWeek(w); }}
+                          style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                          title={`Preview Week ${w}`}
+                        >
+                          W{w}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Row 2: version selectors — only for grouped templates, below exercise count */}
+                    {isGrouped && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+                        {allVersions.map(v => {
                           const vWeeks = numWeeks(v.exercises);
-                          const label = vWeeks === 1 ? '1 week' : `${vWeeks} weeks`;
-                          // Show the template name in tooltip if names differ from the group canonical
                           const tooltipName = v.name && v.name !== t.name ? v.name : undefined;
                           return (
                             <button
                               key={v.id}
                               onClick={e => { e.stopPropagation(); router.push(`/plans/library/${v.id}`); }}
-                              style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
-                              title={tooltipName ? `${label} — ${tooltipName}` : `View / Edit ${label} version`}
+                              style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontSize: 11, fontWeight: 700, padding: '3px 11px', borderRadius: 999, border: '1px solid rgba(239,68,68,0.35)', cursor: 'pointer' }}
+                              title={tooltipName ? `Week ${vWeeks} — ${tooltipName}` : `View / Edit Week ${vWeeks} version`}
                             >
-                              {label}
+                              Week {vWeeks} →
                             </button>
                           );
-                        })
-                      ) : (
-                        // Single template: show per-week preview buttons
-                        Array.from({ length: weeks }, (_, i) => i + 1).map(w => (
-                          <button
-                            key={w}
-                            onClick={e => { e.stopPropagation(); setPreviewTpl(t); setPreviewWeek(w); }}
-                            style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
-                            title={`Preview Week ${w}`}
-                          >
-                            W{w}
-                          </button>
-                        ))
-                      )}
-                    </div>
+                        })}
+                      </div>
+                    )}
                     {t.description && (
                       <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: '6px 0 0 0' }}>{t.description}</p>
                     )}
