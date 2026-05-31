@@ -81,6 +81,9 @@ function NewPlanInner() {
   const [addVideoTarget, setAddVideoTarget] = useState<string | null>(null);
   const [videoUrl,       setVideoUrl]       = useState('');
   const [savingVideo,    setSavingVideo]    = useState(false);
+  const [videoMode,      setVideoMode]      = useState<'url' | 'file'>('url');
+  const [videoFile,      setVideoFile]      = useState<File | null>(null);
+  const [uploading,      setUploading]      = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
@@ -243,6 +246,26 @@ function NewPlanInner() {
     setSavingVideo(false);
     setAddVideoTarget(null);
     setVideoUrl('');
+  };
+
+  const handleUploadVideo = async (exerciseName: string, file: File) => {
+    setUploading(true);
+    const ext = file.name.split('.').pop() ?? 'mp4';
+    const safeName = exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
+    const path = `${practId}/videos/${safeName}_${Date.now()}.${ext}`;
+    const sb = getSupabase();
+    const { error: upErr } = await sb.storage.from('exercise-media').upload(path, file, { upsert: true });
+    if (!upErr) {
+      await sb.from('exercise_media').upsert(
+        { practitioner_id: practId, exercise_name: exerciseName, media_type: 'video', file_path: path, url_link: null },
+        { onConflict: 'practitioner_id,exercise_name' }
+      );
+      const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(path, 3600);
+      setMediaMap(prev => ({ ...prev, [exerciseName]: { type: 'video', signedUrl: su?.signedUrl ?? undefined } }));
+    }
+    setUploading(false);
+    setAddVideoTarget(null);
+    setVideoFile(null);
   };
 
   const updateNotes = (peId: string, notes: string) => {
@@ -802,30 +825,84 @@ function NewPlanInner() {
         </div>
       )}
 
-      {/* Add video link modal */}
+      {/* Add video modal */}
       {addVideoTarget && (
-        <div onClick={() => setAddVideoTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
+        <div onClick={() => { setAddVideoTarget(null); setVideoFile(null); setVideoUrl(''); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
-            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video</h2>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
-            <input
-              autoFocus
-              value={videoUrl}
-              onChange={e => setVideoUrl(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
-              placeholder="https://youtube.com/watch?v=..."
-              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
-            />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
-              <button
-                onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
-                disabled={!videoUrl.trim() || savingVideo}
-                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
-              >
-                {savingVideo ? 'Saving…' : 'Save Video Link'}
-              </button>
+
+            {/* Tab switcher */}
+            <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3 }}>
+              {(['url', 'file'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => { setVideoMode(mode); setVideoFile(null); setVideoUrl(''); }}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: videoMode === mode ? '#fff' : 'transparent', color: videoMode === mode ? '#0f1117' : 'rgba(255,255,255,0.4)', transition: 'all 0.15s' }}
+                >
+                  {mode === 'url' ? '🔗 URL Link' : '📁 Upload File'}
+                </button>
+              ))}
             </div>
+
+            {videoMode === 'url' ? (
+              <>
+                <input
+                  autoFocus
+                  value={videoUrl}
+                  onChange={e => setVideoUrl(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
+                  placeholder="https://youtube.com/watch?v=..."
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
+                />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setAddVideoTarget(null); setVideoUrl(''); }} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+                  <button
+                    onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
+                    disabled={!videoUrl.trim() || savingVideo}
+                    style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
+                  >
+                    {savingVideo ? 'Saving…' : 'Save Link'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <label style={{ display: 'block', marginBottom: 16, cursor: 'pointer' }}>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm,video/*"
+                    style={{ display: 'none' }}
+                    onChange={e => setVideoFile(e.target.files?.[0] ?? null)}
+                  />
+                  <div style={{ border: `2px dashed ${videoFile ? TEAL : 'rgba(255,255,255,0.2)'}`, borderRadius: 12, padding: '28px 16px', textAlign: 'center', background: videoFile ? `${TEAL}10` : 'rgba(255,255,255,0.03)', transition: 'all 0.15s' }}>
+                    {videoFile ? (
+                      <>
+                        <p style={{ fontSize: 28, margin: '0 0 6px' }}>🎬</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: TEAL, margin: '0 0 4px', wordBreak: 'break-all' }}>{videoFile.name}</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>{(videoFile.size / 1024 / 1024).toFixed(1)} MB — click to change</p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: 28, margin: '0 0 8px' }}>📁</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px' }}>Click to select a video file</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>MP4, MOV, WebM supported</p>
+                      </>
+                    )}
+                  </div>
+                </label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setAddVideoTarget(null); setVideoFile(null); }} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+                  <button
+                    onClick={() => videoFile && handleUploadVideo(addVideoTarget, videoFile)}
+                    disabled={!videoFile || uploading}
+                    style={{ flex: 2, background: videoFile && !uploading ? TEAL : 'rgba(255,255,255,0.08)', color: videoFile && !uploading ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoFile && !uploading ? 'pointer' : 'not-allowed' }}
+                  >
+                    {uploading ? 'Uploading…' : 'Upload Video'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
