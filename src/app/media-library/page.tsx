@@ -18,6 +18,8 @@ interface MediaItem {
   media_type: 'photo' | 'video' | 'link';
   file_path: string;
   url_link: string | null;
+  muscle_group: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -73,9 +75,11 @@ export default function MediaLibraryPage() {
   const [saving,         setSaving]         = useState(false);
   const [modalError,     setModalError]     = useState('');
   const [uploadProgress, setUploadProgress] = useState('');
-  const [customExNames,  setCustomExNames]  = useState<string[]>([]);
-  const [exSearch,       setExSearch]       = useState('');
-  const [exDropdownOpen, setExDropdownOpen] = useState(false);
+  const [customExNames,    setCustomExNames]    = useState<string[]>([]);
+  const [exSearch,         setExSearch]         = useState('');
+  const [exDropdownOpen,   setExDropdownOpen]   = useState(false);
+  const [muscleGroupInput, setMuscleGroupInput] = useState('');
+  const [notesInput,       setNotesInput]       = useState('');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -94,7 +98,7 @@ export default function MediaLibraryPage() {
 
     const [mediaRes, plansRes, customRes] = await Promise.all([
       sb.from('exercise_media')
-        .select('id, exercise_name, media_type, file_path, url_link, created_at')
+        .select('id, exercise_name, media_type, file_path, url_link, muscle_group, notes, created_at')
         .eq('practitioner_id', uid)
         .order('exercise_name', { ascending: true }),
       sb.from('workout_plans')
@@ -181,6 +185,8 @@ export default function MediaLibraryPage() {
     setExerciseName(item?.exercise_name ?? opts?.prefillName ?? '');
     setNameLocked(!!item || !!opts?.prefillName);
     setUrlInput(item?.url_link ?? '');
+    setMuscleGroupInput(item?.muscle_group ?? '');
+    setNotesInput(item?.notes ?? '');
     setMediaFile(null);
     setModalError('');
     setUploadProgress('');
@@ -197,6 +203,8 @@ export default function MediaLibraryPage() {
     setExerciseName(prefillName ?? '');
     setNameLocked(!!prefillName);
     setUrlInput('');
+    setMuscleGroupInput('');
+    setNotesInput('');
     setMediaFile(null);
     setModalError('');
     setUploadProgress('');
@@ -224,7 +232,7 @@ export default function MediaLibraryPage() {
     const { error } = await getSupabase()
       .from('exercise_media')
       .upsert(
-        { practitioner_id: userId, exercise_name: name, file_path: '', media_type: 'link', url_link: url },
+        { practitioner_id: userId, exercise_name: name, file_path: '', media_type: 'link', url_link: url, muscle_group: muscleGroupInput.trim() || null, notes: notesInput.trim() || null },
         { onConflict: 'practitioner_id,exercise_name' },
       );
     if (error) { setModalError(error.message); setSaving(false); return; }
@@ -253,7 +261,7 @@ export default function MediaLibraryPage() {
     const { error } = await sb
       .from('exercise_media')
       .upsert(
-        { practitioner_id: userId, exercise_name: name, file_path: path, media_type: mediaType, url_link: null },
+        { practitioner_id: userId, exercise_name: name, file_path: path, media_type: mediaType, url_link: null, muscle_group: muscleGroupInput.trim() || null, notes: notesInput.trim() || null },
         { onConflict: 'practitioner_id,exercise_name' },
       );
     if (error) { setModalError(error.message); setSaving(false); setUploadProgress(''); return; }
@@ -422,6 +430,7 @@ export default function MediaLibraryPage() {
                     <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Muscle Group</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Type</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Link / File</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Added</th>
@@ -465,7 +474,13 @@ export default function MediaLibraryPage() {
                             )}
                           </td>
 
-                          <td style={{ padding: '12px 24px', fontWeight: 600 }}>{item.exercise_name}</td>
+                          <td style={{ padding: '12px 24px', fontWeight: 600 }}>{item.exercise_name}
+                            {item.notes && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2, fontWeight: 400 }}>{item.notes}</div>}
+                          </td>
+
+                          <td style={{ padding: '12px 24px', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                            {item.muscle_group ?? <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>}
+                          </td>
 
                           <td style={{ padding: '12px 24px' }}>
                             <span style={{ background: `${typeColor(item.media_type)}18`, color: typeColor(item.media_type), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -780,6 +795,27 @@ export default function MediaLibraryPage() {
                     </>
                   )}
                 </div>
+
+                {/* Muscle group + notes */}
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
+                  <input
+                    value={muscleGroupInput}
+                    onChange={e => setMuscleGroupInput(e.target.value)}
+                    placeholder="e.g. Quadriceps"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>PT Notes <span style={{ fontWeight: 400 }}>(optional)</span></span>
+                  <textarea
+                    value={notesInput}
+                    onChange={e => setNotesInput(e.target.value)}
+                    placeholder="e.g. Focus on slow descent, keep knee aligned over second toe"
+                    rows={2}
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </label>
 
                 {/* URL / File */}
                 {modalMode === 'url' ? (
