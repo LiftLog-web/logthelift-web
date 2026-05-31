@@ -34,6 +34,9 @@ interface PTRow {
   ptEmail: string;
   patientCount: number;
   avgSatisfaction: number | null;
+  plansCreated: number;
+  adherencePct: number | null;  // % of patients with ≥1 logged workout
+  lastActive: string | null;    // most recent plan created_at
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -152,33 +155,47 @@ export default function DashboardPage() {
           ptEmail: pt?.email ?? '',
           patientCount: 0,
           avgSatisfaction: null,
+          plansCreated: 0,
+          adherencePct: null,
+          lastActive: null,
         };
 
         if (link.status !== 'accepted') return base;
 
-        // Patient count
-        const { data: patientLinks } = await getSupabase()
-          .from('patient_links')
-          .select('patient_id')
-          .eq('practitioner_id', link.pt_id);
+        // Run all accepted-PT queries in parallel
+        const [patientLinksRes, plansRes] = await Promise.all([
+          getSupabase().from('patient_links').select('patient_id').eq('practitioner_id', link.pt_id),
+          getSupabase().from('workout_plans').select('created_at').eq('practitioner_id', link.pt_id).order('created_at', { ascending: false }),
+        ]);
 
-        const patientIds = (patientLinks ?? []).map((p: any) => p.patient_id);
+        const patientIds = (patientLinksRes.data ?? []).map((p: any) => p.patient_id);
         base.patientCount = patientIds.length;
 
-        // Satisfaction ratings from synced_workouts
+        const plans = plansRes.data ?? [];
+        base.plansCreated = plans.length;
+        base.lastActive   = plans[0]?.created_at ?? null;
+
+        // Satisfaction ratings + adherence from synced_workouts
         if (patientIds.length > 0) {
           const { data: workouts } = await getSupabase()
             .from('synced_workouts')
-            .select('data')
+            .select('user_id, data')
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
+            // Avg satisfaction
             const ratings = workouts
               .map((w: any) => w.data?.satisfactionRating)
               .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
             if (ratings.length > 0) {
               base.avgSatisfaction = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
             }
+
+            // Adherence: % of patients who have logged ≥1 workout
+            const activePatients = new Set(workouts.map((w: any) => w.user_id)).size;
+            base.adherencePct = Math.round((activePatients / patientIds.length) * 100);
+          } else {
+            base.adherencePct = 0;
           }
         }
 
@@ -341,7 +358,7 @@ export default function DashboardPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {['PT Name', 'Email', 'Status', 'Patients', 'Avg Satisfaction', 'Invited'].map(h => (
+                    {['PT Name', 'Email', 'Status', 'Patients', 'Plans Created', 'Adherence', 'Avg Satisfaction', 'Last Active', 'Invited'].map(h => (
                       <th key={h} style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -352,9 +369,33 @@ export default function DashboardPage() {
                       <td style={{ padding: '16px 24px', fontWeight: 600 }}>{pt.ptName}</td>
                       <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.5)' }}>{pt.ptEmail}</td>
                       <td style={{ padding: '16px 24px' }}>{statusBadge(pt.status)}</td>
+                      {/* Patients */}
                       <td style={{ padding: '16px 24px', color: pt.patientCount > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
                         {pt.status === 'accepted' ? pt.patientCount : '—'}
                       </td>
+
+                      {/* Plans Created */}
+                      <td style={{ padding: '16px 24px', color: pt.plansCreated > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                        {pt.status === 'accepted' ? pt.plansCreated : '—'}
+                      </td>
+
+                      {/* Adherence */}
+                      <td style={{ padding: '16px 24px' }}>
+                        {pt.status === 'accepted' && pt.adherencePct !== null ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 48, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
+                              <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
+                            </div>
+                            <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700, fontSize: 13 }}>
+                              {pt.adherencePct}%
+                            </span>
+                          </span>
+                        ) : (
+                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Avg Satisfaction */}
                       <td style={{ padding: '16px 24px' }}>
                         {pt.status === 'accepted' && pt.avgSatisfaction !== null ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -366,6 +407,15 @@ export default function DashboardPage() {
                           <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
                         )}
                       </td>
+
+                      {/* Last Active */}
+                      <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
+                        {pt.status === 'accepted' && pt.lastActive
+                          ? new Date(pt.lastActive).toLocaleDateString('en-CA')
+                          : '—'}
+                      </td>
+
+                      {/* Invited */}
                       <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
                         {new Date(pt.invited_at).toLocaleDateString('en-CA')}
                       </td>
