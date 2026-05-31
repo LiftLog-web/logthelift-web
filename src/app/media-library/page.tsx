@@ -174,6 +174,20 @@ export default function MediaLibraryPage() {
     setLoading(false);
   }
 
+  function openEditModal(item: MediaItem) {
+    setEditItem(item);
+    setModalMode(item.media_type === 'link' ? 'url' : 'upload');
+    setExerciseName(item.exercise_name);
+    setNameLocked(true);
+    setUrlInput(item.url_link ?? '');
+    setMuscleGroupInput(item.muscle_group ?? '');
+    setNotesInput(item.notes ?? '');
+    setMediaFile(null);
+    setModalError('');
+    setUploadProgress('');
+    setShowModal(true);
+  }
+
   function openUrlModal(opts?: { item?: MediaItem; prefillName?: string }) {
     if (!opts?.item && atCap) {
       alert(`You've reached the ${MEDIA_CAP}-demo limit. Remove an existing demo to add a new one.`);
@@ -244,27 +258,36 @@ export default function MediaLibraryPage() {
   async function handleSaveUpload() {
     const name = exerciseName.trim();
     if (!name) { setModalError('Exercise name is required.'); return; }
-    if (!mediaFile) { setModalError('Please select a file.'); return; }
+    // File is only required when adding a new entry; editing can update metadata alone
+    if (!editItem && !mediaFile) { setModalError('Please select a file.'); return; }
     setSaving(true);
     setModalError('');
-    setUploadProgress('Uploading…');
-
     const sb = getSupabase();
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    const path = `${userId}/${slug}_${Date.now()}.${mediaFile.name.split('.').pop()}`;
-    const mediaType: 'photo' | 'video' = mediaFile.type.startsWith('video') ? 'video' : 'photo';
 
-    const { error: upErr } = await sb.storage.from('exercise-media').upload(path, mediaFile, { upsert: false });
-    if (upErr) { setModalError('Upload failed: ' + upErr.message); setSaving(false); setUploadProgress(''); return; }
-
-    setUploadProgress('Saving…');
-    const { error } = await sb
-      .from('exercise_media')
-      .upsert(
+    if (mediaFile) {
+      // Upload new (or replacement) file
+      setUploadProgress('Uploading…');
+      const slug     = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      const path     = `${userId}/${slug}_${Date.now()}.${mediaFile.name.split('.').pop()}`;
+      const mediaType: 'photo' | 'video' = mediaFile.type.startsWith('video') ? 'video' : 'photo';
+      // Remove old file from storage when replacing
+      if (editItem?.file_path) await sb.storage.from('exercise-media').remove([editItem.file_path]);
+      const { error: upErr } = await sb.storage.from('exercise-media').upload(path, mediaFile, { upsert: false });
+      if (upErr) { setModalError('Upload failed: ' + upErr.message); setSaving(false); setUploadProgress(''); return; }
+      setUploadProgress('Saving…');
+      const { error } = await sb.from('exercise_media').upsert(
         { practitioner_id: userId, exercise_name: name, file_path: path, media_type: mediaType, url_link: null, muscle_group: muscleGroupInput.trim() || null, notes: notesInput.trim() || null },
         { onConflict: 'practitioner_id,exercise_name' },
       );
-    if (error) { setModalError(error.message); setSaving(false); setUploadProgress(''); return; }
+      if (error) { setModalError(error.message); setSaving(false); setUploadProgress(''); return; }
+    } else {
+      // Editing existing: update muscle group and notes only, file unchanged
+      setUploadProgress('Saving…');
+      const { error } = await sb.from('exercise_media')
+        .update({ muscle_group: muscleGroupInput.trim() || null, notes: notesInput.trim() || null })
+        .eq('id', editItem!.id);
+      if (error) { setModalError(error.message); setSaving(false); setUploadProgress(''); return; }
+    }
 
     await loadAll(userId);
     closeModal();
@@ -510,11 +533,9 @@ export default function MediaLibraryPage() {
                           </td>
 
                           <td onClick={e => e.stopPropagation()} style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {item.media_type === 'link' && (
-                              <button onClick={() => openUrlModal({ item })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
-                                Edit
-                              </button>
-                            )}
+                            <button onClick={() => openEditModal(item)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
+                              Edit
+                            </button>
                             <button onClick={() => handleDelete(item)} disabled={deleting === item.id} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting === item.id ? 0.5 : 1 }}>
                               {deleting === item.id ? 'Removing…' : 'Remove'}
                             </button>
@@ -636,8 +657,8 @@ export default function MediaLibraryPage() {
                           <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {c.hasDemo ? (
                               <>
-                                {c.demoType === 'link' && c.mediaItem && (
-                                  <button onClick={() => openUrlModal({ item: c.mediaItem })} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>Edit link</button>
+                                {c.mediaItem && (
+                                  <button onClick={() => openEditModal(c.mediaItem!)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>Edit</button>
                                 )}
                                 {c.mediaItem?.url_link && (
                                   <a href={c.mediaItem.url_link} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, textDecoration: 'none', marginRight: 16 }}>Open ↗</a>
@@ -734,7 +755,7 @@ export default function MediaLibraryPage() {
             <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
-                  {modalMode === 'url' ? (editItem ? 'Edit Video Link' : 'Add Video Link') : 'Upload Demo File'}
+                  {editItem ? 'Edit Demo' : modalMode === 'url' ? 'Add Video Link' : 'Upload Demo File'}
                 </h2>
                 <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
@@ -831,9 +852,12 @@ export default function MediaLibraryPage() {
                   </label>
                 ) : (
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>File *</span>
-                    <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                      {mediaFile ? mediaFile.name : 'Click to choose an image or video file'}
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>
+                      {editItem ? 'Replace File' : 'File *'}
+                      {editItem && <span style={{ fontWeight: 400, marginLeft: 6 }}>(optional — leave blank to keep current)</span>}
+                    </span>
+                    <div onClick={() => fileRef.current?.click()} style={{ border: `1px dashed ${mediaFile ? TEAL : 'rgba(255,255,255,0.2)'}`, borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: mediaFile ? TEAL : 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                      {mediaFile ? `${mediaFile.name} (${(mediaFile.size / 1024 / 1024).toFixed(1)} MB)` : editItem ? 'Click to choose a replacement file' : 'Click to choose an image or video file'}
                     </div>
                     <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
                   </label>
@@ -845,7 +869,7 @@ export default function MediaLibraryPage() {
                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
                   <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                    {saving ? 'Saving…' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
+                    {saving ? 'Saving…' : editItem ? 'Save Changes' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
                   </button>
                 </div>
               </div>
