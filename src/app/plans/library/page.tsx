@@ -151,6 +151,11 @@ export default function PlanLibraryPage() {
     );
   }
 
+  // Preview modal helpers — computed here so they're available in JSX without an IIFE
+  const previewTotalWeeks = previewTpl ? numWeeks(previewTpl.exercises) : 0;
+  const getPreviewSets = (ex: any, week: number): any[] =>
+    week === 1 ? (ex.sets ?? []) : (ex.weeks?.find((w: any) => w.week === week)?.sets ?? ex.sets ?? []);
+
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
@@ -452,17 +457,7 @@ export default function PlanLibraryPage() {
       )}
 
       {/* Template preview modal */}
-      {previewTpl && (() => {
-        const totalWeeks = numWeeks(previewTpl.exercises);
-        const weekSets = (ex: any, week: number) => week === 1 ? ex.sets ?? [] : ex.weeks?.find((w: any) => w.week === week)?.sets ?? ex.sets ?? [];
-        const fmtSets = (sets: any[]) => {
-          const n = sets.length; const s = sets[0];
-          if (!s || n === 0) return '—';
-          if (s.seconds !== undefined) return `${n} × ${s.seconds}s`;
-          if (s.reps !== undefined) return `${n} × ${s.reps} reps`;
-          return `${n} sets`;
-        };
-        return (
+      {previewTpl && (
         <div
           onClick={() => setPreviewTpl(null)}
           onKeyDown={e => { if (e.key === 'Escape') setPreviewTpl(null); }}
@@ -485,10 +480,10 @@ export default function PlanLibraryPage() {
                 </div>
                 <button onClick={() => setPreviewTpl(null)} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', color: 'rgba(255,255,255,0.5)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
-              {/* Week tabs */}
-              {totalWeeks > 1 && (
+              {/* Week tabs — only shown for multi-week templates */}
+              {previewTotalWeeks > 1 && (
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+                  {Array.from({ length: previewTotalWeeks }, (_, i) => i + 1).map(w => (
                     <button key={w} onClick={() => setPreviewWeek(w)} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `1px solid ${previewWeek === w ? PURPLE : 'rgba(255,255,255,0.15)'}`, background: previewWeek === w ? `${PURPLE}22` : 'transparent', color: previewWeek === w ? PURPLE : 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
                       Week {w}
                     </button>
@@ -504,22 +499,25 @@ export default function PlanLibraryPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {previewTpl.exercises.map((ex: any, i: number) => {
-                    const sets = weekSets(ex, previewWeek);
+                    const sets = getPreviewSets(ex, previewWeek);
+                    const reps = sets[0]?.reps;
+                    const secs = sets[0]?.seconds;
                     return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < previewTpl.exercises.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                      <div>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{i + 1}. {ex.exercise?.name ?? '—'}</span>
-                        {ex.exercise?.muscleGroup && (
-                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginLeft: 8 }}>{ex.exercise.muscleGroup}</span>
-                        )}
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < previewTpl.exercises.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                        <div>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{i + 1}. {ex.exercise?.name ?? '—'}</span>
+                          {ex.exercise?.muscleGroup && (
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginLeft: 8 }}>{ex.exercise.muscleGroup}</span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
+                          {sets.length} sets
+                          {reps !== undefined ? ` · ${reps} reps` : ''}
+                          {secs !== undefined ? ` · ${secs}s` : ''}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
-                        {ex.sets?.length ?? ex.targetSets ?? 0} sets
-                        {ex.sets?.[0]?.reps ? ` · ${ex.sets[0].reps} reps` : ''}
-                        {ex.sets?.[0]?.duration ? ` · ${ex.sets[0].duration}s` : ''}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
