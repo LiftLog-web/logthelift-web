@@ -23,13 +23,6 @@ interface MediaItem {
   created_at: string;
 }
 
-interface CoverageItem {
-  name: string;
-  hasDemo: boolean;
-  demoType: 'photo' | 'video' | 'link' | null;
-  mediaItem: MediaItem | undefined;
-}
-
 interface PlanViewer {
   planId: string;
   planName: string;
@@ -44,7 +37,6 @@ interface ViewMedia {
 }
 
 type ModalMode = 'url' | 'upload';
-type View = 'library' | 'coverage';
 
 export default function MediaLibraryPage() {
   const router  = useRouter();
@@ -54,9 +46,7 @@ export default function MediaLibraryPage() {
   const [userId,      setUserId]      = useState('');
   const [items,       setItems]       = useState<MediaItem[]>([]);
   const [signedUrls,  setSignedUrls]  = useState<Record<string, string>>({});
-  const [coverage,    setCoverage]    = useState<CoverageItem[]>([]);
   const [loading,     setLoading]     = useState(true);
-  const [view,        setView]        = useState<View>('library');
   const [search,      setSearch]      = useState('');
   const [deleting,    setDeleting]    = useState<string | null>(null);
   const [viewMedia,   setViewMedia]   = useState<ViewMedia | null>(null);
@@ -122,38 +112,12 @@ export default function MediaLibraryPage() {
     );
     setSignedUrls(Object.fromEntries(urlEntries.filter(Boolean) as [string, string][]));
 
-    // Build coverage: exercise names from plans + custom exercises + existing demos
-    const byName: Record<string, MediaItem> = {};
-    for (const m of mediaItems) byName[m.exercise_name] = m;
-
-    const namesSet = new Set<string>();
-    for (const plan of (plansRes.data ?? [])) {
-      if (Array.isArray(plan.exercises)) {
-        for (const ex of plan.exercises) {
-          if (ex?.name) namesSet.add(ex.name);
-        }
-      }
-    }
+    // Collect custom exercise names for the exercise picker in the modal
     const customNames: string[] = [];
     for (const ex of (customRes.data ?? [])) {
-      if (ex.name) { namesSet.add(ex.name); customNames.push(ex.name); }
+      if (ex.name) customNames.push(ex.name);
     }
     setCustomExNames(customNames);
-    for (const m of mediaItems) namesSet.add(m.exercise_name);
-
-    const coverageList: CoverageItem[] = Array.from(namesSet)
-      .sort((a, b) => a.localeCompare(b))
-      .map(name => {
-        const mediaItem = byName[name];
-        return { name, hasDemo: !!mediaItem, demoType: mediaItem?.media_type ?? null, mediaItem };
-      });
-
-    coverageList.sort((a, b) => {
-      if (a.hasDemo === b.hasDemo) return a.name.localeCompare(b.name);
-      return a.hasDemo ? 1 : -1;
-    });
-
-    setCoverage(coverageList);
 
     // Build plan viewers map
     const plans = (plansRes.data ?? []).map(p => {
@@ -189,10 +153,6 @@ export default function MediaLibraryPage() {
   }
 
   function openUrlModal(opts?: { item?: MediaItem; prefillName?: string }) {
-    if (!opts?.item && atCap) {
-      alert(`You've reached the ${MEDIA_CAP}-demo limit. Remove an existing demo to add a new one.`);
-      return;
-    }
     const item = opts?.item ?? null;
     setEditItem(item);
     setModalMode('url');
@@ -208,8 +168,8 @@ export default function MediaLibraryPage() {
   }
 
   function openUploadModal(prefillName?: string) {
-    if (atCap) {
-      alert(`You've reached the ${MEDIA_CAP}-demo limit. Remove an existing demo to add a new one.`);
+    if (atUploadCap) {
+      alert(`You've reached the ${MEDIA_CAP}-file upload limit. Remove an existing uploaded file to add a new one. You can still add unlimited video links.`);
       return;
     }
     setEditItem(null);
@@ -306,12 +266,13 @@ export default function MediaLibraryPage() {
   }
 
   // Library helpers
-  const filteredItems   = items.filter(m => m.exercise_name.toLowerCase().includes(search.toLowerCase()));
-  const linkCount       = items.filter(m => m.media_type === 'link').length;
-  const uploadCount     = items.filter(m => m.media_type !== 'link').length;
-  const atCap           = items.length >= MEDIA_CAP;
-  const usagePct        = Math.min(100, (items.length / MEDIA_CAP) * 100);
-  const usageBarColor   = atCap ? '#EF4444' : usagePct >= 80 ? '#F97316' : TEAL;
+  const filteredItems = items.filter(m => m.exercise_name.toLowerCase().includes(search.toLowerCase()));
+  const linkCount     = items.filter(m => m.media_type === 'link').length;
+  const uploadCount   = items.filter(m => m.media_type !== 'link').length;
+  // Cap applies to uploaded files only — URL links are free (no server storage used)
+  const atUploadCap   = uploadCount >= MEDIA_CAP;
+  const usagePct      = Math.min(100, (uploadCount / MEDIA_CAP) * 100);
+  const usageBarColor = atUploadCap ? '#EF4444' : usagePct >= 80 ? '#F97316' : TEAL;
 
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
   const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Video' : 'Photo';
@@ -335,12 +296,6 @@ export default function MediaLibraryPage() {
       }));
   }
 
-  // Coverage helpers
-  const filteredCoverage = coverage.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
-  const coveredCount     = coverage.filter(c => c.hasDemo).length;
-  const missingCount     = coverage.length - coveredCount;
-  const coveragePct      = coverage.length > 0 ? Math.round((coveredCount / coverage.length) * 100) : 0;
-
   if (!authed || loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -362,15 +317,15 @@ export default function MediaLibraryPage() {
             <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
               <button
                 onClick={() => openUploadModal()}
-                disabled={atCap}
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atCap ? 'not-allowed' : 'pointer' }}
+                disabled={atUploadCap}
+                title={atUploadCap ? `Upload limit of ${MEDIA_CAP} files reached` : undefined}
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atUploadCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
               >
                 Upload File
               </button>
               <button
                 onClick={() => openUrlModal()}
-                disabled={atCap}
-                style={{ background: atCap ? 'rgba(255,255,255,0.1)' : TEAL, color: atCap ? 'rgba(255,255,255,0.3)' : '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: atCap ? 'not-allowed' : 'pointer' }}
+                style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
               >
                 + Add Video Link
               </button>
@@ -384,65 +339,42 @@ export default function MediaLibraryPage() {
             <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${usagePct}%`, background: usageBarColor, borderRadius: 999, transition: 'width 0.3s ease' }} />
             </div>
-            <span style={{ color: atCap ? '#EF4444' : 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: atCap ? 700 : 500, whiteSpace: 'nowrap' }}>
-              {items.length} of {MEDIA_CAP} demo slots used{atCap ? ' — limit reached' : ''}
+            <span style={{ color: atUploadCap ? '#EF4444' : 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: atUploadCap ? 700 : 500, whiteSpace: 'nowrap' }}>
+              {uploadCount} of {MEDIA_CAP} upload slots used{atUploadCap ? ' — upload limit reached' : ''} · unlimited URL links
             </span>
           </div>
         </div>
 
-        {/* Tab toggle */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
-          {(['library', 'coverage'] as View[]).map(v => (
-            <button
-              key={v}
-              onClick={() => { setView(v); setSearch(''); }}
-              style={{
-                background: view === v ? 'rgba(255,255,255,0.1)' : 'transparent',
-                border: 'none', borderRadius: 9,
-                color: view === v ? '#fff' : 'rgba(255,255,255,0.4)',
-                fontWeight: view === v ? 700 : 500,
-                fontSize: 14, padding: '8px 20px', cursor: 'pointer',
-              }}
-            >
-              {v === 'library' ? 'My Library' : `Coverage${coverage.length > 0 ? ` · ${coveredCount}/${coverage.length}` : ''}`}
-            </button>
-          ))}
+        <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
+            Patients tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
+          </p>
         </div>
 
-        {/* ── LIBRARY VIEW ── */}
-        {view === 'library' && (
-          <>
-            <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
-                Patients tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
-              </p>
+        {items.length > 0 && (
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search exercises…"
+            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
+          />
+        )}
+
+        {items.length === 0 ? (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+            <p style={{ fontSize: 48, marginBottom: 16 }}>🎬</p>
+            <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No demos yet</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 28, fontSize: 15 }}>
+              Add a video link or upload a file to get started.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => openUploadModal()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
+              <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
             </div>
-
-            {items.length > 0 && (
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search exercises…"
-                style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
-              />
-            )}
-
-            {items.length === 0 ? (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-                <p style={{ fontSize: 48, marginBottom: 16 }}>🎬</p>
-                <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No demos yet</h2>
-                <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 28, fontSize: 15 }}>
-                  Add a video link or upload a file to get started.<br />
-                  Switch to <strong style={{ color: TEAL }}>Coverage</strong> to see which exercises in your plans need demos.
-                </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => openUploadModal()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
-                  <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
-                </div>
-              </div>
-            ) : filteredItems.length === 0 ? (
+          </div>
+        ) : filteredItems.length === 0 ? (
               <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 40, textAlign: 'center' }}>
                 <p style={{ color: 'rgba(255,255,255,0.4)' }}>No exercises match "{search}"</p>
               </div>
@@ -547,144 +479,6 @@ export default function MediaLibraryPage() {
                 </table>
               </div>
             )}
-          </>
-        )}
-
-        {/* ── COVERAGE VIEW ── */}
-        {view === 'coverage' && (
-          <>
-            {coverage.length > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div>
-                    <span style={{ fontSize: 26, fontWeight: 800, color: coveragePct === 100 ? GREEN : '#fff' }}>{coveragePct}%</span>
-                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginLeft: 10 }}>
-                      {coveredCount} of {coverage.length} exercises have a demo
-                    </span>
-                  </div>
-                  {missingCount > 0 ? (
-                    <span style={{ background: '#EF444420', color: '#EF4444', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 999 }}>
-                      {missingCount} missing
-                    </span>
-                  ) : (
-                    <span style={{ background: `${GREEN}20`, color: GREEN, fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 999 }}>
-                      All covered ✓
-                    </span>
-                  )}
-                </div>
-                <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${coveragePct}%`, background: coveragePct === 100 ? GREEN : TEAL, borderRadius: 999 }} />
-                </div>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 10, marginBottom: 0 }}>
-                  Includes all exercises used across your patient plans and custom exercise library. Missing demos are shown first.
-                </p>
-              </div>
-            )}
-
-            {coverage.length > 0 && (
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search exercises…"
-                style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
-              />
-            )}
-
-            {coverage.length === 0 ? (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-                <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
-                <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No plans yet</h2>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15 }}>
-                  Coverage tracks exercises from your patient plans.<br />
-                  Once you have plans, you'll see which exercises need demo videos here.
-                </p>
-              </div>
-            ) : filteredCoverage.length === 0 ? (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 40, textAlign: 'center' }}>
-                <p style={{ color: 'rgba(255,255,255,0.4)' }}>No exercises match "{search}"</p>
-              </div>
-            ) : (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                  <thead>
-                    <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Demo Status</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Type</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 600 }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCoverage.map((c, i) => {
-                      const signedUrl = c.mediaItem ? signedUrls[c.mediaItem.id] : undefined;
-                      return (
-                        <tr key={c.name} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-
-                          {/* Preview */}
-                          <td style={{ padding: '12px 24px' }}>
-                            {c.demoType === 'photo' && signedUrl ? (
-                              <img src={signedUrl} alt={c.name} onClick={() => setViewMedia({ url: signedUrl, type: 'photo', name: c.name })} style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', display: 'block' }} />
-                            ) : c.demoType === 'video' && signedUrl ? (
-                              <button onClick={() => setViewMedia({ url: signedUrl, type: 'video', name: c.name })} style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18 }}>▶</button>
-                            ) : c.demoType === 'link' ? (
-                              <div style={{ width: 64, height: 48, background: '#0f2a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
-                            ) : (
-                              <div style={{ width: 64, height: 48, background: 'rgba(239,68,68,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>—</div>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '12px 24px', fontWeight: 600, color: c.hasDemo ? '#fff' : 'rgba(255,255,255,0.7)' }}>{c.name}</td>
-
-                          <td style={{ padding: '12px 24px' }}>
-                            {c.hasDemo ? (
-                              <span style={{ background: `${GREEN}18`, color: GREEN, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>✓ Has demo</span>
-                            ) : (
-                              <span style={{ background: '#EF444418', color: '#EF4444', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>✗ Missing</span>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '12px 24px' }}>
-                            {c.demoType ? (
-                              <span style={{ background: `${typeColor(c.demoType)}18`, color: typeColor(c.demoType), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                {typeIcon(c.demoType)} {typeLabel(c.demoType)}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>—</span>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '12px 24px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {c.hasDemo ? (
-                              <>
-                                {c.mediaItem && (
-                                  <button onClick={() => openEditModal(c.mediaItem!)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>Edit</button>
-                                )}
-                                {c.mediaItem?.url_link && (
-                                  <a href={c.mediaItem.url_link} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, textDecoration: 'none', marginRight: 16 }}>Open ↗</a>
-                                )}
-                                {(c.demoType === 'photo' || c.demoType === 'video') && signedUrl && (
-                                  <button onClick={() => setViewMedia({ url: signedUrl, type: c.demoType as 'photo' | 'video', name: c.name })} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginRight: 16 }}>
-                                    {c.demoType === 'photo' ? 'View' : 'Play'}
-                                  </button>
-                                )}
-                                <button onClick={() => c.mediaItem && handleDelete(c.mediaItem)} disabled={!!deleting} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: deleting ? 0.5 : 1 }}>Remove</button>
-                              </>
-                            ) : (
-                              <div style={{ display: 'inline-flex', gap: 8 }}>
-                                <button onClick={() => openUploadModal(c.name)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Upload</button>
-                                <button onClick={() => openUrlModal({ prefillName: c.name })} style={{ background: TEAL, color: '#0f1117', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer' }}>+ Add Link</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
         )}
       </main>
 
