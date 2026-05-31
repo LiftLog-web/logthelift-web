@@ -479,7 +479,6 @@ export default function MediaLibraryPage() {
                 </table>
               </div>
             )}
-        )}
       </main>
 
       {/* ── MEDIA VIEWER ── */}
