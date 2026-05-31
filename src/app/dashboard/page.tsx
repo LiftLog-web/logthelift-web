@@ -34,6 +34,7 @@ interface PTRow {
   ptEmail: string;
   patientCount: number;
   avgSatisfaction: number | null;
+  satisfactionCount: number;
   plansCreated: number;
   adherencePct: number | null;  // % of patients with ≥1 logged workout
   lastActive: string | null;    // most recent plan created_at
@@ -155,6 +156,7 @@ export default function DashboardPage() {
           ptEmail: pt?.email ?? '',
           patientCount: 0,
           avgSatisfaction: null,
+          satisfactionCount: 0,
           plansCreated: 0,
           adherencePct: null,
           lastActive: null,
@@ -183,12 +185,13 @@ export default function DashboardPage() {
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
-            // Avg satisfaction
+            // Avg satisfaction + count
             const ratings = workouts
               .map((w: any) => w.data?.satisfactionRating)
               .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
             if (ratings.length > 0) {
-              base.avgSatisfaction = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
+              base.avgSatisfaction    = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
+              base.satisfactionCount  = ratings.length;
             }
 
             // Adherence: % of patients who have logged ≥1 workout
@@ -354,76 +357,88 @@ export default function DashboardPage() {
               No PTs invited yet. Use the LiftLog app to invite PTs to your gym.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <thead>
-                  <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {['PT Name', 'Email', 'Status', 'Patients', 'Plans Created', 'Adherence', 'Avg Satisfaction', 'Last Active', 'Invited'].map(h => (
-                      <th key={h} style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pts.map((pt, i) => (
-                    <tr key={pt.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding: '16px 24px', fontWeight: 600 }}>{pt.ptName}</td>
-                      <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.5)' }}>{pt.ptEmail}</td>
-                      <td style={{ padding: '16px 24px' }}>{statusBadge(pt.status)}</td>
-                      {/* Patients */}
-                      <td style={{ padding: '16px 24px', color: pt.patientCount > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
-                        {pt.status === 'accepted' ? pt.patientCount : '—'}
-                      </td>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <th style={{ padding: '10px 20px', textAlign: 'left',   fontWeight: 600 }}>PT</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Status</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Patients</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Plans</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, cursor: 'help', whiteSpace: 'nowrap' }}
+                      title="% of this PT's patients who have logged at least one workout session. Low % may indicate patients need more support or check-ins.">
+                    Logged Workouts ℹ
+                  </th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Satisfaction</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Last Active</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pts.map((pt, i) => (
+                  <tr key={pt.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
 
-                      {/* Plans Created */}
-                      <td style={{ padding: '16px 24px', color: pt.plansCreated > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
-                        {pt.status === 'accepted' ? pt.plansCreated : '—'}
-                      </td>
+                    {/* PT name + email */}
+                    <td style={{ padding: '14px 20px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{pt.ptName}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>{pt.ptEmail}</div>
+                    </td>
 
-                      {/* Adherence */}
-                      <td style={{ padding: '16px 24px' }}>
-                        {pt.status === 'accepted' && pt.adherencePct !== null ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 48, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
-                              <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
-                            </div>
-                            <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700, fontSize: 13 }}>
-                              {pt.adherencePct}%
-                            </span>
+                    {/* Status */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center' }}>{statusBadge(pt.status)}</td>
+
+                    {/* Patients */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.patientCount > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                      {pt.status === 'accepted' ? pt.patientCount : '—'}
+                    </td>
+
+                    {/* Plans Created */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.plansCreated > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                      {pt.status === 'accepted' ? pt.plansCreated : '—'}
+                    </td>
+
+                    {/* Logged Workouts % */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center' }}>
+                      {pt.status === 'accepted' && pt.adherencePct !== null ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                          <div style={{ width: 40, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
+                            <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
+                          </div>
+                          <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
+                            {pt.adherencePct}%
                           </span>
-                        ) : (
-                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
-                        )}
-                      </td>
+                        </span>
+                      ) : (
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
+                      )}
+                    </td>
 
-                      {/* Avg Satisfaction */}
-                      <td style={{ padding: '16px 24px' }}>
-                        {pt.status === 'accepted' && pt.avgSatisfaction !== null ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: YELLOW, fontSize: 14 }}>{renderStars(pt.avgSatisfaction)}</span>
+                    {/* Avg Satisfaction + sample size */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center' }}>
+                      {pt.status === 'accepted' && pt.avgSatisfaction !== null ? (
+                        <>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+                            <span style={{ color: YELLOW, fontSize: 13 }}>{renderStars(pt.avgSatisfaction)}</span>
                             <span style={{ color: TEAL, fontWeight: 700 }}>{pt.avgSatisfaction.toFixed(1)}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>/5</span>
-                          </span>
-                        ) : (
-                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
-                        )}
-                      </td>
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>/5</span>
+                          </div>
+                          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 }}>
+                            {pt.satisfactionCount} rating{pt.satisfactionCount !== 1 ? 's' : ''}
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
+                      )}
+                    </td>
 
-                      {/* Last Active */}
-                      <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
-                        {pt.status === 'accepted' && pt.lastActive
-                          ? new Date(pt.lastActive).toLocaleDateString('en-CA')
-                          : '—'}
-                      </td>
-
-                      {/* Invited */}
-                      <td style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
-                        {new Date(pt.invited_at).toLocaleDateString('en-CA')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    {/* Last Active */}
+                    <td style={{ padding: '14px 14px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
+                      {pt.status === 'accepted' && pt.lastActive
+                        ? new Date(pt.lastActive).toLocaleDateString('en-CA')
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </main>
