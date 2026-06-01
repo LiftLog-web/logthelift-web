@@ -2,15 +2,7 @@ import React from 'react';
 
 export const SHIMMER_CSS = `@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}`;
 
-const BASE: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  backgroundImage: 'linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0) 100%)',
-  backgroundSize: '600px 100%',
-  animation: 'shimmer 1.4s ease-in-out infinite',
-  flexShrink: 0,
-};
-
-/** A single shimmer block. width defaults to 100%, height is required. */
+/** A single shimmer block. Uses CSS class sk-block (defined in globals.css) for theme-aware shimmer. */
 export function Sk({
   width,
   height,
@@ -22,14 +14,18 @@ export function Sk({
   radius?: number;
   style?: React.CSSProperties;
 }) {
-  return <div style={{ ...BASE, width: width ?? '100%', height, borderRadius: radius, ...style }} />;
+  return (
+    <div
+      className="sk-block"
+      style={{ width: width ?? '100%', height, borderRadius: radius, flexShrink: 0, ...style }}
+    />
+  );
 }
 
-/** Wraps a full-page skeleton — injects the shimmer keyframe once. */
+/** Wraps a full-page skeleton — uses theme CSS variables so it matches current mode. */
 export function SkPage({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-      <style>{SHIMMER_CSS}</style>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
       {children}
     </div>
   );
@@ -38,7 +34,7 @@ export function SkPage({ children }: { children: React.ReactNode }) {
 /** Standard top nav skeleton (logo left, 3 button placeholders right). */
 export function SkNav() {
   return (
-    <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ color: '#5fcfbf', fontWeight: 800, fontSize: 20 }}>LiftLog</span>
         <Sk width={120} height={14} radius={4} />
@@ -55,7 +51,7 @@ export function SkNav() {
 /** Sub-header skeleton (back arrow + title, used in editor pages). */
 export function SkSubHeader() {
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div style={{ borderBottom: '1px solid var(--border)', padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 16 }}>
       <Sk width={28} height={28} radius={8} />
       <Sk width={180} height={18} radius={5} />
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
@@ -75,7 +71,7 @@ export function SkCard({
   style?: React.CSSProperties;
 }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden', ...style }}>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', ...style }}>
       {children}
     </div>
   );

@@ -14,6 +14,10 @@
   --text-faint:    rgba(255,255,255,0.20);
   --input-bg:      rgba(255,255,255,0.08);
   --input-border:  rgba(255,255,255,0.15);
+  /* skeleton */
+  --sk-bg:         rgba(255,255,255,0.07);
+  --sk-glow:       rgba(255,255,255,0.14);
+  --sk-clear:      rgba(255,255,255,0);
 }
 
 [data-theme="light"] {
@@ -29,16 +33,37 @@
   --text-faint:    rgba(0,0,0,0.25);
   --input-bg:      rgba(0,0,0,0.04);
   --input-border:  rgba(0,0,0,0.15);
+  /* skeleton */
+  --sk-bg:         rgba(0,0,0,0.06);
+  --sk-glow:       rgba(255,255,255,0.70);
+  --sk-clear:      rgba(0,0,0,0);
 }
 
-/* Apply bg to body so the whole page follows the theme */
+/* Apply bg + text to body so the whole page follows the theme */
 body {
   background: var(--bg);
   color: var(--text);
   transition: background 0.2s, color 0.2s;
 }
 
-/* Tailwind dark scroll/selection inherit */
+/* Skeleton shimmer block — theme-aware via CSS variables */
+.sk-block {
+  background: var(--sk-bg);
+  background-image: linear-gradient(
+    90deg,
+    var(--sk-clear) 0%,
+    var(--sk-glow)  50%,
+    var(--sk-clear) 100%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
 ::selection {
   background: #5fcfbf44;
 }
