@@ -315,7 +315,7 @@ export default function MediaLibraryPage() {
           <Sk width={220} height={36} radius={10} style={{ marginBottom: 16 }} />
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
             {[0,1,2,3,4].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                 <Sk width={56} height={40} radius={8} />
                 <Sk width={160} height={13} />
                 <Sk width={90} height={11} radius={4} style={{ marginLeft: 'auto' }} />
@@ -343,7 +343,7 @@ export default function MediaLibraryPage() {
                 onClick={() => openUploadModal()}
                 disabled={atUploadCap}
                 title={atUploadCap ? `Upload limit of ${MEDIA_CAP} files reached` : undefined}
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: atUploadCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: atUploadCap ? 'var(--text-dim)' : 'var(--text-muted)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
               >
                 Upload File
               </button>
@@ -363,7 +363,7 @@ export default function MediaLibraryPage() {
             <div style={{ flex: 1, height: 6, background: 'var(--input-bg)', borderRadius: 999, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${usagePct}%`, background: usageBarColor, borderRadius: 999, transition: 'width 0.3s ease' }} />
             </div>
-            <span style={{ color: atUploadCap ? '#EF4444' : 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: atUploadCap ? 700 : 500, whiteSpace: 'nowrap' }}>
+            <span style={{ color: atUploadCap ? '#EF4444' : 'var(--text-muted)', fontSize: 13, fontWeight: atUploadCap ? 700 : 500, whiteSpace: 'nowrap' }}>
               {uploadCount} of {MEDIA_CAP} upload slots used{atUploadCap ? ' — upload limit reached' : ''} · unlimited URL links
             </span>
           </div>
@@ -423,9 +423,9 @@ export default function MediaLibraryPage() {
                         <tr
                           key={item.id}
                           onClick={() => setViewersItem(item)}
-                          style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'background 0.15s' }}
+                          style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', background: i % 2 === 0 ? 'transparent' : 'var(--card)', cursor: 'pointer', transition: 'background 0.15s' }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(95,207,191,0.05)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'var(--card)')}
                         >
 
                           {/* Preview */}
@@ -514,7 +514,7 @@ export default function MediaLibraryPage() {
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewMedia.name}</p>
-              <button onClick={() => setViewMedia(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setViewMedia(null)} style={{ background: 'var(--border)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {viewMedia.type === 'photo' ? (
               <img src={viewMedia.url} alt={viewMedia.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />
@@ -569,7 +569,7 @@ export default function MediaLibraryPage() {
             onClick={closeModal}
             onKeyDown={e => { if (e.key === 'Escape') closeModal(); }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
                   {editItem ? 'Edit Demo' : modalMode === 'url' ? 'Add Video Link' : 'Upload Demo File'}
@@ -597,7 +597,7 @@ export default function MediaLibraryPage() {
                         onFocus={() => { setExDropdownOpen(true); if (exerciseName) setExSearch(exerciseName); }}
                         onKeyDown={e => { if (e.key === 'Escape') { setExDropdownOpen(false); setExSearch(''); } }}
                         placeholder="Search exercises…"
-                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'var(--border-strong)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : 'var(--text)', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
                       />
                       {listOpen && (
                         <div style={{ background: '#1e2130', border: '1px solid var(--border-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
@@ -607,8 +607,8 @@ export default function MediaLibraryPage() {
                               <button
                                 key={ex.name}
                                 onMouseDown={e => { e.preventDefault(); selectExercise(ex.name); }}
-                                style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '9px 14px', cursor: 'pointer' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: 'none', padding: '9px 14px', cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-subtle)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                               >
                                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{ex.name}</div>
@@ -620,7 +620,7 @@ export default function MediaLibraryPage() {
                           {showCreate && (
                             <button
                               onMouseDown={e => { e.preventDefault(); createCustom(); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: filtered.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', padding: '10px 14px', cursor: 'pointer' }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: filtered.length > 0 ? '1px solid var(--input-bg)' : 'none', padding: '10px 14px', cursor: 'pointer' }}
                               onMouseEnter={e => (e.currentTarget.style.background = `${TEAL}12`)}
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
@@ -673,7 +673,7 @@ export default function MediaLibraryPage() {
                       {editItem ? 'Replace File' : 'File *'}
                       {editItem && <span style={{ fontWeight: 400, marginLeft: 6 }}>(optional — leave blank to keep current)</span>}
                     </span>
-                    <div onClick={() => fileRef.current?.click()} style={{ border: `1px dashed ${mediaFile ? TEAL : 'rgba(255,255,255,0.2)'}`, borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: mediaFile ? TEAL : 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                    <div onClick={() => fileRef.current?.click()} style={{ border: `1px dashed ${mediaFile ? TEAL : 'var(--border-strong)'}`, borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', color: mediaFile ? TEAL : 'var(--text-muted)', fontSize: 14 }}>
                       {mediaFile ? `${mediaFile.name} (${(mediaFile.size / 1024 / 1024).toFixed(1)} MB)` : editItem ? 'Click to choose a replacement file' : 'Click to choose an image or video file'}
                     </div>
                     <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setMediaFile(e.target.files?.[0] ?? null)} />
@@ -704,7 +704,7 @@ export default function MediaLibraryPage() {
             onKeyDown={e => { if (e.key === 'Escape') setViewersItem(null); }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                 <div>
                   <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>{viewersItem.exercise_name}</h2>

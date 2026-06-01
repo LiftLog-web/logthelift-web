@@ -177,14 +177,14 @@ export default function PlansPage() {
             {filtered.map(group => {
               const isOpen = expanded.has(group.patient_id);
               return (
-                <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
 
                   {/* Patient header row — clickable */}
                   <button
                     onClick={() => toggleExpanded(group.patient_id)}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'rgba(255,255,255,0.03)',
+                      padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
                       border: 'none', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left',
                     }}
                   >
@@ -193,7 +193,7 @@ export default function PlansPage() {
                         🏋️
                       </div>
                       <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: isOpen ? '#fff' : 'rgba(255,255,255,0.9)' }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
                           {group.patientName}
                         </p>
                         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -222,7 +222,7 @@ export default function PlansPage() {
 
                   {/* Plans for this patient */}
                   {isOpen && (
-                    <div style={{ borderTop: `1px solid rgba(255,255,255,0.07)`, padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                    <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                       {group.plans.map(plan => (
                         <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

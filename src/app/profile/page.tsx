@@ -113,7 +113,7 @@ export default function ProfilePage() {
               <Sk width={140} height={17} radius={5} />
             </div>
             {[0,1,2].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 28px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                 <Sk width={40} height={40} radius={999} />
                 <div>
                   <Sk width={130} height={13} style={{ marginBottom: 6 }} />
@@ -210,7 +210,7 @@ export default function ProfilePage() {
           ) : (
             <div>
               {(isPractitioner ? patients : practitioners).map((person, i) => (
-                <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? `${TEAL}22` : `${PURPLE}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {isPractitioner ? '🏋️' : '🩺'}
                   </div>

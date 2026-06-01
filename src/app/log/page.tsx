@@ -67,7 +67,7 @@ function renderStars(rating: number, onClick: (v: number) => void) {
         const half = !full && rating >= star - 0.5;
         return (
           <div key={star} style={{ position: 'relative', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 28, color: full ? YELLOW : half ? YELLOW : 'rgba(255,255,255,0.2)' }}>
+            <span style={{ fontSize: 28, color: full ? YELLOW : half ? YELLOW : 'var(--border-strong)' }}>
               {full ? '★' : half ? '⯨' : '☆'}
             </span>
             <button onClick={() => onClick(star - 0.5)} style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', background: 'transparent', border: 'none', cursor: 'pointer' }} />
@@ -337,15 +337,15 @@ function LogWorkoutInner() {
                       value={exSearch}
                       onChange={e => setExSearch(e.target.value)}
                       placeholder="Search exercises…"
-                      style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                      style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                     />
                     <select
                       value={exMuscle}
                       onChange={e => setExMuscle(e.target.value)}
-                      style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer' }}
                     >
-                      <option value="All" style={{ background: '#1a1d26' }}>All muscles</option>
-                      {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg} style={{ background: '#1a1d26' }}>{mg}</option>)}
+                      <option value="All" style={{ background: 'var(--card)' }}>All muscles</option>
+                      {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg} style={{ background: 'var(--card)' }}>{mg}</option>)}
                     </select>
                   </div>
                   <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -362,11 +362,11 @@ function LogWorkoutInner() {
                             border: `1px solid ${added ? `${TEAL}40` : 'transparent'}`,
                             borderRadius: 8, padding: '8px 12px', cursor: added ? 'default' : 'pointer',
                           }}
-                          onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                          onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
                           onMouseLeave={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
                         >
                           <div>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: added ? TEAL : '#fff' }}>{ex.name}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: added ? TEAL : 'var(--text)' }}>{ex.name}</span>
                             <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8 }}>{ex.muscleGroup} · {ex.equipment}</span>
                           </div>
                           {added ? <span style={{ fontSize: 11, color: TEAL }}>✓ Added</span> : <span style={{ fontSize: 18, color: TEAL, lineHeight: 1 }}>+</span>}
@@ -433,7 +433,7 @@ function LogWorkoutInner() {
                               <input type="number" min={0} value={s.reps ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'reps', Number(e.target.value))}
-                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -441,7 +441,7 @@ function LogWorkoutInner() {
                               <input type="number" min={0} step={0.5} value={s.weight ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'weight', Number(e.target.value))}
-                                style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                           </>
@@ -453,7 +453,7 @@ function LogWorkoutInner() {
                             <input type="number" min={0} value={s.duration ?? ''}
                               placeholder="0"
                               onChange={e => updateSet(ex.id, si, 'duration', Number(e.target.value))}
-                              style={{ width: 80, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                              style={{ width: 80, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                             />
                           </label>
                         )}
@@ -465,7 +465,7 @@ function LogWorkoutInner() {
                               <input type="number" min={0} value={s.cardioduration ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'cardioduration', Number(e.target.value))}
-                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -473,7 +473,7 @@ function LogWorkoutInner() {
                               <input type="number" min={0} step={0.1} value={s.speed ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'speed', Number(e.target.value))}
-                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                           </>
@@ -503,7 +503,7 @@ function LogWorkoutInner() {
                 onChange={e => setNotes(e.target.value)}
                 placeholder="How did it go? Any notes for your practitioner…"
                 rows={3}
-                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
+                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
               />
             </div>
 

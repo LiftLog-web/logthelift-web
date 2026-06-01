@@ -470,11 +470,11 @@ function NewPlanInner() {
           <select
             value={patientId}
             onChange={e => setPatientId(e.target.value)}
-            style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: patientId ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 14, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+            style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: patientId ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
           >
             <option value="">Select patient…</option>
             {patients.map(p => (
-              <option key={p.id} value={p.id} style={{ background: '#1a1d26' }}>{p.display_name}</option>
+              <option key={p.id} value={p.id} style={{ background: 'var(--card)' }}>{p.display_name}</option>
             ))}
           </select>
         </div>
@@ -493,13 +493,13 @@ function NewPlanInner() {
       <div style={{ display: 'flex', height: 'calc(100vh - 170px)', overflow: 'hidden' }}>
 
         {/* Left: Exercise Library — collapsible */}
-        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease' }}>
+        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease' }}>
           {/* Sidebar header with toggle */}
           <div style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={() => setSidebarOpen(v => !v)}
               title={sidebarOpen ? 'Collapse library' : 'Expand library'}
-              style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+              style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
             >
               {sidebarOpen ? '◀' : '▶'}
             </button>
@@ -510,16 +510,16 @@ function NewPlanInner() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search exercises…"
-              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
             <select
               value={muscleFilter}
               onChange={e => setMuscleFilter(e.target.value)}
-              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
             >
-              <option value="All" style={{ background: '#1a1d26' }}>All muscle groups</option>
+              <option value="All" style={{ background: 'var(--card)' }}>All muscle groups</option>
               {MUSCLE_GROUPS.map(mg => (
-                <option key={mg} value={mg} style={{ background: '#1a1d26' }}>{mg}</option>
+                <option key={mg} value={mg} style={{ background: 'var(--card)' }}>{mg}</option>
               ))}
             </select>
           </div>}
@@ -547,7 +547,7 @@ function NewPlanInner() {
                   onMouseEnter={e => {
                     (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
                       ? 'rgba(239,68,68,0.1)'
-                      : 'rgba(255,255,255,0.05)';
+                      : 'var(--card-alt)';
                   }}
                   onMouseLeave={e => {
                     (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
@@ -557,7 +557,7 @@ function NewPlanInner() {
                   title={alreadyAdded ? 'Click to remove from plan' : 'Click to add to plan'}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : '#fff' }}>{ex.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : 'var(--text)' }}>{ex.name}</span>
                     {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
@@ -621,7 +621,7 @@ function NewPlanInner() {
                         onDragOver={e => handleDragOver(e, pe.id)}
                         onDrop={e => handleDrop(e, pe.id)}
                         style={{
-                          background: isDragOver ? 'rgba(95,207,191,0.06)' : 'rgba(255,255,255,0.04)',
+                          background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
                           border: `1px solid ${isDragOver ? `${TEAL}80` : isSuperset ? `${PURPLE}60` : isSupersetFirst ? `${PURPLE}99` : `${PURPLE}30`}`,
                           borderRadius: `${topR}px ${topR}px ${bottomR}px ${bottomR}px`,
                           padding: '18px 20px',
@@ -664,7 +664,7 @@ function NewPlanInner() {
                                     const exLib = EXERCISES.find(ex => ex.name === pe.exercise.name);
                                     setVideoMuscleGroup(exLib?.muscleGroup ?? (pe.exercise as any).muscleGroup ?? '');
                                   }}
-                                  style={{ marginLeft: 10, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer', verticalAlign: 'middle' }}
+                                  style={{ marginLeft: 10, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer', verticalAlign: 'middle' }}
                                   title="Add a video demo link"
                                 >
                                   + Add Video
@@ -742,7 +742,7 @@ function NewPlanInner() {
                                     <input
                                       type="number" min={1} value={s.reps ?? 10}
                                       onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value))}
-                                      style={{ width: 60, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                      style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                   </label>
                                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
@@ -751,7 +751,7 @@ function NewPlanInner() {
                                       type="number" min={0} step={0.5} value={s.weight ?? 0}
                                       onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value))}
                                       onFocus={e => e.target.select()}
-                                      style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                      style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                   </label>
                                 </>
@@ -763,7 +763,7 @@ function NewPlanInner() {
                                   <input
                                     type="number" min={1} value={s.seconds ?? 30}
                                     onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value))}
-                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                 </label>
                               )}
@@ -774,7 +774,7 @@ function NewPlanInner() {
                                   <input
                                     type="number" min={1} value={s.minutes ?? 20}
                                     onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value))}
-                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                 </label>
                               )}
@@ -855,17 +855,17 @@ function NewPlanInner() {
                 }}
                 style={{
                   width: 40, height: 22, borderRadius: 11, position: 'relative', cursor: 'pointer', flexShrink: 0,
-                  background: saveToLibrary ? TEAL : 'rgba(255,255,255,0.15)',
+                  background: saveToLibrary ? TEAL : 'var(--border-strong)',
                   transition: 'background 0.2s',
                 }}
               >
                 <div style={{
                   position: 'absolute', top: 3, left: saveToLibrary ? 21 : 3,
-                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  width: 16, height: 16, borderRadius: '50%', background: 'var(--text)',
                   transition: 'left 0.2s',
                 }} />
               </div>
-              <span style={{ color: saveToLibrary ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 14, fontWeight: 600 }}>
+              <span style={{ color: saveToLibrary ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>
                 📋 Also save to my Plan Library
               </span>
             </label>
@@ -896,7 +896,7 @@ function NewPlanInner() {
       {/* Add video modal */}
       {addVideoTarget && (
         <div onClick={closeVideoModal} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460 }}>
 
             {videoSaved ? (
               /* ── Saved confirmation ── */
@@ -916,7 +916,7 @@ function NewPlanInner() {
                 <div style={{ display: 'flex', marginBottom: 20, background: 'var(--card-alt)', borderRadius: 10, padding: 3 }}>
                   {(['url', 'file'] as const).map(mode => (
                     <button key={mode} onClick={() => { setVideoMode(mode); setVideoFile(null); setVideoUrl(''); }}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: videoMode === mode ? '#fff' : 'transparent', color: videoMode === mode ? '#0f1117' : 'rgba(255,255,255,0.4)' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: videoMode === mode ? 'var(--text)' : 'transparent', color: videoMode === mode ? '#0f1117' : 'var(--text-muted)' }}>
                       {mode === 'url' ? '🔗 URL Link' : '📁 Upload File'}
                     </button>
                   ))}
@@ -959,7 +959,7 @@ function NewPlanInner() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button onClick={closeVideoModal} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
                       <button onClick={() => handleSaveVideo(addVideoTarget, videoUrl)} disabled={!videoUrl.trim() || savingVideo}
-                        style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>
+                        style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>
                         {savingVideo ? 'Saving…' : 'Save to Library'}
                       </button>
                     </div>
@@ -968,7 +968,7 @@ function NewPlanInner() {
                   <>
                     <label style={{ display: 'block', marginBottom: 16, cursor: 'pointer' }}>
                       <input type="file" accept="video/mp4,video/quicktime,video/webm,video/*" style={{ display: 'none' }} onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
-                      <div style={{ border: `2px dashed ${videoFile ? TEAL : 'rgba(255,255,255,0.2)'}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', background: videoFile ? `${TEAL}10` : 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ border: `2px dashed ${videoFile ? TEAL : 'var(--border-strong)'}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', background: videoFile ? `${TEAL}10` : 'var(--card)' }}>
                         {videoFile ? (
                           <>
                             <p style={{ fontSize: 28, margin: '0 0 6px' }}>🎬</p>
@@ -987,7 +987,7 @@ function NewPlanInner() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button onClick={closeVideoModal} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
                       <button onClick={() => videoFile && handleUploadVideo(addVideoTarget, videoFile)} disabled={!videoFile || uploading}
-                        style={{ flex: 2, background: videoFile && !uploading ? TEAL : 'rgba(255,255,255,0.08)', color: videoFile && !uploading ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoFile && !uploading ? 'pointer' : 'not-allowed' }}>
+                        style={{ flex: 2, background: videoFile && !uploading ? TEAL : 'var(--input-bg)', color: videoFile && !uploading ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoFile && !uploading ? 'pointer' : 'not-allowed' }}>
                         {uploading ? 'Uploading…' : 'Upload to Library'}
                       </button>
                     </div>
@@ -1005,7 +1005,7 @@ function NewPlanInner() {
           onClick={() => setDemoPreview(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
         >
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
             <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>

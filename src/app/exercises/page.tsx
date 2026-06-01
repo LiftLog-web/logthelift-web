@@ -183,7 +183,7 @@ export default function ExercisesPage() {
 
         {showForm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}>
-            <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>New Exercise</h2>
                 <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -205,7 +205,7 @@ export default function ExercisesPage() {
                   <select
                     value={muscleGroup}
                     onChange={e => setMuscleGroup(e.target.value)}
-                    style={{ background: '#1a1d27', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
+                    style={{ background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   >
                     {MUSCLE_GROUPS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -226,7 +226,7 @@ export default function ExercisesPage() {
                   <select
                     value={type}
                     onChange={e => setType(e.target.value as 'weighted' | 'duration' | 'cardio')}
-                    style={{ background: '#1a1d27', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
+                    style={{ background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   >
                     <option value="weighted">Weighted</option>
                     <option value="duration">Duration</option>
@@ -238,7 +238,7 @@ export default function ExercisesPage() {
                   <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Media (optional)</span>
                   <div
                     onClick={() => fileRef.current?.click()}
-                    style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '16px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14 }}
+                    style={{ border: '1px dashed var(--border-strong)', borderRadius: 10, padding: '16px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14 }}
                   >
                     {mediaFile ? mediaFile.name : 'Click to upload image or video'}
                   </div>

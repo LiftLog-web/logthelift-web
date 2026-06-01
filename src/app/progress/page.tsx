@@ -143,12 +143,12 @@ function SvgChart({ data, color, yFmt = (v: number) => String(Math.round(v)), ch
       </defs>
       {yTicks.map((t, i) => (
         <g key={i}>
-          <line x1={PAD.left} y1={t.cy} x2={PAD.left + IW} y2={t.cy} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-          <text x={PAD.left - 6} y={t.cy + 4} textAnchor="end" fontSize={10} fill="rgba(255,255,255,0.35)">{yFmt(t.v)}</text>
+          <line x1={PAD.left} y1={t.cy} x2={PAD.left + IW} y2={t.cy} stroke="var(--border-subtle)" strokeWidth={1} />
+          <text x={PAD.left - 6} y={t.cy + 4} textAnchor="end" fontSize={10} fill="var(--text-dim)">{yFmt(t.v)}</text>
         </g>
       ))}
       {xTicks.map(({ d, i }) => (
-        <text key={i} x={tx(i)} y={PAD.top + IH + 16} textAnchor="middle" fontSize={10} fill="rgba(255,255,255,0.35)">{fmtDate(d.date)}</text>
+        <text key={i} x={tx(i)} y={PAD.top + IH + 16} textAnchor="middle" fontSize={10} fill="var(--text-dim)">{fmtDate(d.date)}</text>
       ))}
       <polygon points={areaPts} fill={`url(#${gid})`} />
       <polyline points={linePts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
@@ -315,7 +315,7 @@ export default function ProgressPage() {
   const recentRates = weekTrends.slice(-3).map(wt => wt.rate).filter((r): r is number => r !== null);
   const rateChange  = recentRates.length >= 2 ? recentRates[recentRates.length - 1] - recentRates[recentRates.length - 2] : null;
   const trendSummaryText  = rateChange === null ? null : rateChange > 5 ? 'Completion trending up ↑' : rateChange < -5 ? 'Completion trending down ↓' : 'Completion stable →';
-  const trendSummaryColor = rateChange === null ? 'rgba(255,255,255,0.35)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'rgba(255,255,255,0.45)';
+  const trendSummaryColor = rateChange === null ? 'var(--text-dim)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'var(--text-muted)';
 
   const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
   for (const key of chronoWeekKeys) {
@@ -458,7 +458,7 @@ export default function ProgressPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                   {weekTrends.map(wt => {
                     const h   = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
-                    const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
+                    const col = wt.rate === null ? 'var(--input-bg)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
                     return (
                       <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                         {wt.rate !== null && <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.rate}%</span>}
@@ -472,7 +472,7 @@ export default function ProgressPage() {
                     const show = weekTrends.length <= 5 || wt.badge !== null || i === 0;
                     return (
                       <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
-                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>
+                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'var(--text-faint)' }}>
                           {show ? (wt.badge ?? wt.shortLabel) : ''}
                         </span>
                       </div>
@@ -510,7 +510,7 @@ export default function ProgressPage() {
                             <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
                               {show && (
                                 <>
-                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
+                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'var(--text-faint)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
                                   {wt.badge === 'This Week' && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', display: 'block' }}>so far</span>}
                                 </>
                               )}
@@ -536,7 +536,7 @@ export default function ProgressPage() {
                     const fmt      = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
                     const delta    = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
                     const trend    = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
-                    const trendCol = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'rgba(255,255,255,0.3)';
+                    const trendCol = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'var(--text-dim)';
                     const maxVal   = Math.max(...entries.map(e => e.best), 1);
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -549,7 +549,7 @@ export default function ProgressPage() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32, flexShrink: 0 }}>
                           {entries.map((e, i) => (
-                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'rgba(255,255,255,0.18)', borderRadius: 2 }} />
+                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'var(--border-strong)', borderRadius: 2 }} />
                           ))}
                         </div>
                         <div style={{ width: 26, textAlign: 'center', fontSize: 20, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
@@ -569,7 +569,7 @@ export default function ProgressPage() {
             {exercises.length > 0 && (
               <select value={selExId} onChange={e => setSelExId(e.target.value)}
                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 14px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer', minWidth: 220 }}>
-                {exercises.map(ex => <option key={ex.id} value={ex.id} style={{ background: '#1a1d26' }}>{ex.name}</option>)}
+                {exercises.map(ex => <option key={ex.id} value={ex.id} style={{ background: 'var(--card)' }}>{ex.name}</option>)}
               </select>
             )}
           </div>
@@ -610,14 +610,14 @@ export default function ProgressPage() {
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Body Weight</h2>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={newWtDate} onChange={e => setNewWtDate(e.target.value)}
-                style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+                style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
               <input type="number" min={0} step={0.1} value={newWt} onChange={e => setNewWt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveWeight()} placeholder={`Weight (${wtUnit})`}
-                style={{ width: 130, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
-              <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+                style={{ width: 130, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+              <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
                 {(['kg', 'lbs'] as const).map(u => (
                   <button key={u} onClick={() => setWtUnit(u)}
-                    style={{ padding: '7px 14px', background: wtUnit === u ? PURPLE : 'transparent', color: wtUnit === u ? '#fff' : 'rgba(255,255,255,0.4)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: wtUnit === u ? 700 : 400 }}>
+                    style={{ padding: '7px 14px', background: wtUnit === u ? PURPLE : 'transparent', color: wtUnit === u ? 'var(--text)' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: wtUnit === u ? 700 : 400 }}>
                     {u}
                   </button>
                 ))}
@@ -641,7 +641,7 @@ export default function ProgressPage() {
                 {bwChangeDisplay !== null && (
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Change since start</p>
-                    <p style={{ fontSize: 24, fontWeight: 800, margin: 0, color: bwChangeKg! < 0 ? TEAL : bwChangeKg! > 0 ? YELLOW : 'rgba(255,255,255,0.6)' }}>{bwChangeDisplay}</p>
+                    <p style={{ fontSize: 24, fontWeight: 800, margin: 0, color: bwChangeKg! < 0 ? TEAL : bwChangeKg! > 0 ? YELLOW : 'var(--text-muted)' }}>{bwChangeDisplay}</p>
                   </div>
                 )}
                 <div>
@@ -686,7 +686,7 @@ export default function ProgressPage() {
                 return (
                   <div key={weekKey}>
                     <button onClick={() => toggleWeekLog(weekKey)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid var(--border-subtle)' : undefined }}>
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
                       <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
                       {badge && <span style={{ background: `${TEAL}25`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>}
@@ -712,7 +712,7 @@ export default function ProgressPage() {
                             : 'none';
 
                           return (
-                            <div key={w.id} style={{ borderTop: wi > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                            <div key={w.id} style={{ borderTop: wi > 0 ? '1px solid var(--border-subtle)' : undefined }}>
                               <button onClick={() => toggleWorkout(w.id)}
                                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', background: isOpen ? `${PURPLE}0d` : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                                 <div style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[overallStatus], flexShrink: 0 }} />
@@ -740,7 +740,7 @@ export default function ProgressPage() {
                               </button>
 
                               {isOpen && (
-                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
+                                <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
                                   {w.notes?.trim() && (
                                     <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
                                       <span style={{ fontSize: 14 }}>💬</span>

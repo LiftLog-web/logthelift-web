@@ -416,7 +416,7 @@ export default function TemplateEditorPage() {
     const exType = getWeekExercise(ex, activeWeek).type;
     const unit = ex.unit ?? preferredUnit;
     return (
-      <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+      <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid var(--card-alt)' : 'none' }}>
         <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>
           {setIdx + 1}
         </span>
@@ -584,9 +584,9 @@ export default function TemplateEditorPage() {
                       onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
                       style={{
                         padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                        border: `1px solid ${on ? TEAL : 'rgba(255,255,255,0.18)'}`,
+                        border: `1px solid ${on ? TEAL : 'var(--border-strong)'}`,
                         background: on ? `${TEAL}22` : 'transparent',
-                        color: on ? TEAL : 'rgba(255,255,255,0.45)',
+                        color: on ? TEAL : 'var(--text-muted)',
                         cursor: 'pointer', transition: 'all 0.15s',
                       }}
                     >
@@ -607,8 +607,8 @@ export default function TemplateEditorPage() {
               onClick={() => setActiveWeek(w)}
               style={{
                 padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                background: activeWeek === w ? TEAL : 'rgba(255,255,255,0.08)',
-                color: activeWeek === w ? '#0f1117' : 'rgba(255,255,255,0.6)',
+                background: activeWeek === w ? TEAL : 'var(--input-bg)',
+                color: activeWeek === w ? '#0f1117' : 'var(--text-muted)',
               }}
             >
               Week {w}
@@ -646,7 +646,7 @@ export default function TemplateEditorPage() {
 
         {/* Exercise cards */}
         {exercises.length === 0 ? (
-          <div style={{ background: 'var(--card)', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: 16, padding: 48, textAlign: 'center' }}>
+          <div style={{ background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 16, padding: 48, textAlign: 'center' }}>
             <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>No exercises yet. Add exercises to build this template.</p>
             <button
               onClick={() => setShowAddModal(true)}
@@ -679,8 +679,8 @@ export default function TemplateEditorPage() {
                   onDragOver={e => handleDragOver(e, ex.id)}
                   onDrop={e => handleDrop(e, ex.id)}
                   style={{
-                    background: isDragOver ? 'rgba(95,207,191,0.06)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${isDragOver ? `${TEAL}80` : 'rgba(255,255,255,0.1)'}`,
+                    background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
+                    border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`,
                     borderRadius: 14, padding: '18px 20px',
                     opacity: isDragging ? 0.4 : 1,
                     cursor: 'grab',
@@ -712,7 +712,7 @@ export default function TemplateEditorPage() {
                     ) : (
                       <button
                         onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
-                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }}
                         title="Add a video demo link for this exercise"
                       >
                         + Add Video
@@ -722,7 +722,7 @@ export default function TemplateEditorPage() {
                       {/* Collapse / expand toggle */}
                       <button
                         onClick={() => toggleCollapse(ex.id)}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
+                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
                         title={isCollapsed ? 'Expand' : 'Minimise'}
                       >
                         {isCollapsed ? '▶' : '▼'}
@@ -737,12 +737,12 @@ export default function TemplateEditorPage() {
                       <button
                         onClick={() => moveExercise(ex.id, -1)}
                         disabled={exIdx === 0}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
+                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
                       >↑</button>
                       <button
                         onClick={() => moveExercise(ex.id, 1)}
                         disabled={exIdx === exercises.length - 1}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
+                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
                       >↓</button>
                       <button
                         onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
@@ -855,8 +855,8 @@ export default function TemplateEditorPage() {
                       onClick={() => setExMuscle(mg)}
                       style={{
                         padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                        background: exMuscle === mg ? TEAL : 'rgba(255,255,255,0.08)',
-                        color: exMuscle === mg ? '#0f1117' : 'rgba(255,255,255,0.5)',
+                        background: exMuscle === mg ? TEAL : 'var(--input-bg)',
+                        color: exMuscle === mg ? '#0f1117' : 'var(--text-muted)',
                       }}
                     >
                       {mg}
@@ -868,7 +868,7 @@ export default function TemplateEditorPage() {
                     <button
                       key={ex.id}
                       onClick={() => handleAddExercise(ex)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left' }}
                     >
                       <span>
                         <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
@@ -884,7 +884,7 @@ export default function TemplateEditorPage() {
                 {/* Custom exercise CTA */}
                 <button
                   onClick={() => { setShowCustomForm(true); setCustomName(exSearch); }}
-                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'var(--card)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
                   + Create custom exercise{exSearch ? ` "${exSearch}"` : ''}
                 </button>
@@ -916,7 +916,7 @@ export default function TemplateEditorPage() {
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                   {MUSCLE_GROUPS.map(mg => (
                     <button key={mg} onClick={() => setCustomMuscle(mg)}
-                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'rgba(255,255,255,0.08)', color: customMuscle === mg ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}
                     >{mg}</button>
                   ))}
                 </div>
@@ -925,7 +925,7 @@ export default function TemplateEditorPage() {
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                   {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
                     <button key={eq} onClick={() => setCustomEquip(eq)}
-                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'rgba(255,255,255,0.08)', color: customEquip === eq ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}
                     >{eq}</button>
                   ))}
                 </div>
@@ -934,7 +934,7 @@ export default function TemplateEditorPage() {
                 <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
                   {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
                     <button key={val} onClick={() => setCustomType(val)}
-                      style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'rgba(255,255,255,0.08)', color: customType === val ? '#0f1117' : 'rgba(255,255,255,0.5)' }}
+                      style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}
                     >{label}</button>
                   ))}
                 </div>
@@ -942,7 +942,7 @@ export default function TemplateEditorPage() {
                 <button
                   onClick={handleAddCustomExercise}
                   disabled={!customName.trim()}
-                  style={{ width: '100%', background: customName.trim() ? TEAL : 'rgba(255,255,255,0.1)', color: customName.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
+                  style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
                 >
                   Add "{customName.trim() || 'exercise'}" to template
                 </button>
@@ -972,8 +972,8 @@ export default function TemplateEditorPage() {
                   onClick={() => setSubTarget(prev => prev ? { ...prev, scope } : prev)}
                   style={{
                     padding: '7px 16px', borderRadius: 20, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
-                    background: subTarget.scope === scope ? TEAL : 'rgba(255,255,255,0.08)',
-                    color: subTarget.scope === scope ? '#0f1117' : 'rgba(255,255,255,0.5)',
+                    background: subTarget.scope === scope ? TEAL : 'var(--input-bg)',
+                    color: subTarget.scope === scope ? '#0f1117' : 'var(--text-muted)',
                   }}
                 >
                   {scope === 'template' ? 'All weeks (permanent)' : `Week ${activeWeek} only`}
@@ -996,7 +996,7 @@ export default function TemplateEditorPage() {
                 <button
                   key={ex.id}
                   onClick={() => handleSubstitute(ex)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left' }}
                 >
                   <span>
                     <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
@@ -1016,7 +1016,7 @@ export default function TemplateEditorPage() {
       {/* Demo preview modal */}
       {demoPreview && (
         <div onClick={() => setDemoPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
             <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>
@@ -1044,7 +1044,7 @@ export default function TemplateEditorPage() {
       {/* Add video link modal */}
       {addVideoTarget && (
         <div onClick={() => setAddVideoTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
             <input
@@ -1060,7 +1060,7 @@ export default function TemplateEditorPage() {
               <button
                 onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
                 disabled={!videoUrl.trim() || savingVideo}
-                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
+                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
               >
                 {savingVideo ? 'Saving…' : 'Save Video Link'}
               </button>
@@ -1076,7 +1076,7 @@ export default function TemplateEditorPage() {
 
 const inputStyle: React.CSSProperties = {
   background: 'var(--input-bg)',
-  border: '1px solid rgba(255,255,255,0.12)',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '5px 8px',
   color: 'var(--text)',
@@ -1093,8 +1093,8 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const modalStyle: React.CSSProperties = {
-  background: '#1a1d26',
-  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'var(--card)',
+  border: '1px solid var(--border)',
   borderRadius: 18, padding: 24,
   width: '100%', maxWidth: 520, maxHeight: '85vh',
   overflowY: 'auto',

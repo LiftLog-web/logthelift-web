@@ -310,7 +310,7 @@ export default function PatientProgressPage() {
   const recentRates = weekTrends.slice(-3).map(wt => wt.rate).filter((r): r is number => r !== null);
   const rateChange = recentRates.length >= 2 ? recentRates[recentRates.length - 1] - recentRates[recentRates.length - 2] : null;
   const trendSummaryText = rateChange === null ? null : rateChange > 5 ? 'Completion trending up ↑' : rateChange < -5 ? 'Completion trending down ↓' : 'Completion stable →';
-  const trendSummaryColor = rateChange === null ? 'rgba(255,255,255,0.35)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'rgba(255,255,255,0.45)';
+  const trendSummaryColor = rateChange === null ? 'var(--text-dim)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'var(--text-muted)';
 
   // Best weight / duration per exercise per week
   const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
@@ -400,7 +400,7 @@ export default function PatientProgressPage() {
       {/* Email modal */}
       {emailOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ width: '100%', maxWidth: 520, background: '#1a1d26', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32 }}>
+          <div style={{ width: '100%', maxWidth: 520, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontWeight: 700, fontSize: 18 }}>Email {patientName}</h2>
               <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
@@ -499,7 +499,7 @@ export default function PatientProgressPage() {
             { label: 'Completion Rate',  value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
             { label: 'Avg Satisfaction', value: avgRating ? `${renderStars(Number(avgRating))} ${avgRating}/5` : '—', color: TEAL },
           ].map(s => (
-            <div key={s.label} style={{ background: 'var(--card)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 14, padding: '18px 20px' }}>
+            <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
               <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
             </div>
@@ -524,7 +524,7 @@ export default function PatientProgressPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                   {weekTrends.map(wt => {
                     const h = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
-                    const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
+                    const col = wt.rate === null ? 'var(--input-bg)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
                     return (
                       <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                         {wt.rate !== null && <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.rate}%</span>}
@@ -538,7 +538,7 @@ export default function PatientProgressPage() {
                     const showLabel = weekTrends.length <= 5 || wt.badge !== null || i === 0;
                     return (
                       <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
-                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'rgba(255,255,255,0.25)' }}>
+                        <span style={{ fontSize: 9, color: wt.badge ? TEAL : 'var(--text-faint)' }}>
                           {showLabel ? (wt.badge ?? wt.shortLabel) : ''}
                         </span>
                       </div>
@@ -576,7 +576,7 @@ export default function PatientProgressPage() {
                             <div key={wt.key} style={{ flex: 1, textAlign: 'center' }}>
                               {showLabel && (
                                 <>
-                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'rgba(255,255,255,0.25)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
+                                  <span style={{ fontSize: 9, color: wt.badge ? PURPLE : 'var(--text-faint)', display: 'block' }}>{wt.badge ?? wt.shortLabel}</span>
                                   {wt.badge === 'This Week' && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', display: 'block' }}>so far</span>}
                                 </>
                               )}
@@ -602,7 +602,7 @@ export default function PatientProgressPage() {
                     const fmt       = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
                     const delta     = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
                     const trend     = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
-                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'rgba(255,255,255,0.3)';
+                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'var(--text-dim)';
                     const maxVal    = Math.max(...entries.map(e => e.best), 1);
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -620,7 +620,7 @@ export default function PatientProgressPage() {
                         {/* Sparkline */}
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32, flexShrink: 0 }}>
                           {entries.map((e, i) => (
-                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'rgba(255,255,255,0.18)', borderRadius: 2 }} />
+                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'var(--border-strong)', borderRadius: 2 }} />
                           ))}
                         </div>
                         <div style={{ width: 26, textAlign: 'center', fontSize: 20, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
@@ -713,7 +713,7 @@ export default function PatientProgressPage() {
                   {/* Week header */}
                   <button
                     onClick={() => toggleWeek(weekKey)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid var(--border-subtle)' : undefined }}
                   >
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
                     <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
@@ -744,7 +744,7 @@ export default function PatientProgressPage() {
                           : 'none';
 
                         return (
-                          <div key={w.id} style={{ borderTop: wi > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                          <div key={w.id} style={{ borderTop: wi > 0 ? '1px solid var(--border-subtle)' : undefined }}>
 
                             {/* Workout row */}
                             <button
@@ -776,7 +776,7 @@ export default function PatientProgressPage() {
 
                             {/* Workout detail */}
                             {isOpen && (
-                              <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
+                              <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
                                 {w.notes?.trim() && (
                                   <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     <span style={{ fontSize: 14 }}>💬</span>
@@ -874,7 +874,7 @@ export default function PatientProgressPage() {
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewDemo.name}</p>
-              <button onClick={() => setViewDemo(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setViewDemo(null)} style={{ background: 'var(--border)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {viewDemo.type === 'photo' ? (
               <img src={viewDemo.url} alt={viewDemo.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />

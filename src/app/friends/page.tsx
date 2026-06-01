@@ -301,7 +301,7 @@ export default function FriendsPage() {
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--card)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
           {(['feed', 'friends'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '8px 24px', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, background: tab === t ? TEAL : 'transparent', color: tab === t ? '#0f1117' : 'rgba(255,255,255,0.5)', transition: 'all 0.15s', textTransform: 'capitalize' }}>
+              style={{ padding: '8px 24px', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, background: tab === t ? TEAL : 'transparent', color: tab === t ? '#0f1117' : 'var(--text-muted)', transition: 'all 0.15s', textTransform: 'capitalize' }}>
               {t === 'feed' ? 'Activity Feed' : `Friends${friends.length > 0 ? ` (${friends.length})` : ''}`}
               {t === 'friends' && pendingIn.length > 0 && (
                 <span style={{ marginLeft: 6, background: PURPLE, color: 'var(--text)', borderRadius: 999, fontSize: 11, padding: '1px 6px', fontWeight: 700 }}>{pendingIn.length}</span>
@@ -369,7 +369,7 @@ export default function FriendsPage() {
                       const mine  = myReaction?.reaction === emoji;
                       return (
                         <button key={emoji} onClick={() => react(item.workoutId, item.userId, emoji)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: mine ? `${TEAL}20` : 'rgba(255,255,255,0.06)', border: `1px solid ${mine ? `${TEAL}50` : 'transparent'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 14, color: mine ? TEAL : 'rgba(255,255,255,0.7)', fontWeight: mine ? 700 : 400, transition: 'all 0.15s' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: mine ? `${TEAL}20` : 'var(--border-subtle)', border: `1px solid ${mine ? `${TEAL}50` : 'transparent'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 14, color: mine ? TEAL : 'var(--text-muted)', fontWeight: mine ? 700 : 400, transition: 'all 0.15s' }}>
                           {emoji}{count > 0 && <span style={{ fontSize: 12 }}>{count}</span>}
                         </button>
                       );
@@ -388,7 +388,7 @@ export default function FriendsPage() {
                         <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                           <div style={{ flex: 1, background: 'var(--card)', borderRadius: 10, padding: '8px 12px' }}>
                             <span style={{ fontWeight: 700, fontSize: 12, color: TEAL, marginRight: 8 }}>{c.commenter_name}</span>
-                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{c.text}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text)' }}>{c.text}</span>
                           </div>
                           {c.commenter_id === userId && (
                             <button onClick={() => delComment(item.workoutId, c.id)}
@@ -402,7 +402,7 @@ export default function FriendsPage() {
                           onChange={e => setInputs(prev => ({ ...prev, [item.workoutId]: e.target.value }))}
                           onKeyDown={e => e.key === 'Enter' && postComment(item.workoutId)}
                           placeholder="Add a comment…"
-                          style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                          style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                         />
                         <button onClick={() => postComment(item.workoutId)}
                           disabled={!(inputs[item.workoutId] ?? '').trim()}
@@ -431,7 +431,7 @@ export default function FriendsPage() {
               </div>
               <button
                 onClick={() => { navigator.clipboard.writeText(myCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-                style={{ background: copied ? `${TEAL}30` : 'rgba(255,255,255,0.08)', border: `1px solid ${copied ? TEAL : 'rgba(255,255,255,0.15)'}`, color: copied ? TEAL : '#fff', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                style={{ background: copied ? `${TEAL}30` : 'var(--input-bg)', border: `1px solid ${copied ? TEAL : 'var(--border-strong)'}`, color: copied ? TEAL : 'var(--text)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                 {copied ? 'Copied!' : 'Copy Code'}
               </button>
             </div>
@@ -464,7 +464,7 @@ export default function FriendsPage() {
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && doSearch()}
                   placeholder="Search by name or friend code…"
-                  style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                 />
                 <button onClick={doSearch} disabled={searching || !search.trim()}
                   style={{ background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: searching || !search.trim() ? 'not-allowed' : 'pointer', opacity: searching || !search.trim() ? 0.5 : 1 }}>

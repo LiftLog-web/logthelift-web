@@ -158,12 +158,12 @@ export default function MyPlansPage() {
             {plans.map(plan => {
               const isOpen = expanded.has(plan.id);
               return (
-                <div key={plan.id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                <div key={plan.id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
 
                   {/* Plan header */}
                   <button
                     onClick={() => toggle(plan.id)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px', background: isOpen ? `${PURPLE}0d` : 'rgba(255,255,255,0.02)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px', background: isOpen ? `${PURPLE}0d` : 'var(--card)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{plan.name}</div>

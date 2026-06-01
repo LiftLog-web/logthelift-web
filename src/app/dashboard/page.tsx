@@ -462,7 +462,7 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {pts.map((pt, i) => (
-                  <tr key={pt.id} style={{ borderTop: '1px solid var(--border-subtle)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                  <tr key={pt.id} style={{ borderTop: '1px solid var(--border-subtle)', background: i % 2 === 0 ? 'transparent' : 'var(--card)' }}>
 
                     {/* PT name + email */}
                     <td style={{ padding: '14px 20px' }}>
@@ -474,12 +474,12 @@ export default function DashboardPage() {
                     <td style={{ padding: '14px 14px', textAlign: 'center' }}>{statusBadge(pt.status)}</td>
 
                     {/* Patients */}
-                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.patientCount > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.patientCount > 0 ? 'var(--text)' : 'var(--text-dim)' }}>
                       {pt.status === 'accepted' ? pt.patientCount : '—'}
                     </td>
 
                     {/* Plans Created */}
-                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.plansCreated > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                    <td style={{ padding: '14px 14px', textAlign: 'center', fontWeight: 600, color: pt.plansCreated > 0 ? 'var(--text)' : 'var(--text-dim)' }}>
                       {pt.status === 'accepted' ? pt.plansCreated : '—'}
                     </td>
 
@@ -489,7 +489,7 @@ export default function DashboardPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                           {pt.weeklyTarget !== null && pt.adherencePct !== null ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                              <div style={{ width: 40, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
+                              <div style={{ width: 40, height: 5, background: 'var(--border)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
                                 <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
                               </div>
                               <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
@@ -559,7 +559,7 @@ export default function DashboardPage() {
 
 function SkeletonRow({ first }: { first: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 0', borderTop: first ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 0', borderTop: first ? 'none' : '1px solid var(--border-subtle)' }}>
       {/* PT name + email */}
       <div style={{ flex: '0 0 200px', display: 'flex', flexDirection: 'column', gap: 7 }}>
         <Sk width={140} height={13} />
