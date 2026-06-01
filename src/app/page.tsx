@@ -15,10 +15,10 @@ const features = [
 ];
 
 const gymTiers = [
-  { name: 'Per PT',    price: '$30',  per: '/PT/month', desc: 'No commitment — pay only for what you use.',  highlight: false },
-  { name: 'Starter',  price: '$124', per: '/month',     desc: 'Up to 5 PTs. Best for small studios.',        highlight: false },
-  { name: 'Mid-Size', price: '$249', per: '/month',     desc: 'Up to 15 PTs. Growing gyms.',                 highlight: true  },
-  { name: 'Large',    price: '$429', per: '/month',     desc: 'Up to 30 PTs. Large facilities.',             highlight: false },
+  { name: 'Solo',      price: 'C$30',  per: '/PT/month', desc: '1–4 PTs at C$30/PT. No commitment — pay only for what you use.',  highlight: false },
+  { name: 'Small Gym', price: 'C$125', per: '/month',     desc: 'Up to 5 PTs at C$25/PT. Best for small studios.',                highlight: false },
+  { name: 'Mid Gym',   price: 'C$300', per: '/month',     desc: 'Up to 15 PTs at C$20/PT. Best value for growing gyms.',          highlight: true  },
+  { name: 'Large Gym', price: 'C$450', per: '/month',     desc: 'Up to 30 PTs at C$15/PT. Built for large facilities.',           highlight: false },
 ];
 
 export default function Home() {
@@ -185,7 +185,7 @@ export default function Home() {
           ))}
         </div>
         <p className="text-center text-sm mt-6" style={{ color: 'var(--text-dim)' }}>
-          Apply for a gym account through the app. Overflow PTs billed at your plan&apos;s per-PT rate.
+          Overflow PTs are billed at the effective per-PT rate of your tier (e.g. 6 PTs on Small Gym = C$125 + C$25). A gym reaching the next tier&apos;s total automatically qualifies for that plan&apos;s flat rate. Apply through the app.
         </p>
       </section>
 
