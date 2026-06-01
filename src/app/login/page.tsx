@@ -122,7 +122,7 @@ export default function LoginPage() {
               style={{
                 flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
                 background: tab === t ? TEAL : 'transparent',
-                color: tab === t ? '#0f1117' : 'rgba(255,255,255,0.5)',
+                color: tab === t ? '#0f1117' : 'var(--text-muted)',
               }}
             >
               {t === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -159,9 +159,9 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setRole(r)}
                     style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${role === r ? PURPLE : 'rgba(255,255,255,0.15)'}`,
+                      flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${role === r ? PURPLE : 'var(--border-strong)'}`,
                       background: role === r ? `${PURPLE}22` : 'transparent',
-                      color: role === r ? PURPLE : 'rgba(255,255,255,0.5)',
+                      color: role === r ? PURPLE : 'var(--text-muted)',
                       fontWeight: 700, fontSize: 13, cursor: 'pointer',
                     }}
                   >
