@@ -343,7 +343,7 @@ export default function MediaLibraryPage() {
                 onClick={() => openUploadModal()}
                 disabled={atUploadCap}
                 title={atUploadCap ? `Upload limit of ${MEDIA_CAP} files reached` : undefined}
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: atUploadCap ? 'var(--text-dim)' : 'var(--text-muted)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
+                style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}55`, color: atUploadCap ? 'var(--text-dim)' : PURPLE, borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer', opacity: atUploadCap ? 0.5 : 1 }}
               >
                 Upload File
               </button>
@@ -394,7 +394,7 @@ export default function MediaLibraryPage() {
               Add a video link or upload a file to get started.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => openUploadModal()} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
+              <button onClick={() => openUploadModal()} style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}55`, color: PURPLE, borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
               <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
             </div>
           </div>
@@ -406,7 +406,7 @@ export default function MediaLibraryPage() {
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
-                    <tr style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <tr style={{ color: PURPLE, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Muscle Group</th>
