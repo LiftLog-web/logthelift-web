@@ -15,11 +15,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return (localStorage.getItem('theme') as Theme) ?? 'dark';
   });
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   const toggle = () => {
     setTheme(prev => {
       const next = prev === 'dark' ? 'light' : 'dark';
       localStorage.setItem('theme', next);
-      document.documentElement.setAttribute('data-theme', next);
       return next;
     });
   };
