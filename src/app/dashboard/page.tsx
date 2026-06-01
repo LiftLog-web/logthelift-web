@@ -25,6 +25,13 @@ interface Subscription {
   trial_end: string | null;
 }
 
+interface WeekAdherence {
+  weekStart: string;
+  logged: number;
+  prescribed: number;
+  pct: number;
+}
+
 interface PTRow {
   id: string;
   pt_id: string;
@@ -39,6 +46,7 @@ interface PTRow {
   plansCreated: number;
   adherencePct: number | null;
   weeklyTarget: number | null;
+  weeklyAdherence: WeekAdherence[];
   lastActive: string | null;
 }
 
@@ -56,14 +64,17 @@ function renderStars(rating: number): string {
   return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
 }
 
-function getMondayOfCurrentWeek(): Date {
-  const now = new Date();
-  const day = now.getDay();
+function getMondayOfWeek(d: Date): Date {
+  const day = d.getDay();
   const diff = day === 0 ? 6 : day - 1;
-  const monday = new Date(now);
+  const monday = new Date(d);
   monday.setHours(0, 0, 0, 0);
-  monday.setDate(now.getDate() - diff);
+  monday.setDate(d.getDate() - diff);
   return monday;
+}
+
+function getMondayOfCurrentWeek(): Date {
+  return getMondayOfWeek(new Date());
 }
 
 function toDateStr(d: Date): string {
@@ -97,6 +108,7 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [targetEdits, setTargetEdits]   = useState<Record<string, string>>({});
   const [savingTarget, setSavingTarget] = useState<Record<string, boolean>>({});
+  const [expandedPtId, setExpandedPtId] = useState<string | null>(null);
 
   useEffect(() => {
     getSupabase().auth.getSession().then(({ data }) => {
@@ -178,6 +190,7 @@ export default function DashboardPage() {
           plansCreated: 0,
           adherencePct: null,
           weeklyTarget: link.weekly_workout_target ?? null,
+          weeklyAdherence: [],
           lastActive: null,
         };
 
@@ -213,27 +226,36 @@ export default function DashboardPage() {
               base.satisfactionCount = ratings.length;
             }
 
-            // Adherence: last 4 complete weeks only, current week excluded
-            const currentWeekStart = getMondayOfCurrentWeek();
-            const periodStart = new Date(currentWeekStart);
-            periodStart.setDate(periodStart.getDate() - 28);
-            const cwStr = toDateStr(currentWeekStart);
-            const psStr = toDateStr(periodStart);
-            const periodWorkouts = workouts.filter((w: any) => w.date >= psStr && w.date < cwStr);
+            // Adherence: all complete weeks, current week excluded
+            const cwStr = toDateStr(getMondayOfCurrentWeek());
+            const completedWorkouts = workouts.filter((w: any) => w.date < cwStr);
 
             if (base.weeklyTarget !== null && base.weeklyTarget > 0) {
-              const patientCounts: Record<string, number> = {};
-              for (const w of periodWorkouts) patientCounts[w.user_id] = (patientCounts[w.user_id] ?? 0) + 1;
-              let met = 0;
-              for (const pid of patientIds) {
-                if ((patientCounts[pid] ?? 0) / 4 >= base.weeklyTarget) met++;
+              const prescribed = patientIds.length * base.weeklyTarget;
+              // Group by week (Monday)
+              const byWeek: Record<string, number> = {};
+              for (const w of completedWorkouts) {
+                const monday = toDateStr(getMondayOfWeek(new Date(w.date + 'T00:00:00')));
+                byWeek[monday] = (byWeek[monday] ?? 0) + 1;
               }
-              base.adherencePct = Math.round((met / patientIds.length) * 100);
+              const weeks = Object.keys(byWeek).sort();
+              base.weeklyAdherence = weeks.map(weekStart => {
+                const logged = byWeek[weekStart];
+                const pct = Math.min(100, Math.round((logged / prescribed) * 100));
+                return { weekStart, logged, prescribed, pct };
+              });
+              if (weeks.length > 0) {
+                const totalPrescribed = prescribed * weeks.length;
+                base.adherencePct = Math.min(100, Math.round((completedWorkouts.length / totalPrescribed) * 100));
+              } else {
+                base.adherencePct = 0;
+              }
             } else {
-              base.adherencePct = null; // no target set — don't show metric
+              base.adherencePct = null;
             }
           } else {
             base.adherencePct = base.weeklyTarget !== null ? 0 : null;
+            base.weeklyAdherence = [];
           }
         }
 
@@ -447,13 +469,13 @@ export default function DashboardPage() {
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
+                <tr style={{ color: 'var(--text)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
                   <th style={{ padding: '10px 20px', textAlign: 'left',   fontWeight: 600 }}>PT</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Patients</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Plans</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, cursor: 'help', whiteSpace: 'nowrap' }}
-                      title="% of patients meeting the weekly workout target · last 4 complete weeks · current week excluded">
+                      title="Overall workout adherence · completed workouts ÷ prescribed workouts · all time, current week excluded">
                     Logged Workouts ℹ
                   </th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Satisfaction</th>
@@ -488,19 +510,61 @@ export default function DashboardPage() {
                       {pt.status === 'accepted' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                           {pt.weeklyTarget !== null && pt.adherencePct !== null ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                              <div style={{ width: 40, height: 5, background: 'var(--border)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
-                                <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
-                              </div>
-                              <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
-                                {pt.adherencePct}%
+                            <>
+                              {/* Overall snapshot */}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                                <div style={{ width: 40, height: 5, background: 'var(--border)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
+                                  <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
+                                </div>
+                                <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
+                                  {pt.adherencePct}%
+                                </span>
                               </span>
-                            </span>
+                              {/* Weekly breakdown toggle */}
+                              {pt.weeklyAdherence.length > 0 && (
+                                <button
+                                  onClick={() => setExpandedPtId(expandedPtId === pt.id ? null : pt.id)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, textDecoration: 'underline', padding: 0 }}
+                                >
+                                  {expandedPtId === pt.id ? 'Hide weeks ▲' : 'Weekly breakdown ▼'}
+                                </button>
+                              )}
+                              {/* Per-week breakdown table */}
+                              {expandedPtId === pt.id && (
+                                <div style={{ marginTop: 4, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', width: 190 }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                                        <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600 }}>Week of</th>
+                                        <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Done/Goal</th>
+                                        <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Rate</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {pt.weeklyAdherence.slice().reverse().map(w => (
+                                        <tr key={w.weekStart} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                          <td style={{ padding: '4px 8px', color: 'var(--text-muted)' }}>
+                                            {new Date(w.weekStart + 'T00:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}
+                                          </td>
+                                          <td style={{ padding: '4px 8px', textAlign: 'center', color: 'var(--text)' }}>
+                                            {w.logged}/{w.prescribed}
+                                          </td>
+                                          <td style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 700, color: w.pct >= 80 ? TEAL : w.pct >= 50 ? YELLOW : '#EF4444' }}>
+                                            {w.pct}%
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </>
                           ) : pt.weeklyTarget === null ? (
                             <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>set target below</span>
                           ) : (
                             <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>0%</span>
                           )}
+                          {/* Target input */}
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>Target:</span>
                             <input

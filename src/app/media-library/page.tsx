@@ -406,14 +406,14 @@ export default function MediaLibraryPage() {
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
-                    <tr style={{ color: PURPLE, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Muscle Group</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Type</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Link / File</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Added</th>
-                      <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 600 }}>Actions</th>
+                    <tr style={{ color: PURPLE, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, borderBottom: '1px solid var(--border-subtle)' }}>
+                      <th style={{ padding: '12px 24px', textAlign: 'left', width: 80 }}>Preview</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Exercise</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Muscle Group</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Type</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Link / File</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'left' }}>Added</th>
+                      <th style={{ padding: '12px 24px', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
