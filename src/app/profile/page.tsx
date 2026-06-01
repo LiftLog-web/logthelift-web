@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -91,10 +92,48 @@ export default function ProfilePage() {
 
   if (pageState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
+          {/* Profile card */}
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '32px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
+            <Sk width={72} height={72} radius={999} />
+            <div style={{ flex: 1 }}>
+              <Sk width={180} height={20} style={{ marginBottom: 10 }} />
+              <Sk width={220} height={13} radius={4} style={{ marginBottom: 14 }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Sk width={90} height={24} radius={999} />
+                <Sk width={100} height={24} radius={999} />
+              </div>
+            </div>
+            <Sk width={80} height={32} radius={8} />
+          </div>
+          {/* Connections */}
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden', marginBottom: 24 }}>
+            <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <Sk width={140} height={17} radius={5} />
+            </div>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 28px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <Sk width={40} height={40} radius={999} />
+                <div>
+                  <Sk width={130} height={13} style={{ marginBottom: 6 }} />
+                  <Sk width={180} height={11} radius={4} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Actions row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
+            {[0,1].map(i => (
+              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px' }}>
+                <Sk width={140} height={15} style={{ marginBottom: 8 }} />
+                <Sk width="90%" height={12} radius={4} style={{ marginBottom: 16 }} />
+                <Sk width={120} height={36} radius={10} />
+              </div>
+            ))}
+          </div>
+        </main>
+      </SkPage>
     );
   }
 

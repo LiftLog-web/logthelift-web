@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import { EXERCISES } from '@/data/exercises';
 
 const TEAL      = '#5fcfbf';
@@ -298,10 +299,33 @@ export default function MediaLibraryPage() {
 
   if (!authed || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Sk width={150} height={26} radius={6} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Sk width={110} height={36} radius={10} />
+              <Sk width={100} height={36} radius={10} />
+            </div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+            <Sk width="100%" height={8} radius={999} />
+          </div>
+          <Sk width={220} height={36} radius={10} style={{ marginBottom: 16 }} />
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' }}>
+            {[0,1,2,3,4].map(i => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <Sk width={56} height={40} radius={8} />
+                <Sk width={160} height={13} />
+                <Sk width={90} height={11} radius={4} style={{ marginLeft: 'auto' }} />
+                <Sk width={60} height={11} radius={4} />
+                <Sk width={70} height={28} radius={8} />
+              </div>
+            ))}
+          </div>
+        </main>
+      </SkPage>
     );
   }
 

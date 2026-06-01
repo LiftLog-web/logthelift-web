@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -101,10 +102,31 @@ export default function PlansPage() {
 
   if (!authed || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Sk width={140} height={26} radius={6} />
+            <Sk width={200} height={38} radius={10} />
+          </div>
+          {[0,1].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <Sk width={140} height={16} />
+                <Sk width={60} height={22} radius={999} style={{ marginLeft: 'auto' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+                {[0,1,2].map(j => (
+                  <div key={j} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '14px 16px' }}>
+                    <Sk width="70%" height={13} style={{ marginBottom: 8 }} />
+                    <Sk width="50%" height={11} radius={4} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
+import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -476,10 +477,32 @@ export default function TemplateEditorPage() {
 
   if (!authed || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkSubHeader />
+        <main style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px' }}>
+          <Sk width={240} height={22} style={{ marginBottom: 10 }} />
+          <Sk width={360} height={13} radius={4} style={{ marginBottom: 24 }} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            {[80,80,80,80].map((w,i) => <Sk key={i} width={w} height={34} radius={8} />)}
+          </div>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <Sk width={160} height={14} />
+                <Sk width={70} height={22} radius={999} style={{ marginLeft: 'auto' }} />
+                <Sk width={28} height={28} radius={8} />
+              </div>
+              {[0,1,2].map(j => (
+                <div key={j} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <Sk width={40} height={34} radius={8} />
+                  <Sk width={80} height={34} radius={8} />
+                  <Sk width={80} height={34} radius={8} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

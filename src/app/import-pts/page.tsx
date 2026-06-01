@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -131,10 +132,18 @@ export default function ImportPTsPage() {
 
   if (!authed) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 700, margin: '0 auto', padding: '48px 24px' }}>
+          <Sk width={200} height={28} radius={6} style={{ marginBottom: 10 }} />
+          <Sk width={320} height={14} radius={4} style={{ marginBottom: 32 }} />
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 20, padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            <Sk width={48} height={48} radius={12} />
+            <Sk width={200} height={14} radius={4} />
+            <Sk width={140} height={11} radius={4} />
+          </div>
+        </main>
+      </SkPage>
     );
   }
 

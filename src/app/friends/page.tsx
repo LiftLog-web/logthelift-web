@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -254,10 +255,29 @@ export default function FriendsPage() {
 
   /* ── Guards ──────────────────────────────────────────────────── */
   if (!authed || loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    <SkPage>
+      <SkNav />
+      <main style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          <Sk width={110} height={36} radius={999} />
+          <Sk width={90} height={36} radius={999} />
+        </div>
+        {[0,1,2].map(i => (
+          <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+              <Sk width={44} height={44} radius={999} />
+              <div style={{ flex: 1 }}>
+                <Sk width={130} height={14} style={{ marginBottom: 6 }} />
+                <Sk width={80} height={11} radius={4} />
+              </div>
+              <Sk width={60} height={11} radius={4} />
+            </div>
+            <Sk width="90%" height={13} style={{ marginBottom: 8 }} />
+            <Sk width="60%" height={13} radius={4} />
+          </div>
+        ))}
+      </main>
+    </SkPage>
   );
 
   /* ── Render ──────────────────────────────────────────────────── */

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -355,13 +356,41 @@ export default function PatientProgressPage() {
 
   /* ── Loading / error ── */
   if (loading || !authed) {
-    return (
+    if (noAccess) return (
       <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {noAccess
-          ? <p style={{ color: 'rgba(255,255,255,0.5)' }}>You don't have access to this patient's data.</p>
-          : <><div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></>
-        }
+        <p style={{ color: 'rgba(255,255,255,0.5)' }}>You don't have access to this patient's data.</p>
       </div>
+    );
+    return (
+      <SkPage>
+        <SkSubHeader />
+        <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 20px' }}>
+                <Sk width={90} height={11} radius={3} style={{ marginBottom: 12 }} />
+                <Sk width={60} height={26} radius={6} />
+              </div>
+            ))}
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
+            <Sk width={140} height={16} style={{ marginBottom: 20 }} />
+            <Sk width="100%" height={110} radius={12} />
+          </div>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 24px', marginBottom: 10 }}>
+              <Sk width={100} height={13} style={{ marginBottom: 14 }} />
+              {[0,1].map(j => (
+                <div key={j} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                  <Sk width={50} height={32} radius={8} />
+                  <Sk width={80} height={32} radius={8} />
+                  <Sk width={80} height={32} radius={8} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

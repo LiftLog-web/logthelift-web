@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -383,10 +384,27 @@ export default function ProgressPage() {
   const bwYFmt = (v: number) => `${v.toFixed(1)}${wtUnit}`;
 
   if (!authed) return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    <SkPage>
+      <SkNav />
+      <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 20px' }}>
+              <Sk width={90} height={11} radius={3} style={{ marginBottom: 12 }} />
+              <Sk width={60} height={28} radius={6} />
+            </div>
+          ))}
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
+          <Sk width={160} height={16} style={{ marginBottom: 20 }} />
+          <Sk width="100%" height={120} radius={12} />
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px' }}>
+          <Sk width={140} height={16} style={{ marginBottom: 20 }} />
+          <Sk width="100%" height={80} radius={12} />
+        </div>
+      </main>
+    </SkPage>
   );
 
   return (

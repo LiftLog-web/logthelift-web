@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -144,10 +145,29 @@ export default function PlanLibraryPage() {
 
   if (!authed || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Sk width={160} height={26} radius={6} />
+            <Sk width={140} height={36} radius={10} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <Sk width={200} height={38} radius={10} />
+            {[80,90,110,80].map((w,i) => <Sk key={i} width={w} height={38} radius={999} />)}
+          </div>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Sk width={180} height={15} />
+                <Sk width={260} height={12} radius={4} />
+              </div>
+              <Sk width={60} height={22} radius={999} />
+              <Sk width={76} height={30} radius={8} />
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

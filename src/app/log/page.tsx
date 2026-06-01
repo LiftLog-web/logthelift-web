@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import { EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
 const TEAL   = '#5fcfbf';
@@ -219,10 +220,30 @@ function LogWorkoutInner() {
 
   if (!authed) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+            <Sk width={120} height={13} radius={4} style={{ marginBottom: 12 }} />
+            <Sk width="100%" height={42} radius={10} />
+          </div>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <Sk width={160} height={15} />
+                <Sk width={70} height={22} radius={999} style={{ marginLeft: 'auto' }} />
+              </div>
+              {[0,1,2].map(j => (
+                <div key={j} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                  <Sk width={50} height={34} radius={8} />
+                  <Sk width={80} height={34} radius={8} />
+                  <Sk width={80} height={34} radius={8} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

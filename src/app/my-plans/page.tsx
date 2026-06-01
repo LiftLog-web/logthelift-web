@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -103,10 +104,25 @@ export default function MyPlansPage() {
 
   if (loading || !authed) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkNav />
+        <main style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
+          <Sk width={160} height={26} radius={6} style={{ marginBottom: 24 }} />
+          {[0,1,2].map(i => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <Sk width={160} height={15} />
+                <Sk width={80} height={22} radius={999} style={{ marginLeft: 'auto' }} />
+                <Sk width={22} height={22} radius={6} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Sk width={70} height={22} radius={999} />
+                <Sk width={80} height={22} radius={999} />
+              </div>
+            </div>
+          ))}
+        </main>
+      </SkPage>
     );
   }
 

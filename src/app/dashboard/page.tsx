@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
+import { Sk, SkPage, SHIMMER_CSS } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -283,8 +284,7 @@ export default function DashboardPage() {
   /* ── Loading skeleton ── */
   if (authState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
-        <style>{`@keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }`}</style>
+      <SkPage>
 
         {/* Nav */}
         <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto' }}>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </main>
-      </div>
+      </SkPage>
     );
   }
 
@@ -437,7 +437,7 @@ export default function DashboardPage() {
 
           {loadingData ? (
             <div style={{ padding: '0 20px' }}>
-              <style>{`@keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }`}</style>
+              <style>{SHIMMER_CSS}</style>
               {[0,1,2].map(i => <SkeletonRow key={i} first={i === 0} />)}
             </div>
           ) : pts.length === 0 ? (
@@ -555,18 +555,6 @@ export default function DashboardPage() {
       </main>
     </div>
   );
-}
-
-const SHIMMER: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%)',
-  backgroundSize: '600px 100%',
-  animation: 'shimmer 1.4s ease-in-out infinite',
-  borderRadius: 6,
-};
-
-function Sk({ width, height, radius = 6, style }: { width?: number | string; height: number; radius?: number; style?: React.CSSProperties }) {
-  return <div style={{ ...SHIMMER, width: width ?? '100%', height, borderRadius: radius, flexShrink: 0, ...style }} />;
 }
 
 function SkeletonRow({ first }: { first: boolean }) {

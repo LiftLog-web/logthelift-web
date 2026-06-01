@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useRef, Suspense, Fragment } from 're
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
+import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -397,10 +398,35 @@ function NewPlanInner() {
 
   if (!authed) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
+      <SkPage>
+        <SkSubHeader />
+        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 20 }}>
+            <div>
+              <Sk width="100%" height={42} radius={10} style={{ marginBottom: 12 }} />
+              <Sk width="100%" height={42} radius={10} style={{ marginBottom: 12 }} />
+              <Sk width="100%" height={80} radius={10} />
+            </div>
+            <div>
+              {[0,1,2].map(i => (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <Sk width={150} height={14} />
+                    <Sk width={60} height={22} radius={999} style={{ marginLeft: 'auto' }} />
+                  </div>
+                  {[0,1].map(j => (
+                    <div key={j} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <Sk width={40} height={32} radius={8} />
+                      <Sk width={70} height={32} radius={8} />
+                      <Sk width={70} height={32} radius={8} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </SkPage>
     );
   }
 
