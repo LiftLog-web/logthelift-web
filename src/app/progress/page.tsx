@@ -789,7 +789,7 @@ export default function ProgressPage() {
                               </button>
 
                               {isOpen && (
-                                <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
+                                <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'var(--card-alt)' }}>
                                   {w.notes?.trim() && (
                                     <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
                                       <span style={{ fontSize: 14 }}>💬</span>
