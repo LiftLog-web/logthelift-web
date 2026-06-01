@@ -36,8 +36,9 @@ interface PTRow {
   avgSatisfaction: number | null;
   satisfactionCount: number;
   plansCreated: number;
-  adherencePct: number | null;  // % of patients with ≥1 logged workout
-  lastActive: string | null;    // most recent plan created_at
+  adherencePct: number | null;
+  weeklyTarget: number | null;
+  lastActive: string | null;
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -52,6 +53,20 @@ function renderStars(rating: number): string {
   const half  = rating - full >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
   return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+}
+
+function getMondayOfCurrentWeek(): Date {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() - diff);
+  return monday;
+}
+
+function toDateStr(d: Date): string {
+  return d.toISOString().split('T')[0];
 }
 
 function statusBadge(status: string) {
@@ -79,6 +94,8 @@ export default function DashboardPage() {
   const [sub, setSub]               = useState<Subscription | null>(null);
   const [pts, setPts]               = useState<PTRow[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [targetEdits, setTargetEdits]   = useState<Record<string, string>>({});
+  const [savingTarget, setSavingTarget] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     getSupabase().auth.getSession().then(({ data }) => {
@@ -131,7 +148,7 @@ export default function DashboardPage() {
     // Get PT links with PT profiles
     const { data: links } = await getSupabase()
       .from('gym_pt_links')
-      .select('id, pt_id, status, invited_at, responded_at, pt:pt_id(display_name, email)')
+      .select('id, pt_id, status, invited_at, responded_at, weekly_workout_target, pt:pt_id(display_name, email)')
       .eq('gym_id', gymData.id)
       .order('invited_at', { ascending: false });
 
@@ -159,6 +176,7 @@ export default function DashboardPage() {
           satisfactionCount: 0,
           plansCreated: 0,
           adherencePct: null,
+          weeklyTarget: link.weekly_workout_target ?? null,
           lastActive: null,
         };
 
@@ -181,24 +199,40 @@ export default function DashboardPage() {
         if (patientIds.length > 0) {
           const { data: workouts } = await getSupabase()
             .from('synced_workouts')
-            .select('user_id, data')
+            .select('user_id, date, data')
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
-            // Avg satisfaction + count
+            // Avg satisfaction (all-time)
             const ratings = workouts
               .map((w: any) => w.data?.satisfactionRating)
               .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
             if (ratings.length > 0) {
-              base.avgSatisfaction    = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
-              base.satisfactionCount  = ratings.length;
+              base.avgSatisfaction   = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
+              base.satisfactionCount = ratings.length;
             }
 
-            // Adherence: % of patients who have logged ≥1 workout
-            const activePatients = new Set(workouts.map((w: any) => w.user_id)).size;
-            base.adherencePct = Math.round((activePatients / patientIds.length) * 100);
+            // Adherence: last 4 complete weeks only, current week excluded
+            const currentWeekStart = getMondayOfCurrentWeek();
+            const periodStart = new Date(currentWeekStart);
+            periodStart.setDate(periodStart.getDate() - 28);
+            const cwStr = toDateStr(currentWeekStart);
+            const psStr = toDateStr(periodStart);
+            const periodWorkouts = workouts.filter((w: any) => w.date >= psStr && w.date < cwStr);
+
+            if (base.weeklyTarget !== null && base.weeklyTarget > 0) {
+              const patientCounts: Record<string, number> = {};
+              for (const w of periodWorkouts) patientCounts[w.user_id] = (patientCounts[w.user_id] ?? 0) + 1;
+              let met = 0;
+              for (const pid of patientIds) {
+                if ((patientCounts[pid] ?? 0) / 4 >= base.weeklyTarget) met++;
+              }
+              base.adherencePct = Math.round((met / patientIds.length) * 100);
+            } else {
+              base.adherencePct = null; // no target set — don't show metric
+            }
           } else {
-            base.adherencePct = 0;
+            base.adherencePct = base.weeklyTarget !== null ? 0 : null;
           }
         }
 
@@ -232,15 +266,66 @@ export default function DashboardPage() {
     setPts([]);
   };
 
+  const saveTarget = async (ptLinkId: string, rawValue: string) => {
+    const trimmed = rawValue.trim();
+    const parsed  = trimmed === '' ? null : parseInt(trimmed, 10);
+    if (trimmed !== '' && (isNaN(parsed!) || parsed! < 1 || parsed! > 99)) return;
+    setSavingTarget(s => ({ ...s, [ptLinkId]: true }));
+    await getSupabase().from('gym_pt_links').update({ weekly_workout_target: parsed }).eq('id', ptLinkId);
+    setPts(prev => prev.map(p => p.id === ptLinkId ? { ...p, weeklyTarget: parsed } : p));
+    setTargetEdits(s => { const n = { ...s }; delete n[ptLinkId]; return n; });
+    setSavingTarget(s => ({ ...s, [ptLinkId]: false }));
+  };
+
   const activePTs  = pts.filter(p => p.status === 'accepted').length;
   const pendingPTs = pts.filter(p => p.status === 'pending').length;
 
-  /* ── Loading ── */
+  /* ── Loading skeleton ── */
   if (authState === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+        <style>{`@keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }`}</style>
+
+        {/* Nav */}
+        <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: TEAL, fontWeight: 800, fontSize: 20 }}>LiftLog</span>
+            <Sk width={130} height={14} radius={4} />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Sk width={72} height={30} radius={8} />
+            <Sk width={84} height={30} radius={8} />
+            <Sk width={80} height={30} radius={8} />
+          </div>
+        </nav>
+
+        <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }}>
+          {/* Gym name */}
+          <div style={{ marginBottom: 40 }}>
+            <Sk width={260} height={34} radius={8} style={{ marginBottom: 10 }} />
+            <Sk width={150} height={15} radius={5} />
+          </div>
+
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px' }}>
+                <Sk width={90} height={11} radius={3} style={{ marginBottom: 14 }} />
+                <Sk width={70} height={30} radius={6} />
+              </div>
+            ))}
+          </div>
+
+          {/* PT Roster */}
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <Sk width={90} height={18} radius={5} />
+            </div>
+            <div style={{ padding: '0 20px' }}>
+              {[0,1,2].map(i => <SkeletonRow key={i} first={i === 0} />)}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -351,7 +436,10 @@ export default function DashboardPage() {
           </div>
 
           {loadingData ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>Loading…</div>
+            <div style={{ padding: '0 20px' }}>
+              <style>{`@keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }`}</style>
+              {[0,1,2].map(i => <SkeletonRow key={i} first={i === 0} />)}
+            </div>
           ) : pts.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
               No PTs invited yet. Use the LiftLog app to invite PTs to your gym.
@@ -365,7 +453,7 @@ export default function DashboardPage() {
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Patients</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Plans</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, cursor: 'help', whiteSpace: 'nowrap' }}
-                      title="% of this PT's patients who have logged at least one workout session. Low % may indicate patients need more support or check-ins.">
+                      title="% of patients meeting the weekly workout target · last 4 complete weeks · current week excluded">
                     Logged Workouts ℹ
                   </th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Satisfaction</th>
@@ -397,15 +485,38 @@ export default function DashboardPage() {
 
                     {/* Logged Workouts % */}
                     <td style={{ padding: '14px 14px', textAlign: 'center' }}>
-                      {pt.status === 'accepted' && pt.adherencePct !== null ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                          <div style={{ width: 40, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
-                            <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
+                      {pt.status === 'accepted' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                          {pt.weeklyTarget !== null && pt.adherencePct !== null ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                              <div style={{ width: 40, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
+                                <div style={{ height: '100%', width: `${pt.adherencePct}%`, background: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', borderRadius: 999 }} />
+                              </div>
+                              <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
+                                {pt.adherencePct}%
+                              </span>
+                            </span>
+                          ) : pt.weeklyTarget === null ? (
+                            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>set target below</span>
+                          ) : (
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>0%</span>
+                          )}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Target:</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={99}
+                              placeholder="—"
+                              value={targetEdits[pt.id] ?? (pt.weeklyTarget !== null ? String(pt.weeklyTarget) : '')}
+                              onChange={e => setTargetEdits(s => ({ ...s, [pt.id]: e.target.value }))}
+                              onBlur={e => saveTarget(pt.id, e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                              style={{ width: 32, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 11, textAlign: 'center', padding: '2px 4px', outline: 'none', opacity: savingTarget[pt.id] ? 0.5 : 1 }}
+                            />
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>/wk</span>
                           </div>
-                          <span style={{ color: pt.adherencePct >= 80 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700 }}>
-                            {pt.adherencePct}%
-                          </span>
-                        </span>
+                        </div>
                       ) : (
                         <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
                       )}
@@ -442,6 +553,59 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+const SHIMMER: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.07)',
+  backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%)',
+  backgroundSize: '600px 100%',
+  animation: 'shimmer 1.4s ease-in-out infinite',
+  borderRadius: 6,
+};
+
+function Sk({ width, height, radius = 6, style }: { width?: number | string; height: number; radius?: number; style?: React.CSSProperties }) {
+  return <div style={{ ...SHIMMER, width: width ?? '100%', height, borderRadius: radius, flexShrink: 0, ...style }} />;
+}
+
+function SkeletonRow({ first }: { first: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 0', borderTop: first ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+      {/* PT name + email */}
+      <div style={{ flex: '0 0 200px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <Sk width={140} height={13} />
+        <Sk width={170} height={11} radius={4} />
+      </div>
+      {/* Status badge */}
+      <div style={{ flex: '0 0 80px', display: 'flex', justifyContent: 'center' }}>
+        <Sk width={62} height={22} radius={999} />
+      </div>
+      {/* Patients */}
+      <div style={{ flex: '0 0 70px', display: 'flex', justifyContent: 'center' }}>
+        <Sk width={24} height={14} />
+      </div>
+      {/* Plans */}
+      <div style={{ flex: '0 0 60px', display: 'flex', justifyContent: 'center' }}>
+        <Sk width={20} height={14} />
+      </div>
+      {/* Logged workouts */}
+      <div style={{ flex: '0 0 130px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sk width={40} height={5} radius={999} />
+          <Sk width={30} height={13} radius={4} />
+        </div>
+        <Sk width={90} height={18} radius={6} />
+      </div>
+      {/* Satisfaction */}
+      <div style={{ flex: '0 0 110px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <Sk width={90} height={13} radius={4} />
+        <Sk width={50} height={11} radius={3} />
+      </div>
+      {/* Last active */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <Sk width={80} height={13} radius={4} />
+      </div>
     </div>
   );
 }
