@@ -176,9 +176,11 @@ export default function ProgressPage() {
   const [expandedWeeksLog,  setExpandedWeeksLog]  = useState<Set<string>>(new Set());
 
   /* exercise progress charts */
-  const [exercises, setExercises] = useState<{ id: string; name: string; type: string }[]>([]);
-  const [exData,    setExData]    = useState<Record<string, DataPoint[]>>({});
-  const [selExId,   setSelExId]   = useState('');
+  const [exercises,   setExercises]   = useState<{ id: string; name: string; type: string }[]>([]);
+  const [exData,      setExData]      = useState<Record<string, DataPoint[]>>({});
+  const [exVolData,   setExVolData]   = useState<Record<string, DataPoint[]>>({});
+  const [selExId,     setSelExId]     = useState('');
+  const [exView,      setExView]      = useState<'weight' | 'volume'>('weight');
 
   /* body weight */
   const [bodyWts,   setBodyWts]   = useState<BodyWeightRow[]>([]);
@@ -217,8 +219,9 @@ export default function ProgressPage() {
       setExpandedWeeksLog(new Set([...allWeekKeys].filter(k => !collapsed.has(k))));
 
       /* build exercise chart data */
-      const exMap:   Record<string, { id: string; name: string; type: string }> = {};
-      const dataMap: Record<string, DataPoint[]> = {};
+      const exMap:     Record<string, { id: string; name: string; type: string }> = {};
+      const dataMap:   Record<string, DataPoint[]> = {};
+      const volMap:    Record<string, DataPoint[]> = {};
       (rows ?? []).forEach((row: any) => {
         const w = row.data; const date: string = row.date || w?.date;
         if (!date) return;
@@ -252,12 +255,24 @@ export default function ProgressPage() {
             if (existing) { if (value > existing.value) { existing.value = value; existing.unit = unit; } }
             else dataMap[ex.id].push({ date, value, unit });
           }
+          // Volume: sum of weight × reps across all sets (weighted exercises only)
+          if (ex.type === 'weighted') {
+            const volUnit = sets.find((s: any) => s.unit)?.unit ?? 'lbs';
+            const totalVol = sets.reduce((sum: number, s: any) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);
+            if (totalVol > 0) {
+              if (!volMap[ex.id]) volMap[ex.id] = [];
+              const exVol = volMap[ex.id].find(p => p.date === date);
+              if (exVol) exVol.value += totalVol;
+              else volMap[ex.id].push({ date, value: totalVol, unit: volUnit });
+            }
+          }
         });
       });
 
       const exList = Object.values(exMap).sort((a, b) => a.name.localeCompare(b.name));
       setExercises(exList);
       setExData(dataMap);
+      setExVolData(volMap);
       if (exList.length > 0) setSelExId(exList[0].id);
 
       const { data: bw } = await sb
@@ -371,22 +386,26 @@ export default function ProgressPage() {
   const avgRating      = ratings.length ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1) : null;
 
   /* ── Exercise chart derived ── */
-  const selEx     = exercises.find(e => e.id === selExId);
-  const chartData = exData[selExId] ?? [];
-  const exBest    = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : null;
-  const exLast    = chartData.length > 0 ? chartData[chartData.length - 1] : null;
-  const exUnit = chartData.length > 0 ? (chartData[chartData.length - 1].unit ?? 'kg') : 'kg';
+  const selEx        = exercises.find(e => e.id === selExId);
+  const isWeighted   = selEx?.type === 'weighted';
+  const rawChartData = exView === 'volume' && isWeighted ? (exVolData[selExId] ?? []) : (exData[selExId] ?? []);
+  const chartData    = rawChartData;
+  const exBest       = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : null;
+  const exLast       = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+  const exUnit       = chartData.length > 0 ? (chartData[chartData.length - 1].unit ?? 'lbs') : 'lbs';
   const exYFmt = (v: number) => {
-    if (exUnit === 'reps') return `${Math.round(v)} reps`;
-    if (exUnit === 's')    return `${Math.round(v)}s`;
-    if (exUnit === 'min')  return `${Math.round(v)}min`;
+    if (exView === 'volume') return `${Math.round(v).toLocaleString()} ${exUnit}`;
+    if (exUnit === 'reps')   return `${Math.round(v)} reps`;
+    if (exUnit === 's')      return `${Math.round(v)}s`;
+    if (exUnit === 'min')    return `${Math.round(v)}min`;
     return `${v % 1 === 0 ? v : v.toFixed(1)}${exUnit}`;
   };
   const exMetricLabel =
-    exUnit === 'reps' ? 'Max reps per session' :
-    exUnit === 's'    ? 'Max duration per session (sec)' :
-    exUnit === 'min'  ? 'Total cardio per session (min)' :
-    `Max weight per session`;
+    exView === 'volume'  ? `Total volume per session (${exUnit} × reps)` :
+    exUnit === 'reps'    ? 'Max reps per session' :
+    exUnit === 's'       ? 'Max duration per session (sec)' :
+    exUnit === 'min'     ? 'Total cardio per session (min)' :
+    'Max weight per session';
 
   /* ── Body weight derived ── */
   const bwChartData: DataPoint[] = bodyWts.map(b => ({
@@ -584,12 +603,24 @@ export default function ProgressPage() {
         <section style={{ marginBottom: 52 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Exercise Progress</h2>
-            {exercises.length > 0 && (
-              <select value={selExId} onChange={e => setSelExId(e.target.value)}
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 14px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer', minWidth: 220 }}>
-                {exercises.map(ex => <option key={ex.id} value={ex.id} style={{ background: 'var(--card)' }}>{ex.name}</option>)}
-              </select>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {isWeighted && (
+                <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  {(['weight', 'volume'] as const).map(v => (
+                    <button key={v} onClick={() => setExView(v)}
+                      style={{ padding: '6px 14px', background: exView === v ? TEAL : 'transparent', color: exView === v ? '#0f1117' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: exView === v ? 700 : 400, textTransform: 'capitalize' }}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {exercises.length > 0 && (
+                <select value={selExId} onChange={e => { setSelExId(e.target.value); setExView('weight'); }}
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 14px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer', minWidth: 220 }}>
+                  {exercises.map(ex => <option key={ex.id} value={ex.id} style={{ background: 'var(--card)' }}>{ex.name}</option>)}
+                </select>
+              )}
+            </div>
           </div>
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px 28px' }}>
             {exercises.length === 0 ? (
