@@ -48,7 +48,7 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
               padding: '0 12px',
               height: 56,
               cursor: 'pointer',
-              color: isActive(item.href) ? 'var(--text)' : 'var(--text-muted)',
+              color: isActive(item.href) ? TEAL : 'var(--text)',
               fontSize: 13,
               fontWeight: isActive(item.href) ? 700 : 400,
               display: 'flex',

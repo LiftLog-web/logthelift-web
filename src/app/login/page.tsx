@@ -122,7 +122,7 @@ export default function LoginPage() {
               style={{
                 flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
                 background: tab === t ? TEAL : 'transparent',
-                color: tab === t ? '#0f1117' : 'var(--text-muted)',
+                color: tab === t ? '#0f1117' : PURPLE,
               }}
             >
               {t === 'signin' ? 'Sign In' : 'Sign Up'}
