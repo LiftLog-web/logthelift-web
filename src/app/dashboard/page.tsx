@@ -564,22 +564,6 @@ export default function DashboardPage() {
                           ) : (
                             <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>0%</span>
                           )}
-                          {/* Target input */}
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>Target:</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={99}
-                              placeholder="—"
-                              value={targetEdits[pt.id] ?? (pt.weeklyTarget !== null ? String(pt.weeklyTarget) : '')}
-                              onChange={e => setTargetEdits(s => ({ ...s, [pt.id]: e.target.value }))}
-                              onBlur={e => saveTarget(pt.id, e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                              style={{ width: 32, background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 6, color: 'var(--text)', fontSize: 11, textAlign: 'center', padding: '2px 4px', outline: 'none', opacity: savingTarget[pt.id] ? 0.5 : 1 }}
-                            />
-                            <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>/wk</span>
-                          </div>
                         </div>
                       ) : (
                         <span style={{ color: 'var(--text-dim)' }}>—</span>
