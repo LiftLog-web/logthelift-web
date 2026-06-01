@@ -159,7 +159,7 @@ export default function Home() {
               className="rounded-2xl p-6 flex flex-col gap-3 border"
               style={t.highlight
                 ? { borderColor: YELLOW, background: `${YELLOW}12` }
-                : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}
+                : { borderColor: 'rgba(255,255,255,0.1)', background: 'var(--card)' }}
             >
               {t.highlight && (
                 <span

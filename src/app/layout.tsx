@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import NavShell from '@/components/NavShell';
+import { ThemeProvider } from '@/lib/ThemeContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -19,9 +21,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-[#0f1117] text-white antialiased">
-        <NavShell />
-        {children}
+      <body className="min-h-full flex flex-col antialiased">
+        <ThemeProvider>
+          <NavShell />
+          <ThemeToggle />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

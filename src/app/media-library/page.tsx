@@ -309,11 +309,11 @@ export default function MediaLibraryPage() {
               <Sk width={100} height={36} radius={10} />
             </div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+          <div style={{ background: 'var(--card)', borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
             <Sk width="100%" height={8} radius={999} />
           </div>
           <Sk width={220} height={36} radius={10} style={{ marginBottom: 16 }} />
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
             {[0,1,2,3,4].map(i => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <Sk width={56} height={40} radius={8} />
@@ -330,7 +330,7 @@ export default function MediaLibraryPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 
@@ -343,7 +343,7 @@ export default function MediaLibraryPage() {
                 onClick={() => openUploadModal()}
                 disabled={atUploadCap}
                 title={atUploadCap ? `Upload limit of ${MEDIA_CAP} files reached` : undefined}
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: atUploadCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: atUploadCap ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer' }}
               >
                 Upload File
               </button>
@@ -355,12 +355,12 @@ export default function MediaLibraryPage() {
               </button>
             </div>
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 0, marginBottom: 16 }}>
+          <p style={{ color: 'var(--text-muted)', marginTop: 0, marginBottom: 16 }}>
             {items.length} demo{items.length !== 1 ? 's' : ''} · {linkCount} video link{linkCount !== 1 ? 's' : ''} · {uploadCount} upload{uploadCount !== 1 ? 's' : ''}
           </p>
           {/* Usage bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
+            <div style={{ flex: 1, height: 6, background: 'var(--input-bg)', borderRadius: 999, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${usagePct}%`, background: usageBarColor, borderRadius: 999, transition: 'width 0.3s ease' }} />
             </div>
             <span style={{ color: atUploadCap ? '#EF4444' : 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: atUploadCap ? 700 : 500, whiteSpace: 'nowrap' }}>
@@ -371,7 +371,7 @@ export default function MediaLibraryPage() {
 
         <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
             <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
             Patients tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
           </p>
@@ -382,31 +382,31 @@ export default function MediaLibraryPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search exercises…"
-            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '11px 16px', color: '#fff', fontSize: 15, outline: 'none' }}
+            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '11px 16px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
           />
         )}
 
         {items.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
             <p style={{ fontSize: 48, marginBottom: 16 }}>🎬</p>
             <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No demos yet</h2>
-            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 28, fontSize: 15 }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 15 }}>
               Add a video link or upload a file to get started.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => openUploadModal()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
+              <button onClick={() => openUploadModal()} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
               <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
             </div>
           </div>
         ) : filteredItems.length === 0 ? (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 40, textAlign: 'center' }}>
-                <p style={{ color: 'rgba(255,255,255,0.4)' }}>No exercises match "{search}"</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 40, textAlign: 'center' }}>
+                <p style={{ color: 'var(--text-muted)' }}>No exercises match "{search}"</p>
               </div>
             ) : (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
-                    <tr style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <tr style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600, width: 80 }}>Preview</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Exercise</th>
                       <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 600 }}>Muscle Group</th>
@@ -440,25 +440,25 @@ export default function MediaLibraryPage() {
                             ) : item.media_type === 'video' && signedUrl ? (
                               <button
                                 onClick={() => setViewMedia({ url: signedUrl, type: 'video', name: item.exercise_name })}
-                                style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18 }}
+                                style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid var(--border-strong)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontSize: 18 }}
                               >
                                 ▶
                               </button>
                             ) : item.media_type === 'link' ? (
                               <div style={{ width: 64, height: 48, background: '#0f2a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
                             ) : (
-                              <div style={{ width: 64, height: 48, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <div style={{ width: 16, height: 16, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                               </div>
                             )}
                           </td>
 
                           <td style={{ padding: '12px 24px', fontWeight: 600 }}>{item.exercise_name}
-                            {item.notes && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2, fontWeight: 400 }}>{item.notes}</div>}
+                            {item.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontWeight: 400 }}>{item.notes}</div>}
                           </td>
 
-                          <td style={{ padding: '12px 24px', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                            {item.muscle_group ?? <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>}
+                          <td style={{ padding: '12px 24px', color: 'var(--text-muted)', fontSize: 13 }}>
+                            {item.muscle_group ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
                           </td>
 
                           <td style={{ padding: '12px 24px' }}>
@@ -480,11 +480,11 @@ export default function MediaLibraryPage() {
                                 {item.media_type === 'photo' ? 'View photo' : 'Play video'}
                               </button>
                             ) : (
-                              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>{item.file_path.split('/').pop()}</span>
+                              <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>{item.file_path.split('/').pop()}</span>
                             )}
                           </td>
 
-                          <td style={{ padding: '12px 24px', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 24px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                             {new Date(item.created_at).toLocaleDateString('en-CA')}
                           </td>
 
@@ -513,15 +513,15 @@ export default function MediaLibraryPage() {
         >
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewMedia.name}</p>
-              <button onClick={() => setViewMedia(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewMedia.name}</p>
+              <button onClick={() => setViewMedia(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {viewMedia.type === 'photo' ? (
               <img src={viewMedia.url} alt={viewMedia.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />
             ) : (
               <video src={viewMedia.url} controls autoPlay style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', background: '#000' }} />
             )}
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
           </div>
         </div>
       )}
@@ -574,9 +574,9 @@ export default function MediaLibraryPage() {
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
                   {editItem ? 'Edit Demo' : modalMode === 'url' ? 'Add Video Link' : 'Upload Demo File'}
                 </h2>
-                <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 28 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 28 }}>
                 {modalMode === 'url' ? 'Paste any video URL — YouTube, Vimeo, Instagram, or anything else.' : 'Upload a photo or video file.'}
               </p>
 
@@ -584,9 +584,9 @@ export default function MediaLibraryPage() {
 
                 {/* Exercise picker — inline, no absolute overlay */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Exercise *</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Exercise *</span>
                   {nameLocked ? (
-                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '11px 14px', color: 'rgba(255,255,255,0.5)', fontSize: 15 }}>
+                    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 14px', color: 'var(--text-muted)', fontSize: 15 }}>
                       {exerciseName}
                     </div>
                   ) : (
@@ -597,10 +597,10 @@ export default function MediaLibraryPage() {
                         onFocus={() => { setExDropdownOpen(true); if (exerciseName) setExSearch(exerciseName); }}
                         onKeyDown={e => { if (e.key === 'Escape') { setExDropdownOpen(false); setExSearch(''); } }}
                         placeholder="Search exercises…"
-                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'rgba(255,255,255,0.15)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : '#fff', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
                       />
                       {listOpen && (
-                        <div style={{ background: '#1e2130', border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
+                        <div style={{ background: '#1e2130', border: '1px solid var(--border-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
                           {/* Scrollable results — capped so Create is always in view */}
                           <div style={{ maxHeight: 111, overflowY: 'auto' }}>
                             {filtered.map(ex => (
@@ -611,8 +611,8 @@ export default function MediaLibraryPage() {
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                               >
-                                <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ex.name}</div>
-                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{ex.sub}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{ex.name}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{ex.sub}</div>
                               </button>
                             ))}
                           </div>
@@ -625,7 +625,7 @@ export default function MediaLibraryPage() {
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
                               <div style={{ fontSize: 14, fontWeight: 700, color: TEAL }}>+ Create &ldquo;{exSearch.trim()}&rdquo;</div>
-                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Add as a new custom exercise</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>Add as a new custom exercise</div>
                             </button>
                           )}
                         </div>
@@ -636,40 +636,40 @@ export default function MediaLibraryPage() {
 
                 {/* Muscle group + notes */}
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
                   <input
                     value={muscleGroupInput}
                     onChange={e => setMuscleGroupInput(e.target.value)}
                     placeholder="e.g. Quadriceps"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none' }}
+                    style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>PT Notes <span style={{ fontWeight: 400 }}>(optional)</span></span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>PT Notes <span style={{ fontWeight: 400 }}>(optional)</span></span>
                   <textarea
                     value={notesInput}
                     onChange={e => setNotesInput(e.target.value)}
                     placeholder="e.g. Focus on slow descent, keep knee aligned over second toe"
                     rows={2}
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                    style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
                   />
                 </label>
 
                 {/* URL / File */}
                 {modalMode === 'url' ? (
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Video URL *</span>
                     <input
                       value={urlInput}
                       onChange={e => setUrlInput(e.target.value)}
                       placeholder="https://youtube.com/watch?v=... or any video link"
                       type="url"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                     />
                   </label>
                 ) : (
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
                       {editItem ? 'Replace File' : 'File *'}
                       {editItem && <span style={{ fontWeight: 400, marginLeft: 6 }}>(optional — leave blank to keep current)</span>}
                     </span>
@@ -684,7 +684,7 @@ export default function MediaLibraryPage() {
                 {modalError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{modalError}</p>}
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                  <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={closeModal} disabled={saving} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={modalMode === 'url' ? handleSaveUrl : handleSaveUpload} disabled={saving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                     {saving ? 'Saving…' : editItem ? 'Save Changes' : modalMode === 'url' ? 'Save Link' : 'Upload & Save'}
                   </button>
@@ -708,16 +708,16 @@ export default function MediaLibraryPage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                 <div>
                   <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>{viewersItem.exercise_name}</h2>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
                     Patients who have this exercise in one of their plans
                   </p>
                 </div>
-                <button onClick={() => setViewersItem(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
+                <button onClick={() => setViewersItem(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', marginTop: 20 }}>
                 {viewers.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontSize: 14 }}>
                     <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
                     No patients have this exercise in any active plan yet.
                   </div>
@@ -726,11 +726,11 @@ export default function MediaLibraryPage() {
                     {viewers.map(v => (
                       <div
                         key={v.planId}
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                        style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                       >
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{v.patientName}</div>
-                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>📋 {v.planName}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>📋 {v.planName}</div>
                         </div>
                         <a
                           href={`/patients/${v.patientId}`}
@@ -744,11 +744,11 @@ export default function MediaLibraryPage() {
                 )}
               </div>
 
-              <div style={{ marginTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+              <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
                   {viewers.length} patient{viewers.length !== 1 ? 's' : ''} · {viewers.length} plan{viewers.length !== 1 ? 's' : ''}
                 </span>
-                <button onClick={() => setViewersItem(null)} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                <button onClick={() => setViewersItem(null)} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                   Close
                 </button>
               </div>

@@ -95,7 +95,7 @@ export default function ProfilePage() {
       <SkPage>
         <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
           {/* Profile card */}
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '32px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24 }}>
             <Sk width={72} height={72} radius={999} />
             <div style={{ flex: 1 }}>
               <Sk width={180} height={20} style={{ marginBottom: 10 }} />
@@ -108,8 +108,8 @@ export default function ProfilePage() {
             <Sk width={80} height={32} radius={8} />
           </div>
           {/* Connections */}
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden', marginBottom: 24 }}>
-            <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', marginBottom: 24 }}>
+            <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
               <Sk width={140} height={17} radius={5} />
             </div>
             {[0,1,2].map(i => (
@@ -125,7 +125,7 @@ export default function ProfilePage() {
           {/* Actions row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
             {[0,1].map(i => (
-              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px' }}>
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px 28px' }}>
                 <Sk width={140} height={15} style={{ marginBottom: 8 }} />
                 <Sk width="90%" height={12} radius={4} style={{ marginBottom: 16 }} />
                 <Sk width={120} height={36} radius={10} />
@@ -139,8 +139,8 @@ export default function ProfilePage() {
 
   if (pageState === 'unauthenticated') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <p style={{ color: 'rgba(255,255,255,0.5)' }}>You need to sign in to view your profile.</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <p style={{ color: 'var(--text-muted)' }}>You need to sign in to view your profile.</p>
         <a href="/login" style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none' }}>Sign In</a>
       </div>
     );
@@ -149,20 +149,20 @@ export default function ProfilePage() {
   const isPractitioner = profile?.role === 'practitioner';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Patient-only nav (practitioners get NavShell from layout) */}
       {!isPractitioner && (
-        <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>Sign Out</button>
+          <button onClick={handleSignOut} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>Sign Out</button>
         </nav>
       )}
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
 
         {/* Profile card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? `${PURPLE}33` : `${TEAL}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -171,9 +171,9 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
-              <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.55)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
+              <button onClick={handleSignOut} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ background: isPractitioner ? `${PURPLE}22` : `${TEAL}22`, color: isPractitioner ? PURPLE : TEAL, padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
                 {isPractitioner ? 'Practitioner' : 'Patient'}
@@ -188,8 +188,8 @@ export default function ProfilePage() {
         </div>
 
         {/* Connections */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden' }}>
-          <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
               {isPractitioner ? `My Patients (${patients.length})` : `My Practitioners (${practitioners.length})`}
             </h2>
@@ -197,7 +197,7 @@ export default function ProfilePage() {
 
           {(isPractitioner ? patients : practitioners).length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
-              <p style={{ color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
+              <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
                 {isPractitioner
                   ? 'No patients linked yet. Share your invite code in the LiftLog app.'
                   : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{person.display_name}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>{person.email}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{person.email}</p>
                   </div>
                 </div>
               ))}
@@ -226,12 +226,12 @@ export default function ProfilePage() {
 
         {/* Practitioner utilities */}
         {isPractitioner && (
-          <div style={{ marginTop: 28, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
               <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import Patients</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
             </div>
-            <a href="/import" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <a href="/import" style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap' }}>
               Import Patients
             </a>
           </div>
@@ -243,7 +243,7 @@ export default function ProfilePage() {
             <div style={{ background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Log a Workout</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Record your session from your computer.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Record your session from your computer.</p>
               </div>
               <a href="/log" style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
                 Log Workout
@@ -252,16 +252,16 @@ export default function ProfilePage() {
             <div style={{ background: `${PURPLE}11`, border: `1px solid ${PURPLE}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>My Plans</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>View plans assigned by your practitioner.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>View plans assigned by your practitioner.</p>
               </div>
-              <a href="/my-plans" style={{ background: PURPLE, color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
+              <a href="/my-plans" style={{ background: PURPLE, color: 'var(--text)', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
                 View Plans
               </a>
             </div>
             <div style={{ background: `${YELLOW}0d`, border: `1px solid ${YELLOW}30`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Progress</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Track your consistency, strength gains, and workout history.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Track your consistency, strength gains, and workout history.</p>
               </div>
               <a href="/progress" style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
                 View Progress
@@ -270,9 +270,9 @@ export default function ProfilePage() {
             <div style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}30`, borderRadius: 20, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Friends</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>View friend activity, react to workouts, and add new friends.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>View friend activity, react to workouts, and add new friends.</p>
               </div>
-              <a href="/friends" style={{ background: PURPLE, color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
+              <a href="/friends" style={{ background: PURPLE, color: 'var(--text)', borderRadius: 12, padding: '10px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 14, textAlign: 'center' }}>
                 View Friends
               </a>
             </div>
@@ -283,7 +283,7 @@ export default function ProfilePage() {
         <div style={{ marginTop: 32, background: `${TEAL}11`, border: `1px solid ${TEAL}33`, borderRadius: 20, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Full experience on mobile</p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Log workouts, track progress, and connect with your team on the LiftLog app.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Log workouts, track progress, and connect with your team on the LiftLog app.</p>
           </div>
           <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
             style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>

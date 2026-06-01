@@ -263,7 +263,7 @@ export default function FriendsPage() {
           <Sk width={90} height={36} radius={999} />
         </div>
         {[0,1,2].map(i => (
-          <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px', marginBottom: 12 }}>
+          <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
               <Sk width={44} height={44} radius={999} />
               <div style={{ flex: 1 }}>
@@ -284,13 +284,13 @@ export default function FriendsPage() {
   const EMOJIS = ['🔥', '💪', '✅'];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 900, margin: '0 auto' }}>
+      <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Friends</span>
+          <span style={{ color: 'var(--text-dim)', fontSize: 14 }}>/ Friends</span>
         </div>
         <a href="/log" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>+ Log Workout</a>
       </nav>
@@ -298,13 +298,13 @@ export default function FriendsPage() {
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 32px' }}>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'var(--card)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
           {(['feed', 'friends'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '8px 24px', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, background: tab === t ? TEAL : 'transparent', color: tab === t ? '#0f1117' : 'rgba(255,255,255,0.5)', transition: 'all 0.15s', textTransform: 'capitalize' }}>
               {t === 'feed' ? 'Activity Feed' : `Friends${friends.length > 0 ? ` (${friends.length})` : ''}`}
               {t === 'friends' && pendingIn.length > 0 && (
-                <span style={{ marginLeft: 6, background: PURPLE, color: '#fff', borderRadius: 999, fontSize: 11, padding: '1px 6px', fontWeight: 700 }}>{pendingIn.length}</span>
+                <span style={{ marginLeft: 6, background: PURPLE, color: 'var(--text)', borderRadius: 999, fontSize: 11, padding: '1px 6px', fontWeight: 700 }}>{pendingIn.length}</span>
               )}
             </button>
           ))}
@@ -314,9 +314,9 @@ export default function FriendsPage() {
         {tab === 'feed' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {feed.length === 0 ? (
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
                 <p style={{ fontSize: 36, marginBottom: 12 }}>🏋️</p>
-                <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>
+                <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>
                   {friends.length === 0 ? 'Add friends to see their workouts here.' : 'No workouts from friends yet.'}
                 </p>
                 <button onClick={() => setTab('friends')} style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 8 }}>
@@ -330,14 +330,14 @@ export default function FriendsPage() {
               const isOpen = expanded.has(item.workoutId);
 
               return (
-                <div key={item.workoutId} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' }}>
+                <div key={item.workoutId} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
 
                   {/* Card header */}
                   <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
                     <Av p={item.friend} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{item.friend.display_name}</p>
-                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
                         {fmtDate(item.date)}{duration > 0 ? ` · ${duration} min` : ''}
                         {exercises.length > 0 ? ` · ${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}` : ''}
                       </p>
@@ -348,8 +348,8 @@ export default function FriendsPage() {
                   {exercises.length > 0 && (
                     <div style={{ padding: '0 20px 14px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {exercises.map((e: any, i: number) => (
-                        <span key={i} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 8, padding: '4px 10px', fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-                          {e.exercise?.name ?? 'Exercise'} <span style={{ color: 'rgba(255,255,255,0.3)' }}>×{e.sets?.length ?? 0}</span>
+                        <span key={i} style={{ background: 'var(--card-alt)', borderRadius: 8, padding: '4px 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+                          {e.exercise?.name ?? 'Exercise'} <span style={{ color: 'var(--text-dim)' }}>×{e.sets?.length ?? 0}</span>
                         </span>
                       ))}
                     </div>
@@ -357,13 +357,13 @@ export default function FriendsPage() {
 
                   {/* Notes */}
                   {item.data?.notes?.trim() && (
-                    <div style={{ margin: '0 20px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                    <div style={{ margin: '0 20px 12px', background: 'var(--card)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       "{item.data.notes}"
                     </div>
                   )}
 
                   {/* Reactions */}
-                  <div style={{ padding: '10px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {EMOJIS.map(emoji => {
                       const count = item.reactions.filter(r => r.reaction === emoji).length;
                       const mine  = myReaction?.reaction === emoji;
@@ -376,17 +376,17 @@ export default function FriendsPage() {
                     })}
 
                     <button onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(item.workoutId) ? n.delete(item.workoutId) : n.add(item.workoutId); return n; })}
-                      style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer', padding: '5px 8px' }}>
+                      style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: '5px 8px' }}>
                       {item.comments.length > 0 ? `${item.comments.length} comment${item.comments.length !== 1 ? 's' : ''}` : 'Comment'} {isOpen ? '▴' : '▾'}
                     </button>
                   </div>
 
                   {/* Comments */}
                   {isOpen && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {item.comments.map(c => (
                         <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 12px' }}>
+                          <div style={{ flex: 1, background: 'var(--card)', borderRadius: 10, padding: '8px 12px' }}>
                             <span style={{ fontWeight: 700, fontSize: 12, color: TEAL, marginRight: 8 }}>{c.commenter_name}</span>
                             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{c.text}</span>
                           </div>
@@ -402,7 +402,7 @@ export default function FriendsPage() {
                           onChange={e => setInputs(prev => ({ ...prev, [item.workoutId]: e.target.value }))}
                           onKeyDown={e => e.key === 'Enter' && postComment(item.workoutId)}
                           placeholder="Add a comment…"
-                          style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
+                          style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                         />
                         <button onClick={() => postComment(item.workoutId)}
                           disabled={!(inputs[item.workoutId] ?? '').trim()}
@@ -425,9 +425,9 @@ export default function FriendsPage() {
             {/* Your friend code */}
             <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}30`, borderRadius: 16, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Your Friend Code</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Your Friend Code</p>
                 <p style={{ fontSize: 22, fontWeight: 800, color: TEAL, letterSpacing: '0.12em', margin: 0 }}>{myCode || '——'}</p>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: '4px 0 0' }}>Share this code so others can add you</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>Share this code so others can add you</p>
               </div>
               <button
                 onClick={() => { navigator.clipboard.writeText(myCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
@@ -448,7 +448,7 @@ export default function FriendsPage() {
                       <button onClick={() => accept(req.friendshipId)}
                         style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Accept</button>
                       <button onClick={() => decline(req.friendshipId)}
-                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>Decline</button>
+                        style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>Decline</button>
                     </div>
                   ))}
                 </div>
@@ -464,10 +464,10 @@ export default function FriendsPage() {
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && doSearch()}
                   placeholder="Search by name or friend code…"
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                 />
                 <button onClick={doSearch} disabled={searching || !search.trim()}
-                  style={{ background: PURPLE, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: searching || !search.trim() ? 'not-allowed' : 'pointer', opacity: searching || !search.trim() ? 0.5 : 1 }}>
+                  style={{ background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: searching || !search.trim() ? 'not-allowed' : 'pointer', opacity: searching || !search.trim() ? 0.5 : 1 }}>
                   {searching ? '…' : 'Search'}
                 </button>
               </div>
@@ -475,18 +475,18 @@ export default function FriendsPage() {
               {searchRes.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {searchRes.map(r => (
-                    <div key={r.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div key={r.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                       <Av p={r} size={38} />
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>{r.display_name}</p>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: 0, letterSpacing: '0.08em' }}>{r.friend_code}</p>
+                        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.08em' }}>{r.friend_code}</p>
                       </div>
                       {r.status === 'accepted'   && <span style={{ fontSize: 12, color: TEAL, fontWeight: 700 }}>Already friends</span>}
-                      {r.status === 'pending_out' && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Request sent</span>}
+                      {r.status === 'pending_out' && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Request sent</span>}
                       {r.status === 'pending_in'  && <span style={{ fontSize: 12, color: YELLOW }}>Sent you a request</span>}
                       {r.status === 'none' && (
                         <button onClick={() => sendRequest(r.id)}
-                          style={{ background: PURPLE, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Add Friend</button>
+                          style={{ background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Add Friend</button>
                       )}
                     </div>
                   ))}
@@ -494,7 +494,7 @@ export default function FriendsPage() {
               )}
 
               {searchRes.length === 0 && search && !searching && (
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No users found. Try their exact friend code.</p>
+                <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No users found. Try their exact friend code.</p>
               )}
             </div>
 
@@ -502,18 +502,18 @@ export default function FriendsPage() {
             <div>
               <h3 style={{ fontWeight: 700, fontSize: 15, margin: '0 0 12px' }}>My Friends ({friends.length})</h3>
               {friends.length === 0 ? (
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>No friends added yet — search above to get started.</p>
+                <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>No friends added yet — search above to get started.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {friends.map(({ friendshipId, friend }) => (
-                    <div key={friendshipId} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div key={friendshipId} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
                       <Av p={friend} size={40} />
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>{friend.display_name}</p>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: 0, letterSpacing: '0.08em' }}>{friend.friend_code}</p>
+                        <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.08em' }}>{friend.friend_code}</p>
                       </div>
                       {friend.sharing_preferences?.share_workouts === false && (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '2px 8px' }}>Private</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)', background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px' }}>Private</span>
                       )}
                       <button onClick={() => removeFriend(friendshipId)}
                         style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>

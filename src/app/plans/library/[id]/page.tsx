@@ -417,7 +417,7 @@ export default function TemplateEditorPage() {
     const unit = ex.unit ?? preferredUnit;
     return (
       <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, width: 24, flexShrink: 0 }}>
+        <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>
           {setIdx + 1}
         </span>
 
@@ -432,9 +432,9 @@ export default function TemplateEditorPage() {
                 style={inputStyle}
                 placeholder="0"
               />
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>reps</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
             </div>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>@</span>
+            <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input
                 type="number"
@@ -444,7 +444,7 @@ export default function TemplateEditorPage() {
                 style={inputStyle}
                 placeholder="0"
               />
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>{unit}</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
             </div>
           </>
         )}
@@ -459,7 +459,7 @@ export default function TemplateEditorPage() {
               style={inputStyle}
               placeholder="0"
             />
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>sec</span>
+            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>sec</span>
           </div>
         )}
 
@@ -486,7 +486,7 @@ export default function TemplateEditorPage() {
             {[80,80,80,80].map((w,i) => <Sk key={i} width={w} height={34} radius={8} />)}
           </div>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <Sk width={160} height={14} />
                 <Sk width={70} height={22} radius={999} style={{ marginLeft: 'auto' }} />
@@ -524,11 +524,11 @@ export default function TemplateEditorPage() {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
       {/* Sub-header */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-          <a href="/plans/library" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Library</a>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <a href="/plans/library" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Library</a>
           {' / Edit'}
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -555,13 +555,13 @@ export default function TemplateEditorPage() {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Template name"
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }}
+            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }}
           />
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
             placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters"
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 14, width: '100%', padding: 0 }}
+            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }}
           />
         </div>
 
@@ -572,7 +572,7 @@ export default function TemplateEditorPage() {
             { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
           ].map(group => (
             <div key={group.label} style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
                 {group.label}
               </span>
               <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -634,7 +634,7 @@ export default function TemplateEditorPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
             Week {activeWeek}
-            {activeWeek > 1 && <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
+            {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
           </h2>
           <button
             onClick={() => setShowAddModal(true)}
@@ -646,8 +646,8 @@ export default function TemplateEditorPage() {
 
         {/* Exercise cards */}
         {exercises.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: 16, padding: 48, textAlign: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>No exercises yet. Add exercises to build this template.</p>
+          <div style={{ background: 'var(--card)', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: 16, padding: 48, textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>No exercises yet. Add exercises to build this template.</p>
             <button
               onClick={() => setShowAddModal(true)}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
@@ -690,7 +690,7 @@ export default function TemplateEditorPage() {
                   {/* Exercise header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                     {/* Drag handle */}
-                    <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
+                    <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
                     {isOverridden && (
                       <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
@@ -698,7 +698,7 @@ export default function TemplateEditorPage() {
                     <span style={{ background: `${TEAL}15`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
                       {weekExercise.muscleGroup}
                     </span>
-                    <span style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
+                    <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
                       {weekExercise.equipment}
                     </span>
                     {mediaMap[weekExercise.name] ? (
@@ -712,7 +712,7 @@ export default function TemplateEditorPage() {
                     ) : (
                       <button
                         onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
-                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer' }}
                         title="Add a video demo link for this exercise"
                       >
                         + Add Video
@@ -722,14 +722,14 @@ export default function TemplateEditorPage() {
                       {/* Collapse / expand toggle */}
                       <button
                         onClick={() => toggleCollapse(ex.id)}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 10px', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
+                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
                         title={isCollapsed ? 'Expand' : 'Minimise'}
                       >
                         {isCollapsed ? '▶' : '▼'}
                       </button>
                       <button
                         onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }}
-                        style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
+                        style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
                         title="Substitute this exercise"
                       >
                         ⇄ Substitute
@@ -737,12 +737,12 @@ export default function TemplateEditorPage() {
                       <button
                         onClick={() => moveExercise(ex.id, -1)}
                         disabled={exIdx === 0}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.4)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
+                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
                       >↑</button>
                       <button
                         onClick={() => moveExercise(ex.id, 1)}
                         disabled={exIdx === exercises.length - 1}
-                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'rgba(255,255,255,0.4)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
+                        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
                       >↓</button>
                       <button
                         onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
@@ -755,29 +755,29 @@ export default function TemplateEditorPage() {
 
                   {/* Collapsed summary */}
                   {isCollapsed && (
-                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>{collapseSummary}</p>
+                    <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>
                   )}
 
                   {/* Set rows */}
                   {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 24 }}>#</span>
+                      <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
                       {weekExercise.type === 'weighted' && (
                         <>
-                          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>Reps</span>
-                          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>
+                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
+                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>
                             Weight ({ex.unit ?? preferredUnit})
                           </span>
                         </>
                       )}
                       {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
-                        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, width: 80 }}>Duration (s)</span>
+                        <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
                       )}
                       {/* Unit toggle — only for weighted exercises */}
                       {weekExercise.type === 'weighted' && (
                         <button
                           onClick={() => toggleUnit(ex.id)}
-                          style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                          style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                           title="Toggle weight unit for this exercise"
                         >
                           {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
@@ -793,8 +793,8 @@ export default function TemplateEditorPage() {
                     </button>
 
                     {/* Rest between sets — one per exercise, carries to next */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>Rest between sets:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
                       <input
                         type="number"
                         value={ex.rest ?? lastRestRef.current}
@@ -803,7 +803,7 @@ export default function TemplateEditorPage() {
                         style={{ ...inputStyle, width: 56 }}
                         min={0}
                       />
-                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>seconds</span>
+                      <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
                     </div>
                   </div>}
                 </div>
@@ -813,10 +813,10 @@ export default function TemplateEditorPage() {
         )}
 
         {/* Bottom save bar */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
           <button
             onClick={() => router.push('/plans/library')}
-            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+            style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -836,7 +836,7 @@ export default function TemplateEditorPage() {
           <div style={modalStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Exercise</h3>
-              <button onClick={closeAddModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer' }}>×</button>
+              <button onClick={closeAddModal} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>×</button>
             </div>
 
             {!showCustomForm ? (
@@ -871,20 +871,20 @@ export default function TemplateEditorPage() {
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
                     >
                       <span>
-                        <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
+                        <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
+                        <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
                       </span>
                       <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
                     </button>
                   ))}
                   {addCandidates.length === 0 && (
-                    <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 16, marginBottom: 0 }}>No matching exercises</p>
+                    <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 16, marginBottom: 0 }}>No matching exercises</p>
                   )}
                 </div>
                 {/* Custom exercise CTA */}
                 <button
                   onClick={() => { setShowCustomForm(true); setCustomName(exSearch); }}
-                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'var(--card)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
                   + Create custom exercise{exSearch ? ` "${exSearch}"` : ''}
                 </button>
@@ -898,11 +898,11 @@ export default function TemplateEditorPage() {
                 >
                   ‹ Back to search
                 </button>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 16 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
                   Add an exercise that isn't in the standard library.
                 </p>
 
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
                 <input
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
@@ -912,7 +912,7 @@ export default function TemplateEditorPage() {
                   onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }}
                 />
 
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                   {MUSCLE_GROUPS.map(mg => (
                     <button key={mg} onClick={() => setCustomMuscle(mg)}
@@ -921,7 +921,7 @@ export default function TemplateEditorPage() {
                   ))}
                 </div>
 
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                   {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
                     <button key={eq} onClick={() => setCustomEquip(eq)}
@@ -930,7 +930,7 @@ export default function TemplateEditorPage() {
                   ))}
                 </div>
 
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
                   {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
                     <button key={val} onClick={() => setCustomType(val)}
@@ -958,10 +958,10 @@ export default function TemplateEditorPage() {
           <div style={modalStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Substitute Exercise</h3>
-              <button onClick={() => setSubTarget(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer' }}>×</button>
+              <button onClick={() => setSubTarget(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>×</button>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 14 }}>
-              Replacing: <strong style={{ color: '#fff' }}>{getWeekExercise(subEx, subTarget.scope === 'week' ? activeWeek : 1).name}</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
+              Replacing: <strong style={{ color: 'var(--text)' }}>{getWeekExercise(subEx, subTarget.scope === 'week' ? activeWeek : 1).name}</strong>
             </p>
 
             {/* Scope toggle */}
@@ -988,7 +988,7 @@ export default function TemplateEditorPage() {
               autoFocus
               style={searchInputStyle}
             />
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginBottom: 10 }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
               Showing {subMuscle} exercises
             </p>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
@@ -999,14 +999,14 @@ export default function TemplateEditorPage() {
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
                 >
                   <span>
-                    <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
+                    <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
                   </span>
                   <span style={{ color: TEAL, fontSize: 13, fontWeight: 700 }}>Use this →</span>
                 </button>
               ))}
               {subCandidates.length === 0 && (
-                <p style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 24 }}>No alternatives found for {subMuscle}</p>
+                <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 24 }}>No alternatives found for {subMuscle}</p>
               )}
             </div>
           </div>
@@ -1017,21 +1017,21 @@ export default function TemplateEditorPage() {
       {demoPreview && (
         <div onClick={() => setDemoPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
-            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
+                <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
               </div>
-              <button onClick={() => setDemoPreview(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setDemoPreview(null)} style={{ background: 'var(--input-bg)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {demoPreview.type === 'photo' && demoPreview.signedUrl ? (
-              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: '#0f1117', display: 'block' }} />
+              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} />
             ) : demoPreview.type === 'video' && demoPreview.signedUrl ? (
               <video src={demoPreview.signedUrl} controls autoPlay style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block' }} />
             ) : demoPreview.type === 'link' && demoPreview.urlLink ? (
               <div style={{ padding: '32px 24px', textAlign: 'center' }}>
                 <p style={{ fontSize: 36, marginBottom: 12 }}>🔗</p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
                 <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
                   Open video ↗
                 </a>
@@ -1046,17 +1046,17 @@ export default function TemplateEditorPage() {
         <div onClick={() => setAddVideoTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
             <input
               autoFocus
               value={videoUrl}
               onChange={e => setVideoUrl(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
               placeholder="https://youtube.com/watch?v=..."
-              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 16 }}
             />
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
                 disabled={!videoUrl.trim() || savingVideo}
@@ -1075,11 +1075,11 @@ export default function TemplateEditorPage() {
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.08)',
+  background: 'var(--input-bg)',
   border: '1px solid rgba(255,255,255,0.12)',
   borderRadius: 6,
   padding: '5px 8px',
-  color: '#fff',
+  color: 'var(--text)',
   fontSize: 13,
   width: 72,
   outline: 'none',
@@ -1101,9 +1101,9 @@ const modalStyle: React.CSSProperties = {
 };
 
 const searchInputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  border: '1px solid rgba(255,255,255,0.15)',
+  background: 'var(--card-alt)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 10, padding: '10px 14px',
-  color: '#fff', fontSize: 14, outline: 'none',
+  color: 'var(--text)', fontSize: 14, outline: 'none',
   width: '100%', marginBottom: 12, boxSizing: 'border-box',
 };

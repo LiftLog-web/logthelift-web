@@ -128,7 +128,7 @@ export default function ImportPage() {
         <main style={{ maxWidth: 700, margin: '0 auto', padding: '48px 24px' }}>
           <Sk width={200} height={28} radius={6} style={{ marginBottom: 10 }} />
           <Sk width={320} height={14} radius={4} style={{ marginBottom: 32 }} />
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 20, padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ background: 'var(--card)', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 20, padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
             <Sk width={48} height={48} radius={12} />
             <Sk width={200} height={14} radius={4} />
             <Sk width={140} height={11} radius={4} />

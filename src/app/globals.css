@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+/* ── Theme variables ──────────────────────────────────── */
+:root {
+  --bg:            #0f1117;
+  --card:          rgba(255,255,255,0.04);
+  --card-alt:      rgba(255,255,255,0.02);
+  --border:        rgba(255,255,255,0.10);
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.15);
+  --text:          #ffffff;
+  --text-muted:    rgba(255,255,255,0.40);
+  --text-dim:      rgba(255,255,255,0.30);
+  --text-faint:    rgba(255,255,255,0.20);
+  --input-bg:      rgba(255,255,255,0.08);
+  --input-border:  rgba(255,255,255,0.15);
+}
+
+[data-theme="light"] {
+  --bg:            #f0f3f8;
+  --card:          #ffffff;
+  --card-alt:      #f7f9fc;
+  --border:        rgba(0,0,0,0.10);
+  --border-subtle: rgba(0,0,0,0.06);
+  --border-strong: rgba(0,0,0,0.18);
+  --text:          #0f1117;
+  --text-muted:    rgba(0,0,0,0.50);
+  --text-dim:      rgba(0,0,0,0.40);
+  --text-faint:    rgba(0,0,0,0.25);
+  --input-bg:      rgba(0,0,0,0.04);
+  --input-border:  rgba(0,0,0,0.15);
+}
+
+/* Apply bg to body so the whole page follows the theme */
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Tailwind dark scroll/selection inherit */
+::selection {
+  background: #5fcfbf44;
+}

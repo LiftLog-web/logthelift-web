@@ -150,7 +150,7 @@ export default function ExercisesPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
             {[0,1,2,3,4,5,6,7].map(i => (
-              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' }}>
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
                 <Sk width="100%" height={140} radius={0} />
                 <div style={{ padding: '14px 16px' }}>
                   <Sk width="70%" height={14} style={{ marginBottom: 8 }} />
@@ -165,7 +165,7 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -177,7 +177,7 @@ export default function ExercisesPage() {
             + Add Exercise
           </button>
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 32 }}>
           {exercises.length} custom exercise{exercises.length !== 1 ? 's' : ''}
         </p>
 
@@ -186,47 +186,47 @@ export default function ExercisesPage() {
             <div style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <h2 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>New Exercise</h2>
-                <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                <button onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Name *</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Name *</span>
                   <input
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="e.g. Bulgarian Split Squat"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   />
                 </label>
 
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Muscle Group</span>
                   <select
                     value={muscleGroup}
                     onChange={e => setMuscleGroup(e.target.value)}
-                    style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    style={{ background: '#1a1d27', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   >
                     {MUSCLE_GROUPS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </label>
 
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Equipment</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Equipment</span>
                   <input
                     value={equipment}
                     onChange={e => setEquipment(e.target.value)}
                     placeholder="Bodyweight"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   />
                 </label>
 
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Type</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Type</span>
                   <select
                     value={type}
                     onChange={e => setType(e.target.value as 'weighted' | 'duration' | 'cardio')}
-                    style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 15, outline: 'none' }}
+                    style={{ background: '#1a1d27', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
                   >
                     <option value="weighted">Weighted</option>
                     <option value="duration">Duration</option>
@@ -235,10 +235,10 @@ export default function ExercisesPage() {
                 </label>
 
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>Media (optional)</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>Media (optional)</span>
                   <div
                     onClick={() => fileRef.current?.click()}
-                    style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '16px', textAlign: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}
+                    style={{ border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 10, padding: '16px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14 }}
                   >
                     {mediaFile ? mediaFile.name : 'Click to upload image or video'}
                   </div>
@@ -257,7 +257,7 @@ export default function ExercisesPage() {
                 <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                   <button
                     onClick={() => { setShowForm(false); resetForm(); }}
-                    style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+                    style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
@@ -275,9 +275,9 @@ export default function ExercisesPage() {
         )}
 
         {exercises.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>🏋️</p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>No custom exercises yet. Add your first one.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No custom exercises yet. Add your first one.</p>
             <button
               onClick={() => { resetForm(); setShowForm(true); }}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
@@ -290,7 +290,7 @@ export default function ExercisesPage() {
             {exercises.map(ex => {
               const typeStyle = TYPE_COLORS[ex.type] ?? TYPE_COLORS.weighted;
               return (
-                <div key={ex.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div key={ex.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   {ex.media_url && ex.media_type === 'image' && (
                     <img src={ex.media_url} alt={ex.name} style={{ width: '100%', height: 160, objectFit: 'cover' }} />
                   )}
@@ -307,7 +307,7 @@ export default function ExercisesPage() {
                         {ex.type.charAt(0).toUpperCase() + ex.type.slice(1)}
                       </span>
                     </div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>{ex.equipment}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{ex.equipment}</p>
                     <div style={{ marginTop: 'auto', paddingTop: 10 }}>
                       <button
                         onClick={() => handleDelete(ex.id)}

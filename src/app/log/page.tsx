@@ -223,12 +223,12 @@ function LogWorkoutInner() {
       <SkPage>
         <SkNav />
         <main style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
             <Sk width={120} height={13} radius={4} style={{ marginBottom: 12 }} />
             <Sk width="100%" height={42} radius={10} />
           </div>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '20px 24px', marginBottom: 12 }}>
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 24px', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <Sk width={160} height={15} />
                 <Sk width={70} height={22} radius={999} style={{ marginLeft: 'auto' }} />
@@ -249,13 +249,13 @@ function LogWorkoutInner() {
 
   if (saved) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <p style={{ fontSize: 56 }}>✅</p>
         <h2 style={{ fontWeight: 800, fontSize: 24, margin: 0 }}>Workout saved!</h2>
-        <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0 }}>Great work. Your progress has been recorded.</p>
+        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Great work. Your progress has been recorded.</p>
         <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
           <button onClick={() => { setSaved(false); setSelectedPlan(null); setLoggedExs([]); setNotes(''); setRating(null); }}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 12, padding: '12px 24px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
             Log Another
           </button>
           <button onClick={() => router.push('/profile')}
@@ -268,12 +268,12 @@ function LogWorkoutInner() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Log Workout</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>Log Workout</span>
       </nav>
 
       <main style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px' }}>
@@ -282,20 +282,20 @@ function LogWorkoutInner() {
         {!selectedPlan ? (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Start a Workout</h1>
-            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 28, fontSize: 14 }}>Choose a plan from your practitioner or log a free workout.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 }}>Choose a plan from your practitioner or log a free workout.</p>
 
             {plans.length > 0 && (
               <>
-                <p style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Your Plans</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Your Plans</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                   {plans.map(plan => (
                     <button key={plan.id} onClick={() => selectPlan(plan)}
-                      style={{ textAlign: 'left', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}40`, borderRadius: 14, padding: '18px 22px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                      style={{ textAlign: 'left', background: 'var(--card)', border: `1px solid ${PURPLE}40`, borderRadius: 14, padding: '18px 22px', cursor: 'pointer', transition: 'border-color 0.15s' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = PURPLE)}
                       onMouseLeave={e => (e.currentTarget.style.borderColor = `${PURPLE}40`)}
                     >
-                      <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 4 }}>{plan.name}</div>
-                      {plan.description && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{plan.description}</div>}
+                      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>{plan.name}</div>
+                      {plan.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>{plan.description}</div>}
                       <div style={{ fontSize: 12, color: TEAL }}>{plan.exercises?.length ?? 0} exercises</div>
                     </button>
                   ))}
@@ -314,10 +314,10 @@ function LogWorkoutInner() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <div>
                 <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{selectedPlan.name}</h1>
-                {selectedPlan.description && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>{selectedPlan.description}</p>}
+                {selectedPlan.description && <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{selectedPlan.description}</p>}
               </div>
               <button onClick={() => { setSelectedPlan(null); setLoggedExs([]); }}
-                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>
+                style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>
                 ← Change Plan
               </button>
             </div>
@@ -330,19 +330,19 @@ function LogWorkoutInner() {
                 return matchMuscle && matchSearch;
               });
               return (
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: '0 0 12px' }}>Add Exercises</p>
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', margin: '0 0 12px' }}>Add Exercises</p>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                     <input
                       value={exSearch}
                       onChange={e => setExSearch(e.target.value)}
                       placeholder="Search exercises…"
-                      style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
+                      style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
                     />
                     <select
                       value={exMuscle}
                       onChange={e => setExMuscle(e.target.value)}
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer' }}
                     >
                       <option value="All" style={{ background: '#1a1d26' }}>All muscles</option>
                       {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg} style={{ background: '#1a1d26' }}>{mg}</option>)}
@@ -367,27 +367,27 @@ function LogWorkoutInner() {
                         >
                           <div>
                             <span style={{ fontSize: 13, fontWeight: 600, color: added ? TEAL : '#fff' }}>{ex.name}</span>
-                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>{ex.muscleGroup} · {ex.equipment}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 8 }}>{ex.muscleGroup} · {ex.equipment}</span>
                           </div>
                           {added ? <span style={{ fontSize: 11, color: TEAL }}>✓ Added</span> : <span style={{ fontSize: 18, color: TEAL, lineHeight: 1 }}>+</span>}
                         </button>
                       );
                     })}
-                    {filtered.length === 0 && <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', padding: 16 }}>No exercises found</p>}
+                    {filtered.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>No exercises found</p>}
                   </div>
                 </div>
               );
             })()}
 
             {loggedExs.length === 0 && selectedPlan.id === '' && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 32, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14, marginBottom: 24 }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, marginBottom: 24 }}>
                 Search and add exercises above to get started.
               </div>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
               {loggedExs.map(ex => (
-                <div key={ex.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}30`, borderRadius: 14, padding: '18px 20px' }}>
+                <div key={ex.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}30`, borderRadius: 14, padding: '18px 20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.exercise.name}</div>
                     {selectedPlan.id === '' && (
@@ -397,11 +397,11 @@ function LogWorkoutInner() {
                       </button>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: ex.practitionerNotes ? 8 : 14 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: ex.practitionerNotes ? 8 : 14 }}>
                     {ex.exercise.muscleGroup} · {ex.exercise.equipment}
                   </div>
                   {ex.practitionerNotes && (
-                    <div style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 12 }}>
+                    <div style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
                       Note from PT: {ex.practitionerNotes}
                     </div>
                   )}
@@ -409,9 +409,9 @@ function LogWorkoutInner() {
                   {/* Target reference */}
                   {(ex.targetSets ?? []).length > 0 && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 600, alignSelf: 'center' }}>TARGET:</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, alignSelf: 'center' }}>TARGET:</span>
                       {(ex.targetSets ?? []).map((t, i) => (
-                        <span key={i} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+                        <span key={i} style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
                           {ex.exercise.type === 'cardio' ? `${t.cardioduration ?? '?'} min`
                            : ex.exercise.type === 'duration' ? `${t.duration ?? '?'}s`
                            : `${t.reps ?? '?'} reps × ${t.weight ?? 0}kg`}
@@ -424,24 +424,24 @@ function LogWorkoutInner() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
                     {ex.sets.map((s, si) => (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ width: 22, fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>Set {si + 1}</span>
+                        <span style={{ width: 22, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>Set {si + 1}</span>
 
                         {ex.exercise.type === 'weighted' && (
                           <>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Reps</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Reps</span>
                               <input type="number" min={0} value={s.reps ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'reps', Number(e.target.value))}
-                                style={{ width: 64, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>kg</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>kg</span>
                               <input type="number" min={0} step={0.5} value={s.weight ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'weight', Number(e.target.value))}
-                                style={{ width: 70, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                           </>
@@ -449,11 +449,11 @@ function LogWorkoutInner() {
 
                         {ex.exercise.type === 'duration' && (
                           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Seconds</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Seconds</span>
                             <input type="number" min={0} value={s.duration ?? ''}
                               placeholder="0"
                               onChange={e => updateSet(ex.id, si, 'duration', Number(e.target.value))}
-                              style={{ width: 80, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                              style={{ width: 80, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                             />
                           </label>
                         )}
@@ -461,19 +461,19 @@ function LogWorkoutInner() {
                         {ex.exercise.type === 'cardio' && (
                           <>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Min</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Min</span>
                               <input type="number" min={0} value={s.cardioduration ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'cardioduration', Number(e.target.value))}
-                                style={{ width: 64, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>km/h</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>km/h</span>
                               <input type="number" min={0} step={0.1} value={s.speed ?? ''}
                                 placeholder="0"
                                 onChange={e => updateSet(ex.id, si, 'speed', Number(e.target.value))}
-                                style={{ width: 64, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                style={{ width: 64, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                               />
                             </label>
                           </>
@@ -497,21 +497,21 @@ function LogWorkoutInner() {
 
             {/* Notes */}
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Workout Notes</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Workout Notes</label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="How did it go? Any notes for your practitioner…"
                 rows={3}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
+                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
               />
             </div>
 
             {/* Satisfaction rating */}
             <div style={{ marginBottom: 32 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>How was your workout?</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>How was your workout?</label>
               {renderStars(rating ?? 0, (v) => setRating(rating === v ? null : v))}
-              {rating !== null && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 8 }}>{rating}/5 stars</p>}
+              {rating !== null && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 8 }}>{rating}/5 stars</p>}
             </div>
 
             {/* Save */}

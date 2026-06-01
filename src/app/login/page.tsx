@@ -94,11 +94,11 @@ export default function LoginPage() {
   };
 
   const inputStyle: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'var(--input-bg)',
+    border: '1px solid var(--border-strong)',
     borderRadius: 12,
     padding: '12px 16px',
-    color: '#fff',
+    color: 'var(--text)',
     fontSize: 15,
     outline: 'none',
     width: '100%',
@@ -106,15 +106,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
 
       {/* Logo */}
       <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 24, textDecoration: 'none', marginBottom: 32 }}>LiftLog</a>
 
-      <div style={{ width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: 40 }}>
+      <div style={{ width: '100%', maxWidth: 420, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 24, padding: 40 }}>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 4, marginBottom: 32 }}>
+        <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 12, padding: 4, marginBottom: 32 }}>
           {(['signin', 'signup'] as Tab[]).map(t => (
             <button
               key={t}
@@ -151,7 +151,7 @@ export default function LoginPage() {
 
             {/* Role selector */}
             <div>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>I am a…</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>I am a…</p>
               <div style={{ display: 'flex', gap: 10 }}>
                 {(['patient', 'practitioner'] as const).map(r => (
                   <button
@@ -175,14 +175,14 @@ export default function LoginPage() {
             {success && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{success}</p>}
 
             {!success && (
-              <button type="submit" disabled={loading} style={{ background: PURPLE, color: '#fff', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+              <button type="submit" disabled={loading} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
             )}
           </form>
         )}
 
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 24, marginBottom: 0 }}>
+        <p style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, marginTop: 24, marginBottom: 0 }}>
           New to LiftLog?{' '}
           <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer" style={{ color: TEAL }}>Download the app</a>
         </p>

@@ -110,14 +110,14 @@ export default function PlansPage() {
             <Sk width={200} height={38} radius={10} />
           </div>
           {[0,1].map(i => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}>
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <Sk width={140} height={16} />
                 <Sk width={60} height={22} radius={999} style={{ marginLeft: 'auto' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 {[0,1,2].map(j => (
-                  <div key={j} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div key={j} style={{ background: 'var(--card)', borderRadius: 12, padding: '14px 16px' }}>
                     <Sk width="70%" height={13} style={{ marginBottom: 8 }} />
                     <Sk width="50%" height={11} radius={4} />
                   </div>
@@ -131,12 +131,12 @@ export default function PlansPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Workout Plans</h1>
-            <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 6, marginBottom: 0 }}>
+            <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
               {grouped.length} patient{grouped.length !== 1 ? 's' : ''} · {plans.length} plan{plans.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -148,8 +148,8 @@ export default function PlansPage() {
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search patients…"
                 style={{
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: 10, padding: '10px 16px', color: '#fff', fontSize: 14, outline: 'none', width: 220,
+                  background: 'var(--card-alt)', border: '1px solid var(--border-strong)',
+                  borderRadius: 10, padding: '10px 16px', color: 'var(--text)', fontSize: 14, outline: 'none', width: 220,
                 }}
               />
             )}
@@ -163,15 +163,15 @@ export default function PlansPage() {
         </div>
 
         {plans.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>No plans yet. Create your first plan for a patient.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No plans yet. Create your first plan for a patient.</p>
             <button onClick={() => router.push('/plans/new')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
               Create First Plan
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'rgba(255,255,255,0.3)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
+          <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28 }}>
             {filtered.map(group => {
@@ -196,7 +196,7 @@ export default function PlansPage() {
                         <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: isOpen ? '#fff' : 'rgba(255,255,255,0.9)' }}>
                           {group.patientName}
                         </p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
                           {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -214,7 +214,7 @@ export default function PlansPage() {
                       >
                         + Add Plan
                       </button>
-                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
                         ▾
                       </span>
                     </div>
@@ -224,7 +224,7 @@ export default function PlansPage() {
                   {isOpen && (
                     <div style={{ borderTop: `1px solid rgba(255,255,255,0.07)`, padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                       {group.plans.map(plan => (
-                        <div key={plan.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
                             <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -232,9 +232,9 @@ export default function PlansPage() {
                             </span>
                           </div>
                           {plan.description && (
-                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: 0 }}>{plan.description}</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
                           )}
-                          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: 0 }}>
+                          <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
                             {new Date(plan.created_at).toLocaleDateString('en-CA')}
                           </p>
                           <div style={{ display: 'flex', gap: 8 }}>

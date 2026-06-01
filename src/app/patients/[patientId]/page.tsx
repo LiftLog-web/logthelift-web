@@ -357,8 +357,8 @@ export default function PatientProgressPage() {
   /* ── Loading / error ── */
   if (loading || !authed) {
     if (noAccess) return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'rgba(255,255,255,0.5)' }}>You don't have access to this patient's data.</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--text-muted)' }}>You don't have access to this patient's data.</p>
       </div>
     );
     return (
@@ -367,18 +367,18 @@ export default function PatientProgressPage() {
         <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
             {[0,1,2,3].map(i => (
-              <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 20px' }}>
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
                 <Sk width={90} height={11} radius={3} style={{ marginBottom: 12 }} />
                 <Sk width={60} height={26} radius={6} />
               </div>
             ))}
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
             <Sk width={140} height={16} style={{ marginBottom: 20 }} />
             <Sk width="100%" height={110} radius={12} />
           </div>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 24px', marginBottom: 10 }}>
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 24px', marginBottom: 10 }}>
               <Sk width={100} height={13} style={{ marginBottom: 14 }} />
               {[0,1].map(j => (
                 <div key={j} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
@@ -395,7 +395,7 @@ export default function PatientProgressPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Email modal */}
       {emailOpen && (
@@ -403,32 +403,32 @@ export default function PatientProgressPage() {
           <div style={{ width: '100%', maxWidth: 520, background: '#1a1d26', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontWeight: 700, fontSize: 18 }}>Email {patientName}</h2>
-              <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>To</label>
-                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>To</label>
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'var(--text-muted)' }}>
                   {patientName} &lt;{patientEmail}&gt;
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Subject</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Subject</label>
                 <input
                   value={emailSubject}
                   onChange={e => setEmailSubject(e.target.value)}
                   placeholder="e.g. Great progress this week!"
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Message</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Message</label>
                 <textarea
                   value={emailBody}
                   onChange={e => setEmailBody(e.target.value)}
                   placeholder="Write your message here…"
                   rows={7}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
+                  style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif' }}
                 />
               </div>
               {sendResult === 'ok' && (
@@ -438,7 +438,7 @@ export default function PatientProgressPage() {
                 <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>Failed to send. Please try again.</p>
               )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.5)', borderRadius: 10, padding: '10px 20px', fontSize: 14, cursor: 'pointer' }}>
+                <button onClick={() => { setEmailOpen(false); setSendResult(null); }} style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px 20px', fontSize: 14, cursor: 'pointer' }}>
                   Cancel
                 </button>
                 <button
@@ -455,9 +455,9 @@ export default function PatientProgressPage() {
       )}
 
       {/* Sub-header */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-          <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <a href="/plans" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Plans</a>
           {' / '}{patientName}
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -471,7 +471,7 @@ export default function PatientProgressPage() {
           )}
           <button
             onClick={() => router.push('/plans')}
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
+            style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
           >
             ← Plans
           </button>
@@ -487,7 +487,7 @@ export default function PatientProgressPage() {
           </div>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>{patientName}</h1>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '4px 0 0' }}>Workout Progress</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '4px 0 0' }}>Workout Progress</p>
           </div>
         </div>
 
@@ -499,8 +499,8 @@ export default function PatientProgressPage() {
             { label: 'Completion Rate',  value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
             { label: 'Avg Satisfaction', value: avgRating ? `${renderStars(Number(avgRating))} ${avgRating}/5` : '—', color: TEAL },
           ].map(s => (
-            <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 14, padding: '18px 20px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
+            <div key={s.label} style={{ background: 'var(--card)', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 14, padding: '18px 20px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
               <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
             </div>
           ))}
@@ -510,8 +510,8 @@ export default function PatientProgressPage() {
         {weekTrends.length >= 2 && (
           <div style={{ marginBottom: 36 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Progress Over Time</p>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{weekTrends.length} week{weekTrends.length !== 1 ? 's' : ''} tracked</span>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Progress Over Time</p>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{weekTrends.length} week{weekTrends.length !== 1 ? 's' : ''} tracked</span>
               {trendSummaryText && <span style={{ fontSize: 12, fontWeight: 700, color: trendSummaryColor, marginLeft: 'auto' }}>{trendSummaryText}</span>}
             </div>
 
@@ -519,15 +519,15 @@ export default function PatientProgressPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
               {/* Completion rate */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                   {weekTrends.map(wt => {
                     const h = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
                     const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
                     return (
                       <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.rate}%</span>}
+                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.rate}%</span>}
                         <div title={`${wt.shortLabel}: ${wt.rate ?? '—'}%`} style={{ width: '100%', height: h, background: col, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
                       </div>
                     );
@@ -548,8 +548,8 @@ export default function PatientProgressPage() {
               </div>
 
               {/* Volume */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
                 {(() => {
                   const max = Math.max(...weekTrends.map(wt => wt.totalSets), 1);
                   return (
@@ -560,7 +560,7 @@ export default function PatientProgressPage() {
                           const isCurrent = wt.badge === 'This Week';
                           return (
                             <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.totalSets}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.totalSets}</span>
                               <div
                                 title={`${wt.shortLabel}: ${wt.totalSets} sets${isCurrent ? ' (week in progress)' : ''}`}
                                 style={{ width: '100%', height: h, background: isCurrent ? `${PURPLE}35` : PURPLE, borderRadius: 3, opacity: isCurrent ? 1 : wt.badge ? 1 : 0.55, border: isCurrent ? `1.5px dashed ${PURPLE}` : 'none', boxSizing: 'border-box' }}
@@ -592,8 +592,8 @@ export default function PatientProgressPage() {
 
             {/* Exercise progression */}
             {progressExercises.length > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {progressExercises.map(([name, entries]) => {
                     const latest    = entries[entries.length - 1];
@@ -607,9 +607,9 @@ export default function PatientProgressPage() {
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
-                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                            {fmt(prev)} → <span style={{ color: '#fff', fontWeight: 600 }}>{fmt(latest)}</span>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                            {fmt(prev)} → <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(latest)}</span>
                             {Math.abs(delta) >= 1 && (
                               <span style={{ marginLeft: 8, color: trendCol, fontWeight: 700 }}>
                                 {delta > 0 ? '+' : ''}{Math.round(delta)}%
@@ -636,14 +636,14 @@ export default function PatientProgressPage() {
         {/* Exercise Demos */}
         {exerciseDemos.length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
               Exercise Demos · {exerciseDemos.length}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
               {exerciseDemos.map(demo => {
                 const signedUrl = demoSignedUrls[demo.id];
                 return (
-                  <div key={demo.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div key={demo.id} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, overflow: 'hidden' }}>
                     {demo.media_type === 'photo' && signedUrl ? (
                       <img
                         src={signedUrl}
@@ -654,13 +654,13 @@ export default function PatientProgressPage() {
                     ) : demo.media_type === 'video' && signedUrl ? (
                       <div
                         onClick={() => setViewDemo({ url: signedUrl, type: 'video', name: demo.exercise_name })}
-                        style={{ width: '100%', height: 120, background: '#1a1a2e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#fff' }}
+                        style={{ width: '100%', height: 120, background: '#1a1a2e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--text)' }}
                       >▶</div>
                     ) : (
                       <div style={{ width: '100%', height: 120, background: '#0f2a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🔗</div>
                     )}
                     <div style={{ padding: '12px 14px' }}>
-                      <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px', color: '#fff' }}>{demo.exercise_name}</p>
+                      <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px', color: 'var(--text)' }}>{demo.exercise_name}</p>
                       {demo.media_type === 'link' && demo.url_link ? (
                         <a href={demo.url_link} target="_blank" rel="noopener noreferrer" style={{ color: TEAL, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                           Watch video ↗
@@ -683,9 +683,9 @@ export default function PatientProgressPage() {
 
         {/* Workout list — grouped by week */}
         {workouts.length === 0 ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
             <p style={{ fontSize: 36, marginBottom: 12 }}>📭</p>
-            <p style={{ color: 'rgba(255,255,255,0.4)' }}>No workouts synced yet for this patient.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No workouts synced yet for this patient.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -713,24 +713,24 @@ export default function PatientProgressPage() {
                   {/* Week header */}
                   <button
                     onClick={() => toggleWeek(weekKey)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}
                   >
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>{range}</span>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
                     {badge && (
                       <span style={{ background: `${TEAL}25`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>
                     )}
-                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
                       {weekRate !== null ? ` · ${weekRate}% completion` : ''}
                       {weekAvgRating ? ` · ★ ${weekAvgRating}` : ''}
                     </span>
-                    <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.3)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+                    <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
                   </button>
 
                   {/* Week body */}
                   {weekOpen && (
-                    <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
                       {weekWorkouts.map((w, wi) => {
                         const isOpen       = expanded.has(w.id);
                         const statuses     = (w.exercises ?? []).map(exStatus);
@@ -756,7 +756,7 @@ export default function PatientProgressPage() {
                                 {new Date(w.date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
                               </span>
                               {w.duration > 0 && (
-                                <span style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{w.duration} min</span>
+                                <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{w.duration} min</span>
                               )}
                               {w.satisfactionRating && (
                                 <span style={{ fontSize: 12, color: YELLOW, fontWeight: 600 }}>{renderStars(w.satisfactionRating)} {w.satisfactionRating}/5</span>
@@ -768,10 +768,10 @@ export default function PatientProgressPage() {
                                   ))}
                                 </div>
                               )}
-                              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
                                 {total > 0 ? `${doneCount}/${total} done${partialCount > 0 ? `, ${partialCount} partial` : ''}` : 'No exercises'}
                               </span>
-                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                              <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                             </button>
 
                             {/* Workout detail */}
@@ -780,11 +780,11 @@ export default function PatientProgressPage() {
                                 {w.notes?.trim() && (
                                   <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     <span style={{ fontSize: 14 }}>💬</span>
-                                    <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' }}>"{w.notes}"</p>
+                                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
                                   </div>
                                 )}
                                 {(w.exercises ?? []).length === 0 ? (
-                                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>No exercises recorded.</p>
+                                  <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>No exercises recorded.</p>
                                 ) : (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {(w.exercises ?? []).map(ex => {
@@ -800,17 +800,17 @@ export default function PatientProgressPage() {
                                           >
                                             <span style={{ background: `${STATUS_COLOR[st]}25`, color: STATUS_COLOR[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>{STATUS_LABEL[st]}</span>
                                             <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{ex.exercise.name}</span>
-                                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                                            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                               {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
                                             </span>
                                             {hasNote && <span title="Patient note" style={{ fontSize: 13 }}>💬</span>}
-                                            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                                            <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                                           </button>
                                           {exOpen && (
                                             <div style={{ borderTop: `1px solid ${STATUS_COLOR[st]}20`, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                               {hasSets && (
                                                 <div>
-                                                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets</p>
+                                                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets</p>
                                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                     {ex.sets.map((s, si) => {
                                                       const target = ex.targetSets?.[si];
@@ -824,11 +824,11 @@ export default function PatientProgressPage() {
                                                       }
                                                       return (
                                                         <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                                                          <span style={{ width: 18, color: 'rgba(255,255,255,0.3)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
-                                                          <span style={{ color: '#fff', minWidth: 100 }}>{actual}</span>
+                                                          <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
+                                                          <span style={{ color: 'var(--text)', minWidth: 100 }}>{actual}</span>
                                                           {tLabel && (
                                                             <>
-                                                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>target: {tLabel}</span>
+                                                              <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>target: {tLabel}</span>
                                                               {setMet !== null && <span style={{ color: setMet ? TEAL : '#EF4444', fontSize: 12 }}>{setMet ? '✓' : '✗'}</span>}
                                                             </>
                                                           )}
@@ -841,7 +841,7 @@ export default function PatientProgressPage() {
                                               {hasNote && (
                                                 <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
                                                   <span style={{ fontSize: 13 }}>💬</span>
-                                                  <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>"{ex.notes}"</p>
+                                                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
                                                 </div>
                                               )}
                                             </div>
@@ -873,15 +873,15 @@ export default function PatientProgressPage() {
         >
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewDemo.name}</p>
-              <button onClick={() => setViewDemo(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: 17, margin: 0 }}>{viewDemo.name}</p>
+              <button onClick={() => setViewDemo(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 36, height: 36, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {viewDemo.type === 'photo' ? (
               <img src={viewDemo.url} alt={viewDemo.name} style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', objectFit: 'contain' }} />
             ) : (
               <video src={viewDemo.url} controls autoPlay style={{ width: '100%', borderRadius: 12, maxHeight: '80vh', background: '#000' }} />
             )}
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>Click outside to close</p>
           </div>
         </div>
       )}

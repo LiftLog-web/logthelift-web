@@ -409,7 +409,7 @@ function NewPlanInner() {
             </div>
             <div>
               {[0,1,2].map(i => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
+                <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                     <Sk width={150} height={14} />
                     <Sk width={60} height={22} radius={999} style={{ marginLeft: 'auto' }} />
@@ -431,17 +431,17 @@ function NewPlanInner() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Sub-header */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-          <a href="/plans" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Plans</a>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <a href="/plans" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Plans</a>
           {' / '}{editId ? 'Edit' : 'New'}
         </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {saveError && <span style={{ color: '#EF4444', fontSize: 13 }}>{saveError}</span>}
-          <button onClick={() => router.push('/plans')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
+          <button onClick={() => router.push('/plans')} style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -455,22 +455,22 @@ function NewPlanInner() {
       </div>
 
       {/* Plan meta */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 32px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 32px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Name *</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Name *</label>
           <input
             value={planName}
             onChange={e => setPlanName(e.target.value)}
             placeholder="e.g. Week 1 Strength Program"
-            style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
         <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Patient *</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Patient *</label>
           <select
             value={patientId}
             onChange={e => setPatientId(e.target.value)}
-            style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: patientId ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 14, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+            style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: patientId ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 14, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
           >
             <option value="">Select patient…</option>
             {patients.map(p => (
@@ -479,12 +479,12 @@ function NewPlanInner() {
           </select>
         </div>
         <div style={{ flex: '2 1 300px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Description</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Description</label>
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
             placeholder="Optional notes about this plan…"
-            style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
       </div>
@@ -495,27 +495,27 @@ function NewPlanInner() {
         {/* Left: Exercise Library — collapsible */}
         <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease' }}>
           {/* Sidebar header with toggle */}
-          <div style={{ padding: '12px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={() => setSidebarOpen(v => !v)}
               title={sidebarOpen ? 'Collapse library' : 'Expand library'}
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+              style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
             >
               {sidebarOpen ? '◀' : '▶'}
             </button>
-            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
+            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
           </div>
-          {sidebarOpen && <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {sidebarOpen && <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search exercises…"
-              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
             <select
               value={muscleFilter}
               onChange={e => setMuscleFilter(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
             >
               <option value="All" style={{ background: '#1a1d26' }}>All muscle groups</option>
               {MUSCLE_GROUPS.map(mg => (
@@ -560,14 +560,14 @@ function NewPlanInner() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : '#fff' }}>{ex.name}</span>
                     {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
                     {ex.muscleGroup} · {ex.equipment}
                   </div>
                 </button>
               );
             })}
             {filteredExercises.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
+              <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
             )}
           </div>}
         </div>
@@ -580,7 +580,7 @@ function NewPlanInner() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, opacity: 0.6, cursor: sidebarOpen ? 'default' : 'pointer' }}
             >
               <p style={{ fontSize: 36, margin: 0 }}>+</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', margin: 0 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', margin: 0 }}>
                 {sidebarOpen
                   ? 'Click exercises on the left to add them to this plan'
                   : 'Open the exercise library (◀ on the left) or click here to add exercises'}
@@ -591,7 +591,7 @@ function NewPlanInner() {
               {supersetMode && (
                 <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, color: PURPLE, fontWeight: 600 }}>Superset mode — click &ldquo;Pair Here&rdquo; on another exercise to link them</span>
-                  <button onClick={() => setSupersetMode(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13 }}>✕ Cancel</button>
+                  <button onClick={() => setSupersetMode(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>✕ Cancel</button>
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -633,10 +633,10 @@ function NewPlanInner() {
                         {/* Card header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                            <span title="Drag to reorder" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 15, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                            <span title="Drag to reorder" style={{ color: 'var(--text-faint)', fontSize: 15, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>⠿</span>
                             <div>
                               <span style={{ fontWeight: 700, fontSize: 15 }}>{exIdx + 1}. {pe.exercise.name}</span>
-                              <span style={{ marginLeft: 10, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                              <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-dim)' }}>
                                 {pe.exercise.muscleGroup} · {pe.exercise.equipment}
                               </span>
                               {mediaMap[pe.exercise.name] ? (() => {
@@ -664,7 +664,7 @@ function NewPlanInner() {
                                     const exLib = EXERCISES.find(ex => ex.name === pe.exercise.name);
                                     setVideoMuscleGroup(exLib?.muscleGroup ?? (pe.exercise as any).muscleGroup ?? '');
                                   }}
-                                  style={{ marginLeft: 10, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer', verticalAlign: 'middle' }}
+                                  style={{ marginLeft: 10, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer', verticalAlign: 'middle' }}
                                   title="Add a video demo link"
                                 >
                                   + Add Video
@@ -700,7 +700,7 @@ function NewPlanInner() {
                             {pe.exercise.type === 'weighted' && (
                               <button
                                 onClick={() => toggleUnit(pe.id)}
-                                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+                                style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
                                 title="Toggle weight unit"
                               >
                                 {pe.unit ?? preferredUnit} ⇄ {(pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
@@ -715,16 +715,16 @@ function NewPlanInner() {
 
                         {/* Sets header */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>SETS</span>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>SETS</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button
                               onClick={() => updateTargetSets(pe.id, Math.max(1, pe.targetSets - 1))}
-                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
                             >−</button>
                             <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 16, color: TEAL }}>{pe.targetSets}</span>
                             <button
                               onClick={() => updateTargetSets(pe.id, Math.min(12, pe.targetSets + 1))}
-                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
                             >+</button>
                           </div>
                         </div>
@@ -733,25 +733,25 @@ function NewPlanInner() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {pe.sets.map((s, si) => (
                             <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{ width: 20, fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', flexShrink: 0 }}>{si + 1}</span>
+                              <span style={{ width: 20, fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{si + 1}</span>
 
                               {pe.exercise.type === 'weighted' && (
                                 <>
                                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Reps</span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Reps</span>
                                     <input
                                       type="number" min={1} value={s.reps ?? 10}
                                       onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value))}
-                                      style={{ width: 60, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                      style={{ width: 60, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                   </label>
                                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Weight ({pe.unit ?? preferredUnit})</span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Weight ({pe.unit ?? preferredUnit})</span>
                                     <input
                                       type="number" min={0} step={0.5} value={s.weight ?? 0}
                                       onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value))}
                                       onFocus={e => e.target.select()}
-                                      style={{ width: 70, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                      style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                   </label>
                                 </>
@@ -759,44 +759,44 @@ function NewPlanInner() {
 
                               {pe.exercise.type === 'duration' && (
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Seconds</span>
+                                  <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Seconds</span>
                                   <input
                                     type="number" min={1} value={s.seconds ?? 30}
                                     onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value))}
-                                    style={{ width: 70, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                 </label>
                               )}
 
                               {pe.exercise.type === 'cardio' && (
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>Minutes</span>
+                                  <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Minutes</span>
                                   <input
                                     type="number" min={1} value={s.minutes ?? 20}
                                     onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value))}
-                                    style={{ width: 70, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: '#fff', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    style={{ width: 70, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                 </label>
                               )}
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>Rest</span>
+                                <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Rest</span>
                                 <input
                                   type="number" min={0} max={59}
                                   value={toMinSec(s.rest ?? 1).m}
                                   onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(Number(e.target.value), toMinSec(s.rest ?? 1).s))}
                                   onFocus={e => e.target.select()}
-                                  style={{ width: 42, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 6px', color: 'rgba(255,255,255,0.7)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                  style={{ width: 42, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 6px', color: 'var(--text-muted)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                 />
-                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>m</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>m</span>
                                 <input
                                   type="number" min={0} max={59}
                                   value={toMinSec(s.rest ?? 1).s}
                                   onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(toMinSec(s.rest ?? 1).m, Number(e.target.value)))}
                                   onFocus={e => e.target.select()}
-                                  style={{ width: 42, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '5px 6px', color: 'rgba(255,255,255,0.7)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                  style={{ width: 42, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 6px', color: 'var(--text-muted)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                 />
-                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>s</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>s</span>
                               </div>
                             </div>
                           ))}
@@ -808,7 +808,7 @@ function NewPlanInner() {
                             value={pe.notes}
                             onChange={e => updateNotes(pe.id, e.target.value)}
                             placeholder="Practitioner notes (e.g. focus on form, keep elbows tucked)…"
-                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
                       </div>
@@ -842,7 +842,7 @@ function NewPlanInner() {
       {!editId && (
         <div style={{
           position: 'sticky', bottom: 0, left: 0, right: 0,
-          background: 'rgba(15,17,23,0.97)', borderTop: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(15,17,23,0.97)', borderTop: '1px solid var(--border)',
           padding: '14px 32px', zIndex: 50,
         }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -878,14 +878,14 @@ function NewPlanInner() {
                 placeholder="Library name (can differ from patient plan name)"
                 style={{
                   flex: 1, minWidth: 220,
-                  background: 'rgba(255,255,255,0.07)', border: `1px solid ${TEAL}60`,
-                  borderRadius: 10, padding: '9px 14px', color: '#fff', fontSize: 14, outline: 'none',
+                  background: 'var(--card-alt)', border: `1px solid ${TEAL}60`,
+                  borderRadius: 10, padding: '9px 14px', color: 'var(--text)', fontSize: 14, outline: 'none',
                 }}
               />
             )}
 
             {saveToLibrary && (
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, flexShrink: 0 }}>
+              <span style={{ color: 'var(--text-dim)', fontSize: 12, flexShrink: 0 }}>
                 Saved privately to your library — not visible to the patient
               </span>
             )}
@@ -903,17 +903,17 @@ function NewPlanInner() {
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
                 <p style={{ fontSize: 40, margin: '0 0 12px' }}>✅</p>
                 <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: TEAL }}>Saved!</h2>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>
-                  This demo is now in your <strong style={{ color: '#fff' }}>Video Library</strong> and visible to any patient who has <strong style={{ color: '#fff' }}>{addVideoTarget}</strong> in their plan.
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
+                  This demo is now in your <strong style={{ color: 'var(--text)' }}>Video Library</strong> and visible to any patient who has <strong style={{ color: 'var(--text)' }}>{addVideoTarget}</strong> in their plan.
                 </p>
               </div>
             ) : (
               <>
                 <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 2px' }}>Add Video Demo</h2>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 0, marginBottom: 18 }}>{addVideoTarget}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 0, marginBottom: 18 }}>{addVideoTarget}</p>
 
                 {/* Tab switcher */}
-                <div style={{ display: 'flex', marginBottom: 20, background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3 }}>
+                <div style={{ display: 'flex', marginBottom: 20, background: 'var(--card-alt)', borderRadius: 10, padding: 3 }}>
                   {(['url', 'file'] as const).map(mode => (
                     <button key={mode} onClick={() => { setVideoMode(mode); setVideoFile(null); setVideoUrl(''); }}
                       style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: videoMode === mode ? '#fff' : 'transparent', color: videoMode === mode ? '#0f1117' : 'rgba(255,255,255,0.4)' }}>
@@ -925,22 +925,22 @@ function NewPlanInner() {
                 {/* Shared context fields */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Muscle Group</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Muscle Group</span>
                     <input
                       value={videoMuscleGroup}
                       onChange={e => setVideoMuscleGroup(e.target.value)}
                       placeholder="e.g. Quadriceps"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 14, outline: 'none' }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PT Notes <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PT Notes <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></span>
                     <textarea
                       value={videoNotes}
                       onChange={e => setVideoNotes(e.target.value)}
                       placeholder="e.g. Focus on slow descent, keep knee aligned over second toe"
                       rows={2}
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
                     />
                   </label>
                 </div>
@@ -954,10 +954,10 @@ function NewPlanInner() {
                       onChange={e => setVideoUrl(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') closeVideoModal(); }}
                       placeholder="https://youtube.com/watch?v=..."
-                      style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 16 }}
+                      style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 16 }}
                     />
                     <div style={{ display: 'flex', gap: 10 }}>
-                      <button onClick={closeVideoModal} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={closeVideoModal} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
                       <button onClick={() => handleSaveVideo(addVideoTarget, videoUrl)} disabled={!videoUrl.trim() || savingVideo}
                         style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'rgba(255,255,255,0.08)', color: videoUrl.trim() ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>
                         {savingVideo ? 'Saving…' : 'Save to Library'}
@@ -973,19 +973,19 @@ function NewPlanInner() {
                           <>
                             <p style={{ fontSize: 28, margin: '0 0 6px' }}>🎬</p>
                             <p style={{ fontWeight: 700, fontSize: 14, color: TEAL, margin: '0 0 4px', wordBreak: 'break-all' }}>{videoFile.name}</p>
-                            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>{(videoFile.size / 1024 / 1024).toFixed(1)} MB — click to change</p>
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{(videoFile.size / 1024 / 1024).toFixed(1)} MB — click to change</p>
                           </>
                         ) : (
                           <>
                             <p style={{ fontSize: 28, margin: '0 0 8px' }}>📁</p>
-                            <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px' }}>Click to select a video file</p>
-                            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>MP4, MOV, WebM supported</p>
+                            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', margin: '0 0 4px' }}>Click to select a video file</p>
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>MP4, MOV, WebM supported</p>
                           </>
                         )}
                       </div>
                     </label>
                     <div style={{ display: 'flex', gap: 10 }}>
-                      <button onClick={closeVideoModal} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={closeVideoModal} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
                       <button onClick={() => videoFile && handleUploadVideo(addVideoTarget, videoFile)} disabled={!videoFile || uploading}
                         style={{ flex: 2, background: videoFile && !uploading ? TEAL : 'rgba(255,255,255,0.08)', color: videoFile && !uploading ? '#0f1117' : 'rgba(255,255,255,0.3)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoFile && !uploading ? 'pointer' : 'not-allowed' }}>
                         {uploading ? 'Uploading…' : 'Upload to Library'}
@@ -1006,21 +1006,21 @@ function NewPlanInner() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
         >
           <div onClick={e => e.stopPropagation()} style={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 560 }}>
-            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{demoPreview.name}</p>
-                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
+                <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '2px 0 0' }}>Exercise demo</p>
               </div>
-              <button onClick={() => setDemoPreview(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={() => setDemoPreview(null)} style={{ background: 'var(--input-bg)', border: 'none', color: 'var(--text)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             {demoPreview.type === 'photo' && demoPreview.signedUrl ? (
-              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: '#0f1117', display: 'block' }} />
+              <img src={demoPreview.signedUrl} alt={demoPreview.name} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} />
             ) : demoPreview.type === 'video' && demoPreview.signedUrl ? (
               <video src={demoPreview.signedUrl} controls autoPlay style={{ width: '100%', maxHeight: 360, background: '#000', display: 'block' }} />
             ) : demoPreview.type === 'link' && demoPreview.urlLink ? (
               <div style={{ padding: '32px 24px', textAlign: 'center' }}>
                 <p style={{ fontSize: 36, marginBottom: 12 }}>🔗</p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
                 <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
                   Open video ↗
                 </a>

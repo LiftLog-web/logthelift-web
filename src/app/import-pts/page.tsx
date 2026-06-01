@@ -137,7 +137,7 @@ export default function ImportPTsPage() {
         <main style={{ maxWidth: 700, margin: '0 auto', padding: '48px 24px' }}>
           <Sk width={200} height={28} radius={6} style={{ marginBottom: 10 }} />
           <Sk width={320} height={14} radius={4} style={{ marginBottom: 32 }} />
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 20, padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ background: 'var(--card)', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: 20, padding: '56px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
             <Sk width={48} height={48} radius={12} />
             <Sk width={200} height={14} radius={4} />
             <Sk width={140} height={11} radius={4} />
@@ -151,18 +151,18 @@ export default function ImportPTsPage() {
   const invalidRows = rows.filter(r => !r.valid);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif', padding: '40px 24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif', padding: '40px 24px' }}>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-          <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 14, padding: 0 }}>
+          <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: 0 }}>
             ← Dashboard
           </button>
           <span style={{ color: TEAL, fontSize: 22, fontWeight: 800 }}>LiftLog</span>
         </div>
 
         <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Import PTs</h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 32 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 32 }}>
           Upload a CSV of PT emails. Each PT receives an invitation email with instructions to join your gym on LiftLog.
         </p>
 
@@ -185,22 +185,22 @@ export default function ImportPTsPage() {
               }}
             >
               <div style={{ fontSize: 44, marginBottom: 14 }}>📂</div>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginBottom: 6 }}>Drop your CSV here or click to browse</p>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Accepts .csv or .txt · Columns: email, name (optional)</p>
+              <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>Drop your CSV here or click to browse</p>
+              <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Accepts .csv or .txt · Columns: email, name (optional)</p>
               <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
 
             {error && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Expected format</p>
-              <pre style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8, margin: 0 }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Expected format</p>
+              <pre style={{ color: 'var(--text-dim)', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8, margin: 0 }}>
 {`email,name
 jane.smith@example.com,Jane Smith
 john.doe@example.com,John Doe
 pt@example.com`}
               </pre>
-              <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, marginTop: 12, marginBottom: 0 }}>Name is optional. Comma, semicolon, or tab delimiters all work.</p>
+              <p style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 12, marginBottom: 0 }}>Name is optional. Comma, semicolon, or tab delimiters all work.</p>
             </div>
 
             <button
@@ -215,29 +215,29 @@ pt@example.com`}
         {step === 'preview' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, margin: 0 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
                 <span style={{ color: TEAL, fontWeight: 700 }}>{validRows.length}</span> valid
                 {invalidRows.length > 0 && <span style={{ color: '#EF4444' }}> · {invalidRows.length} invalid (will be skipped)</span>}
               </p>
-              <button onClick={reset} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13 }}>
+              <button onClick={reset} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>
                 Upload different file
               </button>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Email</th>
-                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Name</th>
-                    <th style={{ textAlign: 'right', padding: '12px 20px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Status</th>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>Email</th>
+                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>Name</th>
+                    <th style={{ textAlign: 'right', padding: '12px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 20px', color: 'rgba(255,255,255,0.8)' }}>{r.email || <span style={{ color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>empty</span>}</td>
-                      <td style={{ padding: '12px 20px', color: 'rgba(255,255,255,0.5)' }}>{r.name || '—'}</td>
+                      <td style={{ padding: '12px 20px', color: 'rgba(255,255,255,0.8)' }}>{r.email || <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>empty</span>}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-muted)' }}>{r.name || '—'}</td>
                       <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                         {r.valid
                           ? <span style={{ background: `${TEAL}22`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Ready</span>
@@ -265,7 +265,7 @@ pt@example.com`}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '64px 0' }}>
             <div style={{ width: 40, height: 40, border: `3px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <p style={{ color: 'rgba(255,255,255,0.5)' }}>Sending invites…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Sending invites…</p>
           </div>
         )}
 
@@ -275,25 +275,25 @@ pt@example.com`}
               <span style={{ fontSize: 32 }}>✅</span>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Invites sent!</p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
                   {results.filter(r => r.success).length} sent successfully
                   {results.filter(r => !r.success).length > 0 && ` · ${results.filter(r => !r.success).length} failed`}
                 </p>
               </div>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Email</th>
-                    <th style={{ textAlign: 'right', padding: '12px 20px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Result</th>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>Email</th>
+                    <th style={{ textAlign: 'right', padding: '12px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>Result</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 20px', color: 'rgba(255,255,255,0.7)' }}>{r.email}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-muted)' }}>{r.email}</td>
                       <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                         {r.success
                           ? <span style={{ background: `${TEAL}22`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Sent</span>
@@ -308,7 +308,7 @@ pt@example.com`}
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={reset}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
               >
                 Import Another File
               </button>

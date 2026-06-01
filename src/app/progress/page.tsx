@@ -112,12 +112,12 @@ function SvgChart({ data, color, yFmt = (v: number) => String(Math.round(v)), ch
   yFmt?: (v: number) => string; chartId: string;
 }) {
   if (data.length === 0) return (
-    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>
+    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
       No data yet — keep logging to see your progress!
     </div>
   );
   if (data.length === 1) return (
-    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
       One session logged — keep going to see your trend!
     </div>
   );
@@ -389,17 +389,17 @@ export default function ProgressPage() {
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
           {[0,1,2,3].map(i => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '18px 20px' }}>
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
               <Sk width={90} height={11} radius={3} style={{ marginBottom: 12 }} />
               <Sk width={60} height={28} radius={6} />
             </div>
           ))}
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px', marginBottom: 16 }}>
           <Sk width={160} height={16} style={{ marginBottom: 20 }} />
           <Sk width="100%" height={120} radius={12} />
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px' }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px' }}>
           <Sk width={140} height={16} style={{ marginBottom: 20 }} />
           <Sk width="100%" height={80} radius={12} />
         </div>
@@ -408,13 +408,13 @@ export default function ProgressPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
 
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 900, margin: '0 auto' }}>
+      <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>/ Progress</span>
+          <span style={{ color: 'var(--text-dim)', fontSize: 14 }}>/ Progress</span>
         </div>
         <a href="/log" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
           + Log Workout
@@ -423,7 +423,7 @@ export default function ProgressPage() {
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 6px' }}>Progress</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 32px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 32px' }}>
           Track your consistency, strength gains, and workout history.
         </p>
 
@@ -435,8 +435,8 @@ export default function ProgressPage() {
             { label: 'Completion Rate', value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
             { label: 'Avg Satisfaction',value: avgRating ? `${avgRating}/5` : '—',                  color: TEAL   },
           ].map(s => (
-            <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
+            <div key={s.label} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
               <p style={{ fontSize: 20, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
             </div>
           ))}
@@ -447,21 +447,21 @@ export default function ProgressPage() {
           <section style={{ marginBottom: 52 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
               <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Weekly Summary</h2>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{weekTrends.length} weeks tracked</span>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{weekTrends.length} weeks tracked</span>
               {trendSummaryText && <span style={{ fontSize: 12, fontWeight: 700, color: trendSummaryColor, marginLeft: 'auto' }}>{trendSummaryText}</span>}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               {/* Completion rate */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Completion Rate</p>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                   {weekTrends.map(wt => {
                     const h   = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
                     const col = wt.rate === null ? 'rgba(255,255,255,0.08)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
                     return (
                       <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.rate}%</span>}
+                        {wt.rate !== null && <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.rate}%</span>}
                         <div title={`${wt.shortLabel}: ${wt.rate ?? '—'}%`} style={{ width: '100%', height: h, background: col, borderRadius: 3, opacity: wt.badge ? 1 : 0.55 }} />
                       </div>
                     );
@@ -482,8 +482,8 @@ export default function ProgressPage() {
               </div>
 
               {/* Sets per week */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets per Week</p>
                 {(() => {
                   const max = Math.max(...weekTrends.map(wt => wt.totalSets), 1);
                   return (
@@ -494,7 +494,7 @@ export default function ProgressPage() {
                           const isCurrent = wt.badge === 'This Week';
                           return (
                             <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 3 }}>{wt.totalSets}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.totalSets}</span>
                               <div
                                 title={`${wt.shortLabel}: ${wt.totalSets} sets${isCurrent ? ' (week in progress)' : ''}`}
                                 style={{ width: '100%', height: h, background: isCurrent ? `${PURPLE}35` : PURPLE, borderRadius: 3, opacity: isCurrent ? 1 : wt.badge ? 1 : 0.55, border: isCurrent ? `1.5px dashed ${PURPLE}` : 'none', boxSizing: 'border-box' }}
@@ -526,8 +526,8 @@ export default function ProgressPage() {
 
             {/* Exercise progression */}
             {progressExercises.length > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {progressExercises.map(([name, entries]) => {
                     const latest   = entries[entries.length - 1];
@@ -541,9 +541,9 @@ export default function ProgressPage() {
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
-                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                            {fmt(prev)} → <span style={{ color: '#fff', fontWeight: 600 }}>{fmt(latest)}</span>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                            {fmt(prev)} → <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(latest)}</span>
                             {Math.abs(delta) >= 1 && <span style={{ marginLeft: 8, color: trendCol, fontWeight: 700 }}>{delta > 0 ? '+' : ''}{Math.round(delta)}%</span>}
                           </p>
                         </div>
@@ -568,34 +568,34 @@ export default function ProgressPage() {
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Exercise Progress</h2>
             {exercises.length > 0 && (
               <select value={selExId} onChange={e => setSelExId(e.target.value)}
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 14px', color: '#fff', fontSize: 13, outline: 'none', cursor: 'pointer', minWidth: 220 }}>
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 14px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer', minWidth: 220 }}>
                 {exercises.map(ex => <option key={ex.id} value={ex.id} style={{ background: '#1a1d26' }}>{ex.name}</option>)}
               </select>
             )}
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px 28px' }}>
             {exercises.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <p style={{ color: 'rgba(255,255,255,0.3)', marginBottom: 12 }}>No workout history yet.</p>
+                <p style={{ color: 'var(--text-dim)', marginBottom: 12 }}>No workout history yet.</p>
                 <a href="/log" style={{ color: TEAL, fontSize: 14, textDecoration: 'none', fontWeight: 600 }}>Log your first workout →</a>
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', gap: 28, marginBottom: 24, flexWrap: 'wrap' }}>
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Personal Best</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Personal Best</p>
                     <p style={{ fontSize: 24, fontWeight: 800, color: TEAL, margin: 0 }}>{exBest !== null ? exYFmt(exBest) : '—'}</p>
                   </div>
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Sessions</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Sessions</p>
                     <p style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{chartData.length}</p>
                   </div>
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Last Logged</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Last Logged</p>
                     <p style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{exLast ? fmtDate(exLast.date) : '—'}</p>
                   </div>
                   <div style={{ alignSelf: 'flex-end', paddingBottom: 4 }}>
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: 0 }}>{exMetricLabel}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{exMetricLabel}</p>
                   </div>
                 </div>
                 <SvgChart data={chartData} color={TEAL} yFmt={exYFmt} chartId="exercise" />
@@ -610,11 +610,11 @@ export default function ProgressPage() {
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Body Weight</h2>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={newWtDate} onChange={e => setNewWtDate(e.target.value)}
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 13, outline: 'none' }} />
+                style={{ background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
               <input type="number" min={0} step={0.1} value={newWt} onChange={e => setNewWt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveWeight()} placeholder={`Weight (${wtUnit})`}
-                style={{ width: 130, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 13, outline: 'none' }} />
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+                style={{ width: 130, background: 'var(--card-alt)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+              <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}>
                 {(['kg', 'lbs'] as const).map(u => (
                   <button key={u} onClick={() => setWtUnit(u)}
                     style={{ padding: '7px 14px', background: wtUnit === u ? PURPLE : 'transparent', color: wtUnit === u ? '#fff' : 'rgba(255,255,255,0.4)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: wtUnit === u ? 700 : 400 }}>
@@ -623,36 +623,36 @@ export default function ProgressPage() {
                 ))}
               </div>
               <button onClick={saveWeight} disabled={savingWt || !newWt}
-                style={{ background: PURPLE, color: '#fff', borderRadius: 8, padding: '7px 18px', fontWeight: 700, fontSize: 13, border: 'none', cursor: (!newWt || savingWt) ? 'not-allowed' : 'pointer', opacity: (!newWt || savingWt) ? 0.55 : 1 }}>
+                style={{ background: PURPLE, color: 'var(--text)', borderRadius: 8, padding: '7px 18px', fontWeight: 700, fontSize: 13, border: 'none', cursor: (!newWt || savingWt) ? 'not-allowed' : 'pointer', opacity: (!newWt || savingWt) ? 0.55 : 1 }}>
                 {savingWt ? '…' : 'Log'}
               </button>
             </div>
           </div>
           {wtError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{wtError}</p>}
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '24px 28px' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px 28px' }}>
             {bwLatest && (
               <div style={{ display: 'flex', gap: 28, marginBottom: 24, flexWrap: 'wrap' }}>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Current</p>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Current</p>
                   <p style={{ fontSize: 24, fontWeight: 800, color: PURPLE, margin: 0 }}>
                     {wtUnit === 'kg' ? `${bwLatest.weight_kg}kg` : `${Math.round(bwLatest.weight_kg * 2.20462 * 10) / 10}lbs`}
                   </p>
                 </div>
                 {bwChangeDisplay !== null && (
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Change since start</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Change since start</p>
                     <p style={{ fontSize: 24, fontWeight: 800, margin: 0, color: bwChangeKg! < 0 ? TEAL : bwChangeKg! > 0 ? YELLOW : 'rgba(255,255,255,0.6)' }}>{bwChangeDisplay}</p>
                   </div>
                 )}
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Entries</p>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Entries</p>
                   <p style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{bodyWts.length}</p>
                 </div>
               </div>
             )}
             <SvgChart data={bwChartData} color={PURPLE} yFmt={bwYFmt} chartId="bodyweight" />
             {bodyWts.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, textAlign: 'center', marginTop: 8 }}>Log your first weight entry using the form above.</p>
+              <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', marginTop: 8 }}>Log your first weight entry using the form above.</p>
             )}
           </div>
         </section>
@@ -661,9 +661,9 @@ export default function ProgressPage() {
         <section>
           <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 20px' }}>Workout Log</h2>
           {workouts.length === 0 ? (
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
               <p style={{ fontSize: 32, marginBottom: 12 }}>📭</p>
-              <p style={{ color: 'rgba(255,255,255,0.4)' }}>No workouts synced yet.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No workouts synced yet.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -686,19 +686,19 @@ export default function ProgressPage() {
                 return (
                   <div key={weekKey}>
                     <button onClick={() => toggleWeekLog(weekKey)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
-                      <span style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>{range}</span>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
                       {badge && <span style={{ background: `${TEAL}25`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>}
-                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                         {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
                         {weekRate !== null ? ` · ${weekRate}% completion` : ''}
                       </span>
-                      <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.3)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+                      <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
                     </button>
 
                     {weekOpen && (
-                      <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
                         {weekWorkouts.slice().reverse().map((w, wi) => {
                           const isOpen   = expandedWorkouts.has(w.id);
                           const statuses = (w.exercises ?? []).map(exStatus);
@@ -720,7 +720,7 @@ export default function ProgressPage() {
                                   {new Date(w.date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
                                 </span>
                                 {(w.duration ?? 0) > 0 && (
-                                  <span style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{w.duration} min</span>
+                                  <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{w.duration} min</span>
                                 )}
                                 {w.satisfactionRating && (
                                   <span style={{ fontSize: 12, color: YELLOW, fontWeight: 600 }}>{renderStars(w.satisfactionRating)} {w.satisfactionRating}/5</span>
@@ -733,10 +733,10 @@ export default function ProgressPage() {
                                     ))}
                                   </div>
                                 )}
-                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
                                   {total > 0 ? `${doneCount}/${total} done${partialCount > 0 ? `, ${partialCount} partial` : ''}` : 'No exercises'}
                                 </span>
-                                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                                <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                               </button>
 
                               {isOpen && (
@@ -744,11 +744,11 @@ export default function ProgressPage() {
                                   {w.notes?.trim() && (
                                     <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
                                       <span style={{ fontSize: 14 }}>💬</span>
-                                      <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' }}>"{w.notes}"</p>
+                                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
                                     </div>
                                   )}
                                   {(w.exercises ?? []).length === 0 ? (
-                                    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>No exercises recorded.</p>
+                                    <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>No exercises recorded.</p>
                                   ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                       {(w.exercises ?? []).map(ex => {
@@ -762,17 +762,17 @@ export default function ProgressPage() {
                                               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', background: `${STATUS_COLOR[st]}08`, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                                               <span style={{ background: `${STATUS_COLOR[st]}25`, color: STATUS_COLOR[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>{STATUS_LABEL[st]}</span>
                                               <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{ex.exercise.name}</span>
-                                              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                                              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                                 {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
                                               </span>
                                               {hasNote && <span title="Note" style={{ fontSize: 13 }}>💬</span>}
-                                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                                              <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                                             </button>
                                             {exOpen && (
                                               <div style={{ borderTop: `1px solid ${STATUS_COLOR[st]}20`, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                                 {hasSets && (
                                                   <div>
-                                                    <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets</p>
+                                                    <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets</p>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                       {ex.sets.map((s, si) => {
                                                         const target = ex.targetSets?.[si];
@@ -786,11 +786,11 @@ export default function ProgressPage() {
                                                         }
                                                         return (
                                                           <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                                                            <span style={{ width: 18, color: 'rgba(255,255,255,0.3)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
-                                                            <span style={{ color: '#fff', minWidth: 100 }}>{actual}</span>
+                                                            <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
+                                                            <span style={{ color: 'var(--text)', minWidth: 100 }}>{actual}</span>
                                                             {tLabel && (
                                                               <>
-                                                                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>target: {tLabel}</span>
+                                                                <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>target: {tLabel}</span>
                                                                 {setMet !== null && <span style={{ color: setMet ? TEAL : '#EF4444', fontSize: 12 }}>{setMet ? '✓' : '✗'}</span>}
                                                               </>
                                                             )}
@@ -803,7 +803,7 @@ export default function ProgressPage() {
                                                 {hasNote && (
                                                   <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
                                                     <span style={{ fontSize: 13 }}>💬</span>
-                                                    <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>"{ex.notes}"</p>
+                                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
                                                   </div>
                                                 )}
                                               </div>
