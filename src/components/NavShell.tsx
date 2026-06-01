@@ -3,26 +3,46 @@
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import PractitionerNav from './PractitionerNav';
+import PatientNav from './PatientNav';
+
+type NavRole = 'pract' | 'patient' | null;
 
 export default function NavShell() {
-  const [show, setShow] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('ll_pract') === '1';
+  const [role, setRole] = useState<NavRole>(() => {
+    if (typeof window === 'undefined') return null;
+    if (localStorage.getItem('ll_pract')   === '1') return 'pract';
+    if (localStorage.getItem('ll_patient') === '1') return 'patient';
+    return null;
   });
 
   useEffect(() => {
-    if (localStorage.getItem('ll_pract') === '1') setShow(true);
-
     getSupabase().auth.getSession().then(async ({ data }) => {
-      if (!data.session) { localStorage.removeItem('ll_pract'); setShow(false); return; }
+      if (!data.session) {
+        localStorage.removeItem('ll_pract');
+        localStorage.removeItem('ll_patient');
+        setRole(null);
+        return;
+      }
       const { data: prof } = await getSupabase()
         .from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
-      const ok = prof?.role === 'practitioner' || !!prof?.is_gym_owner;
-      if (ok) { localStorage.setItem('ll_pract', '1'); setShow(true); }
-      else     { localStorage.removeItem('ll_pract');  setShow(false); }
+
+      if (prof?.role === 'practitioner' || !!prof?.is_gym_owner) {
+        localStorage.setItem('ll_pract', '1');
+        localStorage.removeItem('ll_patient');
+        setRole('pract');
+      } else if (prof?.role === 'patient') {
+        localStorage.setItem('ll_patient', '1');
+        localStorage.removeItem('ll_pract');
+        setRole('patient');
+      } else {
+        localStorage.removeItem('ll_pract');
+        localStorage.removeItem('ll_patient');
+        setRole(null);
+      }
     });
   }, []);
 
-  if (!show) return null;
-  return <PractitionerNav />;
+  if (role === 'pract')   return <PractitionerNav />;
+  if (role === 'patient') return <PatientNav />;
+  return null;
 }
