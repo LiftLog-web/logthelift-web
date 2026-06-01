@@ -99,7 +99,7 @@ const PAD = { top: 20, right: 16, bottom: 38, left: 50 };
 const IW  = CW - PAD.left - PAD.right;
 const IH  = CH - PAD.top  - PAD.bottom;
 
-interface DataPoint     { date: string; value: number; }
+interface DataPoint     { date: string; value: number; unit?: string; }
 interface BodyWeightRow { id: string; date: string; weight_kg: number; }
 
 function fmtDate(d: string) {
@@ -228,14 +228,29 @@ export default function ProgressPage() {
           if (!exMap[ex.id]) exMap[ex.id] = { id: ex.id, name: ex.name, type: ex.type ?? 'weighted' };
           const sets: any[] = e.sets ?? [];
           let value = 0;
-          if (ex.type === 'weighted')      value = Math.max(0, ...sets.map((s: any) => s.weight ?? 0));
-          else if (ex.type === 'duration') value = Math.max(0, ...sets.map((s: any) => s.duration ?? s.seconds ?? 0));
-          else if (ex.type === 'cardio')   value = sets.reduce((sum: number, s: any) => sum + (s.cardioduration ?? s.minutes ?? 0), 0);
+          let unit  = '';
+          if (ex.type === 'weighted') {
+            const maxWSet = sets.reduce((m: any, s: any) => (s.weight ?? 0) > (m?.weight ?? 0) ? s : m, null);
+            if (maxWSet && (maxWSet.weight ?? 0) > 0) {
+              value = maxWSet.weight;
+              unit  = maxWSet.unit ?? 'kg';
+            } else {
+              // Bodyweight — track max reps instead
+              const maxReps = Math.max(0, ...sets.map((s: any) => s.reps ?? 0));
+              if (maxReps > 0) { value = maxReps; unit = 'reps'; }
+            }
+          } else if (ex.type === 'duration') {
+            value = Math.max(0, ...sets.map((s: any) => s.duration ?? s.seconds ?? 0));
+            unit = 's';
+          } else if (ex.type === 'cardio') {
+            value = sets.reduce((sum: number, s: any) => sum + (s.cardioduration ?? s.minutes ?? 0), 0);
+            unit = 'min';
+          }
           if (value > 0) {
             if (!dataMap[ex.id]) dataMap[ex.id] = [];
             const existing = dataMap[ex.id].find(p => p.date === date);
-            if (existing) existing.value = Math.max(existing.value, value);
-            else dataMap[ex.id].push({ date, value });
+            if (existing) { if (value > existing.value) { existing.value = value; existing.unit = unit; } }
+            else dataMap[ex.id].push({ date, value, unit });
           }
         });
       });
@@ -360,15 +375,18 @@ export default function ProgressPage() {
   const chartData = exData[selExId] ?? [];
   const exBest    = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : null;
   const exLast    = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+  const exUnit = chartData.length > 0 ? (chartData[chartData.length - 1].unit ?? 'kg') : 'kg';
   const exYFmt = (v: number) => {
-    if (!selEx) return String(Math.round(v));
-    if (selEx.type === 'weighted') return `${v % 1 === 0 ? v : v.toFixed(1)}kg`;
-    if (selEx.type === 'duration') return `${Math.round(v)}s`;
-    return `${Math.round(v)}min`;
+    if (exUnit === 'reps') return `${Math.round(v)} reps`;
+    if (exUnit === 's')    return `${Math.round(v)}s`;
+    if (exUnit === 'min')  return `${Math.round(v)}min`;
+    return `${v % 1 === 0 ? v : v.toFixed(1)}${exUnit}`;
   };
   const exMetricLabel =
-    selEx?.type === 'weighted' ? 'Max weight per session' :
-    selEx?.type === 'duration' ? 'Max duration per session (sec)' : 'Total cardio per session (min)';
+    exUnit === 'reps' ? 'Max reps per session' :
+    exUnit === 's'    ? 'Max duration per session (sec)' :
+    exUnit === 'min'  ? 'Total cardio per session (min)' :
+    `Max weight per session`;
 
   /* ── Body weight derived ── */
   const bwChartData: DataPoint[] = bodyWts.map(b => ({
