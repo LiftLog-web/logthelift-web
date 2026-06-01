@@ -15,10 +15,10 @@ const features = [
 ];
 
 const gymTiers = [
-  { name: 'Solo',      price: 'C$30',  per: '/PT/month', desc: '1–4 PTs at C$30/PT. No commitment — pay only for what you use.',  highlight: false },
-  { name: 'Small Gym', price: 'C$125', per: '/month',     desc: 'Up to 5 PTs at C$25/PT. Best for small studios.',                highlight: false },
-  { name: 'Mid Gym',   price: 'C$300', per: '/month',     desc: 'Up to 15 PTs at C$20/PT. Best value for growing gyms.',          highlight: true  },
-  { name: 'Large Gym', price: 'C$450', per: '/month',     desc: 'Up to 30 PTs at C$15/PT. Built for large facilities.',           highlight: false },
+  { name: 'Solo',      price: 'C$30',  per: '/PT/month', desc: '1–4 PTs at C$30/PT. No commitment — pay only for what you use.',  color: TEAL   },
+  { name: 'Small Gym', price: 'C$125', per: '/month',     desc: 'Up to 5 PTs at C$25/PT. Best for small studios.',                color: PURPLE },
+  { name: 'Mid Gym',   price: 'C$300', per: '/month',     desc: 'Up to 15 PTs at C$20/PT. Best value for growing gyms.',          color: YELLOW },
+  { name: 'Large Gym', price: 'C$450', per: '/month',     desc: 'Up to 30 PTs at C$15/PT. Built for large facilities.',           color: '#f87171' },
 ];
 
 export default function Home() {
@@ -158,34 +158,25 @@ export default function Home() {
             <div
               key={t.name}
               className="rounded-2xl p-6 flex flex-col gap-3"
-              style={t.highlight
-                ? { borderColor: YELLOW, border: `1px solid ${YELLOW}`, background: `${YELLOW}12` }
-                : { border: '1px solid var(--border)', background: 'var(--card)' }}
+              style={{ border: `1px solid ${t.color}55`, background: `${t.color}10` }}
             >
-              {t.highlight && (
-                <span
-                  className="text-xs font-bold px-3 py-1 rounded-full self-start"
-                  style={{ backgroundColor: YELLOW, color: '#0f1117' }}
-                >
-                  Most Popular
-                </span>
-              )}
-              <p className="font-bold text-lg">{t.name}</p>
+              <p className="font-bold text-lg" style={{ color: t.color }}>{t.name}</p>
               <div className="flex items-end gap-1">
-                <span
-                  className="text-3xl font-extrabold"
-                  style={t.highlight ? { color: YELLOW } : { color: 'var(--text)' }}
-                >
-                  {t.price}
-                </span>
+                <span className="text-3xl font-extrabold" style={{ color: t.color }}>{t.price}</span>
                 <span className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>{t.per}</span>
               </div>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t.desc}</p>
             </div>
           ))}
         </div>
-        <p className="text-center text-sm mt-6" style={{ color: 'var(--text-dim)' }}>
-          Overflow PTs are billed at the effective per-PT rate of your tier (e.g. 6 PTs on Small Gym = C$125 + C$25). A gym reaching the next tier&apos;s total automatically qualifies for that plan&apos;s flat rate. Apply through the app.
+        <p className="text-center text-sm mt-8" style={{ color: 'var(--text-muted)' }}>
+          Have any questions about pricing?{' '}
+          <a
+            href="mailto:logthelift@gmail.com"
+            style={{ color: TEAL, fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Email us
+          </a>
         </p>
       </section>
 
