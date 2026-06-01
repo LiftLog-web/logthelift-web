@@ -22,18 +22,17 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
 
   return (
     <nav style={{
-      borderBottom: '1px solid rgba(255,255,255,0.1)',
+      borderBottom: '1px solid var(--border)',
       padding: '0 32px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      background: '#0f1117',
+      background: 'var(--bg)',
       position: 'sticky',
       top: 0,
       zIndex: 100,
       height: 56,
     }}>
-      {/* Logo + nav links */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 18, textDecoration: 'none', marginRight: 16 }}>
           LiftLog
@@ -49,7 +48,7 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
               padding: '0 12px',
               height: 56,
               cursor: 'pointer',
-              color: isActive(item.href) ? '#fff' : 'rgba(255,255,255,0.45)',
+              color: isActive(item.href) ? 'var(--text)' : 'var(--text-muted)',
               fontSize: 13,
               fontWeight: isActive(item.href) ? 700 : 400,
               display: 'flex',
@@ -65,7 +64,6 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
         ))}
       </div>
 
-      {/* Right slot — page-specific actions (save, new plan, etc.) */}
       {rightSlot && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {rightSlot}
