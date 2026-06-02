@@ -8,12 +8,7 @@ import PatientNav from './PatientNav';
 type NavRole = 'pract' | 'patient' | null;
 
 export default function NavShell() {
-  const [role, setRole] = useState<NavRole>(() => {
-    if (typeof window === 'undefined') return null;
-    if (localStorage.getItem('ll_pract')   === '1') return 'pract';
-    if (localStorage.getItem('ll_patient') === '1') return 'patient';
-    return null;
-  });
+  const [role, setRole] = useState<NavRole>(null);
 
   useEffect(() => {
     getSupabase().auth.getSession().then(async ({ data }) => {
