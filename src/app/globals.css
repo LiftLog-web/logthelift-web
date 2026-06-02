@@ -67,3 +67,11 @@ body {
 ::selection {
   background: #5fcfbf44;
 }
+
+/* Tell the browser which color scheme to use when rendering native controls (select dropdowns, scrollbars, etc.) */
+:root select {
+  color-scheme: dark;
+}
+[data-theme="light"] select {
+  color-scheme: light;
+}

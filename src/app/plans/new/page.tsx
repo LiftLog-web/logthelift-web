@@ -11,6 +11,14 @@ import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 
+const MUSCLE_GROUP_SECTIONS = [
+  { label: 'Upper Body', members: ['Chest', 'Back', 'Shoulders'] },
+  { label: 'Arms',       members: ['Biceps', 'Triceps', 'Forearms'] },
+  { label: 'Core',       members: ['Core'] },
+  { label: 'Legs',       members: ['Quadriceps', 'Hamstrings', 'Adductors', 'Glutes', 'Calves', 'Hip Flexors'] },
+  { label: 'Other',      members: ['Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics', 'Rotator Cuff', 'Ankle & Foot', 'Cervical', 'Lumbar'] },
+];
+
 type WeightUnit = 'lbs' | 'kg';
 
 interface WorkoutSet {
@@ -98,7 +106,9 @@ function NewPlanInner() {
   const [videoNotes,       setVideoNotes]       = useState('');
   const [videoMuscleGroup, setVideoMuscleGroup] = useState('');
   const [videoSaved,       setVideoSaved]       = useState(false);
-  const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [sidebarOpen,      setSidebarOpen]      = useState(true);
+  const [muscleDropdownOpen, setMuscleDropdownOpen] = useState(false);
+  const muscleDropdownRef = useRef<HTMLDivElement>(null);
   const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
@@ -281,10 +291,27 @@ function NewPlanInner() {
   };
 
   const filteredExercises = EXERCISES.filter(ex => {
-    const matchesMuscle = muscleFilter === 'All' || ex.muscleGroup === muscleFilter;
+    const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
+    const matchesMuscle = muscleFilter === 'All'
+      ? true
+      : section
+        ? section.members.includes(ex.muscleGroup)
+        : ex.muscleGroup === muscleFilter;
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
     return matchesMuscle && matchesSearch;
   });
+
+  // Close muscle group dropdown on outside click
+  useEffect(() => {
+    if (!muscleDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (muscleDropdownRef.current && !muscleDropdownRef.current.contains(e.target as Node)) {
+        setMuscleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [muscleDropdownOpen]);
 
   // Keep ref in sync so addExercise (memoised) always reads the latest unit
   useEffect(() => { preferredUnitRef.current = preferredUnit; }, [preferredUnit]);
@@ -600,7 +627,7 @@ function NewPlanInner() {
       <div style={{ display: 'flex', height: 'calc(100vh - 170px)', overflow: 'hidden' }}>
 
         {/* Left: Exercise Library — collapsible */}
-        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease' }}>
+        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease', background: 'var(--bg)' }}>
           {/* Sidebar header with toggle */}
           <div style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
@@ -619,16 +646,49 @@ function NewPlanInner() {
               placeholder="Search exercises…"
               style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
             />
-            <select
-              value={muscleFilter}
-              onChange={e => setMuscleFilter(e.target.value)}
-              style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
-            >
-              <option value="All" style={{ background: 'var(--card)' }}>All muscle groups</option>
-              {MUSCLE_GROUPS.map(mg => (
-                <option key={mg} value={mg} style={{ background: 'var(--card)' }}>{mg}</option>
-              ))}
-            </select>
+            {/* Custom grouped muscle group dropdown */}
+            <div ref={muscleDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setMuscleDropdownOpen(v => !v)}
+                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span>{muscleFilter === 'All' ? 'All muscle groups' : muscleFilter}</span>
+                <span style={{ opacity: 0.5, fontSize: 10 }}>{muscleDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+              {muscleDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 200, maxHeight: 280, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                  {/* All option */}
+                  <button
+                    onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? `${TEAL}22` : 'transparent', color: muscleFilter === 'All' ? TEAL : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}
+                  >
+                    All muscle groups
+                  </button>
+                  {/* Grouped sections */}
+                  {MUSCLE_GROUP_SECTIONS.map(section => (
+                    <Fragment key={section.label}>
+                      {/* Group header — clickable to select all in group */}
+                      <button
+                        onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? `${TEAL}22` : 'transparent', color: muscleFilter === section.label ? TEAL : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}
+                      >
+                        {section.label}
+                      </button>
+                      {/* Subcategories */}
+                      {section.members.map(mg => (
+                        <button
+                          key={mg}
+                          onClick={() => { setMuscleFilter(mg); setMuscleDropdownOpen(false); }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? `${TEAL}22` : 'transparent', color: muscleFilter === mg ? TEAL : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}
+                        >
+                          {mg}
+                        </button>
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>}
           {sidebarOpen && <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {filteredExercises.map(ex => {
