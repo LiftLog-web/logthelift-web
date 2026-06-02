@@ -52,11 +52,7 @@ interface Plan {
   id: string;
   name: string;
   description: string | null;
-  exercises: PlanExercise[];
-}
-
-function newSetForType(type: string): WorkoutSet {
-  return { id: String(Date.now() + Math.random()) };
+  exercises: any;
 }
 
 function renderStars(rating: number, onClick: (v: number) => void) {
@@ -79,24 +75,41 @@ function renderStars(rating: number, onClick: (v: number) => void) {
   );
 }
 
+function buildLoggedExs(flatExs: PlanExercise[]): LoggedExercise[] {
+  return flatExs.map((pe: PlanExercise) => ({
+    id: pe.id,
+    exercise: pe.exercise,
+    sets: pe.sets.map((_, i) => ({ id: `${pe.id}-${i}` })),
+    notes: '',
+    practitionerNotes: pe.notes || undefined,
+    targetSets: pe.sets.map(s => ({
+      reps: s.reps,
+      weight: s.weight,
+      duration: s.seconds,
+      cardioduration: s.minutes,
+    })),
+  }));
+}
+
 function LogWorkoutInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const presetPlanId = searchParams.get('planId');
 
-  const [userId,       setUserId]       = useState('');
-  const [authed,       setAuthed]       = useState(false);
-  const [plans,        setPlans]        = useState<Plan[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [loggedExs,    setLoggedExs]    = useState<LoggedExercise[]>([]);
-  const [notes,        setNotes]        = useState('');
-  const [rating,       setRating]       = useState<number | null>(null);
-  const [startTime]                     = useState(Date.now());
-  const [saving,       setSaving]       = useState(false);
-  const [saveError,    setSaveError]    = useState('');
-  const [saved,        setSaved]        = useState(false);
-  const [exSearch,     setExSearch]     = useState('');
-  const [exMuscle,     setExMuscle]     = useState('All');
+  const [userId,          setUserId]          = useState('');
+  const [authed,          setAuthed]          = useState(false);
+  const [plans,           setPlans]           = useState<Plan[]>([]);
+  const [selectedPlan,    setSelectedPlan]    = useState<Plan | null>(null);
+  const [pendingMultiDay, setPendingMultiDay] = useState<Plan | null>(null);
+  const [loggedExs,       setLoggedExs]       = useState<LoggedExercise[]>([]);
+  const [notes,           setNotes]           = useState('');
+  const [rating,          setRating]          = useState<number | null>(null);
+  const [startTime]                           = useState(Date.now());
+  const [saving,          setSaving]          = useState(false);
+  const [saveError,       setSaveError]       = useState('');
+  const [saved,           setSaved]           = useState(false);
+  const [exSearch,        setExSearch]        = useState('');
+  const [exMuscle,        setExMuscle]        = useState('All');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -122,37 +135,28 @@ function LogWorkoutInner() {
       if (presetPlanId) {
         const preset = loadedPlans.find(p => p.id === presetPlanId);
         if (preset) {
-          const exs = preset.exercises.map(pe => ({
-            id: pe.id,
-            exercise: pe.exercise,
-            sets: pe.sets.map((_, i) => ({ id: `${pe.id}-${i}` })),
-            notes: '',
-            practitionerNotes: pe.notes || undefined,
-            targetSets: pe.sets.map(s => ({ reps: s.reps, weight: s.weight, duration: s.seconds, cardioduration: s.minutes })),
-          }));
-          setSelectedPlan(preset);
-          setLoggedExs(exs);
+          const raw = preset.exercises;
+          if (raw && !Array.isArray(raw) && raw.days) {
+            setPendingMultiDay(preset);
+          } else {
+            const flatExs = (Array.isArray(raw) ? raw : []) as PlanExercise[];
+            setSelectedPlan(preset);
+            setLoggedExs(buildLoggedExs(flatExs));
+          }
         }
       }
     });
   }, [router]);
 
   const selectPlan = useCallback((plan: Plan) => {
+    const raw = plan.exercises;
+    if (raw && !Array.isArray(raw) && raw.days) {
+      setPendingMultiDay(plan);
+      return;
+    }
+    const flatExs = (Array.isArray(raw) ? raw : []) as PlanExercise[];
     setSelectedPlan(plan);
-    const exs: LoggedExercise[] = plan.exercises.map(pe => ({
-      id: pe.id,
-      exercise: pe.exercise,
-      sets: pe.sets.map((_, i) => ({ id: `${pe.id}-${i}` })),
-      notes: '',
-      practitionerNotes: pe.notes || undefined,
-      targetSets: pe.sets.map(s => ({
-        reps: s.reps,
-        weight: s.weight,
-        duration: s.seconds,
-        cardioduration: s.minutes,
-      })),
-    }));
-    setLoggedExs(exs);
+    setLoggedExs(buildLoggedExs(flatExs));
   }, []);
 
   const updateSet = (exId: string, setIdx: number, field: keyof WorkoutSet, value: number) => {
@@ -278,8 +282,44 @@ function LogWorkoutInner() {
 
       <main style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px' }}>
 
-        {/* Plan selector */}
-        {!selectedPlan ? (
+        {/* Day selector (multi-day plans) */}
+        {!selectedPlan && pendingMultiDay ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+              <button onClick={() => setPendingMultiDay(null)}
+                style={{ background: 'transparent', border: `1px solid ${TEAL}`, color: TEAL, borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
+                ← Back
+              </button>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{pendingMultiDay.name}</h1>
+                {pendingMultiDay.description && <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '2px 0 0' }}>{pendingMultiDay.description}</p>}
+              </div>
+            </div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Choose a Day</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(pendingMultiDay.exercises.days as { id: string; label: string; exercises: PlanExercise[] }[]).map((day, idx) => (
+                <button key={day.id} onClick={() => {
+                  setSelectedPlan({ ...pendingMultiDay, name: `${pendingMultiDay.name} — ${day.label}` });
+                  setLoggedExs(buildLoggedExs(day.exercises));
+                  setPendingMultiDay(null);
+                }}
+                  style={{ textAlign: 'left', background: 'var(--card)', borderTop: `1px solid ${TEAL}30`, borderRight: `1px solid ${TEAL}30`, borderBottom: `1px solid ${TEAL}30`, borderLeft: `3px solid ${TEAL}`, borderRadius: 14, padding: '18px 22px', cursor: 'pointer' }}
+                  onMouseEnter={e => { (e.currentTarget.style.borderTopColor = TEAL); (e.currentTarget.style.borderRightColor = TEAL); (e.currentTarget.style.borderBottomColor = TEAL); }}
+                  onMouseLeave={e => { (e.currentTarget.style.borderTopColor = `${TEAL}30`); (e.currentTarget.style.borderRightColor = `${TEAL}30`); (e.currentTarget.style.borderBottomColor = `${TEAL}30`); }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: `${TEAL}20`, color: TEAL, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{idx + 1}</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{day.label}</div>
+                      <div style={{ fontSize: 12, color: TEAL, marginTop: 2 }}>{day.exercises.length} exercises</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+
+        ) : !selectedPlan ? (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Start a Workout</h1>
             <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 }}>Choose a plan from your practitioner or log a free workout.</p>
@@ -296,7 +336,11 @@ function LogWorkoutInner() {
                     >
                       <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>{plan.name}</div>
                       {plan.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>{plan.description}</div>}
-                      <div style={{ fontSize: 12, color: TEAL }}>{plan.exercises?.length ?? 0} exercises</div>
+                      <div style={{ fontSize: 12, color: TEAL }}>
+                        {plan.exercises && !Array.isArray(plan.exercises) && plan.exercises.days
+                          ? `${plan.exercises.days.length} day split`
+                          : `${Array.isArray(plan.exercises) ? plan.exercises.length : 0} exercises`}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -308,6 +352,7 @@ function LogWorkoutInner() {
               + Free Workout (no plan)
             </button>
           </>
+
         ) : (
           <>
             {/* Header */}
@@ -317,7 +362,7 @@ function LogWorkoutInner() {
                 {selectedPlan.description && <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{selectedPlan.description}</p>}
               </div>
               <button onClick={() => { setSelectedPlan(null); setLoggedExs([]); }}
-                style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>
+                style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}`, color: TEAL, borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
                 ← Change Plan
               </button>
             </div>
@@ -387,7 +432,7 @@ function LogWorkoutInner() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
               {loggedExs.map(ex => (
-                <div key={ex.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}30`, borderRadius: 14, padding: '18px 20px' }}>
+                <div key={ex.id} style={{ background: 'var(--card)', borderTop: `1px solid ${PURPLE}40`, borderRight: `1px solid ${PURPLE}40`, borderBottom: `1px solid ${PURPLE}40`, borderLeft: `3px solid ${PURPLE}`, borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.exercise.name}</div>
                     {selectedPlan.id === '' && (
@@ -397,7 +442,7 @@ function LogWorkoutInner() {
                       </button>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: ex.practitionerNotes ? 8 : 14 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: ex.practitionerNotes ? 8 : 14 }}>
                     {ex.exercise.muscleGroup} · {ex.exercise.equipment}
                   </div>
                   {ex.practitionerNotes && (
@@ -409,9 +454,9 @@ function LogWorkoutInner() {
                   {/* Target reference */}
                   {(ex.targetSets ?? []).length > 0 && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, alignSelf: 'center' }}>TARGET:</span>
+                      <span style={{ fontSize: 11, color: TEAL, fontWeight: 700, alignSelf: 'center' }}>TARGET:</span>
                       {(ex.targetSets ?? []).map((t, i) => (
-                        <span key={i} style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
+                        <span key={i} style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30`, borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
                           {ex.exercise.type === 'cardio' ? `${t.cardioduration ?? '?'} min`
                            : ex.exercise.type === 'duration' ? `${t.duration ?? '?'}s`
                            : `${t.reps ?? '?'} reps × ${t.weight ?? 0}kg`}
@@ -424,7 +469,7 @@ function LogWorkoutInner() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
                     {ex.sets.map((s, si) => (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ width: 22, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>Set {si + 1}</span>
+                        <span style={{ fontSize: 12, color: TEAL, fontWeight: 700, flexShrink: 0 }}>Set {si + 1}</span>
 
                         {ex.exercise.type === 'weighted' && (
                           <>
