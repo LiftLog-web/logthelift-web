@@ -786,8 +786,11 @@ function NewPlanInner() {
                       >
                         {/* Card header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isCollapsed ? 0 : 14 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                            <span title="Drag to reorder" style={{ color: 'var(--text-faint)', fontSize: 15, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                          <div
+                            onClick={() => setCollapsedExercises(prev => { const n = new Set(prev); n.has(pe.id) ? n.delete(pe.id) : n.add(pe.id); return n; })}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' }}
+                          >
+                            <span title="Drag to reorder" onClick={e => e.stopPropagation()} style={{ color: 'var(--text-faint)', fontSize: 15, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>⠿</span>
                             <div>
                               <span style={{ fontWeight: 700, fontSize: 15 }}>{exIdx + 1}. {pe.exercise.name}</span>
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-dim)' }}>
@@ -860,11 +863,6 @@ function NewPlanInner() {
                                 {pe.unit ?? preferredUnit} ⇄ {(pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
                               </button>
                             )}
-                            <button
-                              onClick={() => setCollapsedExercises(prev => { const n = new Set(prev); n.has(pe.id) ? n.delete(pe.id) : n.add(pe.id); return n; })}
-                              style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 13, cursor: 'pointer', lineHeight: 1, transition: 'transform 0.2s' }}
-                              title={isCollapsed ? 'Expand' : 'Collapse'}
-                            >{isCollapsed ? '▸' : '▾'}</button>
                             <button
                               onClick={() => removeExercise(pe.id)}
                               style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
