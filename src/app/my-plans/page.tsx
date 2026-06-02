@@ -37,7 +37,7 @@ interface Plan {
   id: string;
   name: string;
   description: string | null;
-  exercises: PlanExercise[];
+  exercises: any;
   created_at: string;
   practitionerName: string;
 }
@@ -57,6 +57,36 @@ const TYPE_COLOR: Record<string, string> = {
   duration: PURPLE,
   cardio:   YELLOW,
 };
+
+function ExerciseCard({ pe, idx }: { pe: PlanExercise; idx: number }) {
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: pe.notes ? 10 : 12 }}>
+        <span style={{ color: 'var(--text-dim)', fontSize: 13, flexShrink: 0 }}>{idx + 1}.</span>
+        <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{pe.exercise.name}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TYPE_COLOR[pe.exercise.type]}22`, color: TYPE_COLOR[pe.exercise.type] }}>
+          {pe.exercise.type}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+          {pe.exercise.muscleGroup} · {pe.exercise.equipment}
+        </span>
+      </div>
+      {pe.notes?.trim() && (
+        <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+          PT note: {pe.notes}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {pe.sets.map((s, si) => (
+          <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 44, flexShrink: 0 }}>Set {si + 1}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{setLabel(s, pe.exercise.type)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function MyPlansPage() {
   const router = useRouter();
@@ -157,6 +187,13 @@ export default function MyPlansPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {plans.map(plan => {
               const isOpen = expanded.has(plan.id);
+              const isNewFormat = plan.exercises && !Array.isArray(plan.exercises) && plan.exercises.days;
+              const flatExercises: PlanExercise[] = isNewFormat ? [] : (Array.isArray(plan.exercises) ? plan.exercises : []);
+              const days: { id: string; label: string; exercises: PlanExercise[] }[] = isNewFormat ? plan.exercises.days : [];
+              const totalExercises = isNewFormat
+                ? days.reduce((n: number, d: any) => n + d.exercises.length, 0)
+                : flatExercises.length;
+
               return (
                 <div key={plan.id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
 
@@ -167,9 +204,12 @@ export default function MyPlansPage() {
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{plan.name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                         <span>From: {plan.practitionerName}</span>
-                        <span>{plan.exercises.length} exercise{plan.exercises.length !== 1 ? 's' : ''}</span>
+                        {isNewFormat && (
+                          <span style={{ fontWeight: 700, color: TEAL }}>{plan.exercises.frequencyPerWeek}x / week · {days.length} day{days.length !== 1 ? 's' : ''}</span>
+                        )}
+                        <span>{totalExercises} exercise{totalExercises !== 1 ? 's' : ''}</span>
                         {plan.description && <span style={{ color: 'var(--text-dim)' }}>{plan.description}</span>}
                       </div>
                     </div>
@@ -188,40 +228,35 @@ export default function MyPlansPage() {
                   {/* Plan detail */}
                   {isOpen && (
                     <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '20px 24px' }}>
-                      {plan.exercises.length === 0 ? (
-                        <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>No exercises in this plan.</p>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {plan.exercises.map((pe, idx) => (
-                            <div key={pe.id} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '16px 18px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: pe.notes ? 10 : 12 }}>
-                                <span style={{ color: 'var(--text-dim)', fontSize: 13, flexShrink: 0 }}>{idx + 1}.</span>
-                                <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{pe.exercise.name}</span>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TYPE_COLOR[pe.exercise.type]}22`, color: TYPE_COLOR[pe.exercise.type] }}>
-                                  {pe.exercise.type}
-                                </span>
-                                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                                  {pe.exercise.muscleGroup} · {pe.exercise.equipment}
-                                </span>
-                              </div>
-
-                              {pe.notes?.trim() && (
-                                <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>
-                                  PT note: {pe.notes}
+                      {isNewFormat ? (
+                        /* New multi-day format */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                          {days.map((day: any) => (
+                            <div key={day.id}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: TEAL, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{day.label}</div>
+                              {day.exercises.length === 0 ? (
+                                <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>No exercises for this day.</p>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  {day.exercises.map((pe: PlanExercise, idx: number) => (
+                                    <ExerciseCard key={pe.id} pe={pe} idx={idx} />
+                                  ))}
                                 </div>
                               )}
-
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {pe.sets.map((s, si) => (
-                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 44, flexShrink: 0 }}>Set {si + 1}</span>
-                                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{setLabel(s, pe.exercise.type)}</span>
-                                  </div>
-                                ))}
-                              </div>
                             </div>
                           ))}
                         </div>
+                      ) : (
+                        /* Old flat format */
+                        flatExercises.length === 0 ? (
+                          <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>No exercises in this plan.</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {flatExercises.map((pe, idx) => (
+                              <ExerciseCard key={pe.id} pe={pe} idx={idx} />
+                            ))}
+                          </div>
+                        )
                       )}
                     </div>
                   )}

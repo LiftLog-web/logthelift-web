@@ -32,6 +32,12 @@ interface PlanExercise {
   unit?: WeightUnit;   // per-exercise unit preference
 }
 
+interface PlanDay {
+  id: string;
+  label: string;
+  exercises: PlanExercise[];
+}
+
 // Rest is stored in minutes (fractional). These helpers convert for display.
 function toMinSec(restMin: number): { m: number; s: number } {
   const m = Math.floor(restMin);
@@ -67,7 +73,11 @@ function NewPlanInner() {
   const [patientId,    setPatientId]    = useState('');
   const [planName,     setPlanName]     = useState('');
   const [description,  setDescription]  = useState('');
-  const [planExercises,setPlanExercises]= useState<PlanExercise[]>([]);
+  const [days,             setDays]             = useState<PlanDay[]>([{ id: 'day-1', label: 'Day 1', exercises: [] }]);
+  const [activeDayId,      setActiveDayId]      = useState('day-1');
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
+  const [editingDayId,     setEditingDayId]     = useState<string | null>(null);
+  const [editingDayLabel,  setEditingDayLabel]  = useState('');
   const [search,       setSearch]       = useState('');
   const [muscleFilter, setMuscleFilter] = useState('All');
   const [saving,        setSaving]        = useState(false);
@@ -146,18 +156,42 @@ function NewPlanInner() {
         if (tpl) {
           setPlanName(tpl.name);
           setDescription(tpl.description ?? '');
-          const loaded: PlanExercise[] = (tpl.exercises ?? []).map((e: any) => ({
-            id: String(Math.random()),
-            exercise: e.exercise,
-            sets: (e.sets ?? [{ reps: 10, weight: 0 }]).map((s: any) => ({ ...s })),
-            targetSets: e.sets?.length ?? 3,
-            notes: e.notes ?? '',
-            unit: e.unit ?? undefined,
-          }));
-          // Seed preferred unit from template
-          const tplUnit = loaded[0]?.unit;
-          if (tplUnit) setPreferredUnit(tplUnit);
-          setPlanExercises(loaded);
+          const raw = tpl.exercises;
+          if (raw && !Array.isArray(raw) && raw.days) {
+            // New multi-day format
+            setFrequencyPerWeek(raw.frequencyPerWeek ?? 3);
+            const loadedDays: PlanDay[] = (raw.days as any[]).map((day: any) => ({
+              id: day.id ?? String(Math.random()),
+              label: day.label ?? 'Day',
+              exercises: (day.exercises ?? []).map((e: any) => ({
+                id: e.id ?? String(Math.random()),
+                exercise: e.exercise,
+                sets: (e.sets ?? [{ reps: 10, weight: 0 }]).map((s: any) => ({ ...s })),
+                targetSets: e.targetSets ?? e.sets?.length ?? 3,
+                notes: e.notes ?? '',
+                supersetWithId: e.supersetWithId,
+                unit: e.unit ?? undefined,
+              })),
+            }));
+            setDays(loadedDays);
+            setActiveDayId(loadedDays[0]?.id ?? 'day-1');
+            const firstUnit = loadedDays[0]?.exercises[0]?.unit;
+            if (firstUnit) setPreferredUnit(firstUnit);
+          } else {
+            // Old flat format
+            const loaded: PlanExercise[] = (Array.isArray(raw) ? raw : []).map((e: any) => ({
+              id: String(Math.random()),
+              exercise: e.exercise,
+              sets: (e.sets ?? [{ reps: 10, weight: 0 }]).map((s: any) => ({ ...s })),
+              targetSets: e.sets?.length ?? 3,
+              notes: e.notes ?? '',
+              unit: e.unit ?? undefined,
+            }));
+            const tplUnit = loaded[0]?.unit;
+            if (tplUnit) setPreferredUnit(tplUnit);
+            setDays([{ id: 'day-1', label: 'Day 1', exercises: loaded }]);
+            setActiveDayId('day-1');
+          }
         }
       }
 
@@ -172,22 +206,78 @@ function NewPlanInner() {
           setPlanName(plan.name);
           setDescription(plan.description ?? '');
           setPatientId(plan.patient_id);
-          const loaded: PlanExercise[] = (plan.exercises ?? []).map((e: any) => ({
-            id: e.id ?? String(Math.random()),
-            exercise: e.exercise,
-            sets: e.sets ?? [],
-            targetSets: e.targetSets ?? e.sets?.length ?? 3,
-            notes: e.notes ?? '',
-            supersetWithId: e.supersetWithId,
-            unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
-          }));
-          const planUnit = loaded[0]?.unit;
-          if (planUnit) setPreferredUnit(planUnit);
-          setPlanExercises(loaded);
+          const raw = plan.exercises;
+          if (raw && !Array.isArray(raw) && raw.days) {
+            // New multi-day format
+            setFrequencyPerWeek(raw.frequencyPerWeek ?? 3);
+            const loadedDays: PlanDay[] = (raw.days as any[]).map((day: any) => ({
+              id: day.id ?? String(Math.random()),
+              label: day.label ?? 'Day',
+              exercises: (day.exercises ?? []).map((e: any) => ({
+                id: e.id ?? String(Math.random()),
+                exercise: e.exercise,
+                sets: e.sets ?? [],
+                targetSets: e.targetSets ?? e.sets?.length ?? 3,
+                notes: e.notes ?? '',
+                supersetWithId: e.supersetWithId,
+                unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
+              })),
+            }));
+            setDays(loadedDays);
+            setActiveDayId(loadedDays[0]?.id ?? 'day-1');
+            const firstUnit = loadedDays[0]?.exercises[0]?.unit;
+            if (firstUnit) setPreferredUnit(firstUnit);
+          } else {
+            // Old flat format
+            const loaded: PlanExercise[] = (Array.isArray(raw) ? raw : []).map((e: any) => ({
+              id: e.id ?? String(Math.random()),
+              exercise: e.exercise,
+              sets: e.sets ?? [],
+              targetSets: e.targetSets ?? e.sets?.length ?? 3,
+              notes: e.notes ?? '',
+              supersetWithId: e.supersetWithId,
+              unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
+            }));
+            const planUnit = loaded[0]?.unit;
+            if (planUnit) setPreferredUnit(planUnit);
+            setDays([{ id: 'day-1', label: 'Day 1', exercises: loaded }]);
+            setActiveDayId('day-1');
+          }
         }
       }
     });
   }, [router, editId]);
+
+  const activeDay      = days.find(d => d.id === activeDayId) ?? days[0];
+  const activeExercises = activeDay?.exercises ?? [];
+
+  const updateActiveDay = useCallback((fn: (exs: PlanExercise[]) => PlanExercise[]) => {
+    setDays(prev => prev.map(d => d.id === activeDayId ? { ...d, exercises: fn(d.exercises) } : d));
+  }, [activeDayId]);
+
+  const addDay = () => {
+    const newId = `day-${Date.now()}`;
+    const newLabel = `Day ${days.length + 1}`;
+    setDays(prev => [...prev, { id: newId, label: newLabel, exercises: [] }]);
+    setActiveDayId(newId);
+  };
+
+  const removeDay = (dayId: string) => {
+    if (days.length <= 1) return;
+    setDays(prev => prev.filter(d => d.id !== dayId));
+    if (activeDayId === dayId) setActiveDayId(days[0].id !== dayId ? days[0].id : days[1].id);
+  };
+
+  const startRenameDay = (day: PlanDay) => {
+    setEditingDayId(day.id);
+    setEditingDayLabel(day.label);
+  };
+
+  const commitRenameDay = () => {
+    if (!editingDayId) return;
+    setDays(prev => prev.map(d => d.id === editingDayId ? { ...d, label: editingDayLabel.trim() || d.label } : d));
+    setEditingDayId(null);
+  };
 
   const filteredExercises = EXERCISES.filter(ex => {
     const matchesMuscle = muscleFilter === 'All' || ex.muscleGroup === muscleFilter;
@@ -199,15 +289,15 @@ function NewPlanInner() {
   useEffect(() => { preferredUnitRef.current = preferredUnit; }, [preferredUnit]);
 
   const addExercise = useCallback((ex: Exercise) => {
-    setPlanExercises(prev => {
+    updateActiveDay(prev => {
       if (prev.some(pe => pe.exercise.id === ex.id)) return prev;
       const sets = [defaultSet(ex), defaultSet(ex), defaultSet(ex)].map(s => ({ ...s, rest: 1 }));
       return [...prev, { id: String(Date.now()), exercise: ex, sets, targetSets: 3, notes: '', unit: preferredUnitRef.current }];
     });
-  }, []);
+  }, [updateActiveDay]);
 
   const toggleUnit = (peId: string) => {
-    setPlanExercises(prev => prev.map(pe => {
+    updateActiveDay(prev => prev.map(pe => {
       if (pe.id !== peId) return pe;
       const next: WeightUnit = (pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs';
       setPreferredUnit(next);
@@ -216,10 +306,10 @@ function NewPlanInner() {
     }));
   };
 
-  const removeExercise = (id: string) => setPlanExercises(prev => prev.filter(pe => pe.id !== id));
+  const removeExercise = (id: string) => updateActiveDay(prev => prev.filter(pe => pe.id !== id));
 
   const updateSet = (peId: string, setIdx: number, field: keyof WorkoutSet, value: number) => {
-    setPlanExercises(prev => prev.map(pe => {
+    updateActiveDay(prev => prev.map(pe => {
       if (pe.id !== peId) return pe;
       const sets = pe.sets.map((s, i) => i === setIdx ? { ...s, [field]: value } : s);
       return { ...pe, sets };
@@ -227,7 +317,7 @@ function NewPlanInner() {
   };
 
   const updateTargetSets = (peId: string, count: number) => {
-    setPlanExercises(prev => prev.map(pe => {
+    updateActiveDay(prev => prev.map(pe => {
       if (pe.id !== peId) return pe;
       const ex = pe.exercise;
       let sets = [...pe.sets];
@@ -301,11 +391,11 @@ function NewPlanInner() {
   };
 
   const updateNotes = (peId: string, notes: string) => {
-    setPlanExercises(prev => prev.map(pe => pe.id === peId ? { ...pe, notes } : pe));
+    updateActiveDay(prev => prev.map(pe => pe.id === peId ? { ...pe, notes } : pe));
   };
 
   const removeSuperset = (peId: string) => {
-    setPlanExercises(prev => prev.map(pe =>
+    updateActiveDay(prev => prev.map(pe =>
       pe.id === peId || pe.supersetWithId === peId ? { ...pe, supersetWithId: undefined } : pe
     ));
   };
@@ -316,7 +406,7 @@ function NewPlanInner() {
     } else if (supersetMode === peId) {
       setSupersetMode(null);
     } else {
-      setPlanExercises(prev => prev.map(pe => {
+      updateActiveDay(prev => prev.map(pe => {
         if (pe.id === supersetMode) return { ...pe, supersetWithId: peId };
         if (pe.id === peId)         return { ...pe, supersetWithId: supersetMode };
         return pe;
@@ -343,7 +433,7 @@ function NewPlanInner() {
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return; }
-    setPlanExercises(prev => {
+    updateActiveDay(prev => {
       const items = [...prev];
       const from = items.findIndex(p => p.id === draggedId);
       const to   = items.findIndex(p => p.id === targetId);
@@ -358,18 +448,20 @@ function NewPlanInner() {
   const handleSave = async () => {
     if (!planName.trim())   { setSaveError('Plan name is required.'); return; }
     if (!patientId)         { setSaveError('Please select a patient.'); return; }
-    if (planExercises.length === 0) { setSaveError('Add at least one exercise.'); return; }
+    if (days.every(d => d.exercises.length === 0)) { setSaveError('Add at least one exercise.'); return; }
 
     setSaving(true);
     setSaveError('');
     const sb = getSupabase();
+
+    const exercisesPayload = { frequencyPerWeek, days };
 
     const payload = {
       practitioner_id: practId,
       patient_id:      patientId,
       name:            planName.trim(),
       description:     description.trim() || null,
-      exercises:       planExercises,
+      exercises:       exercisesPayload,
       updated_at:      new Date().toISOString(),
     };
 
@@ -389,7 +481,7 @@ function NewPlanInner() {
         practitioner_id: practId,
         name: libName,
         description: description.trim() || null,
-        exercises: planExercises,
+        exercises: exercisesPayload,
       });
     }
 
@@ -487,6 +579,20 @@ function NewPlanInner() {
             style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
+        <div style={{ flexShrink: 0 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Times / Week</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+            >−</button>
+            <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
+            <button
+              onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}
+            >+</button>
+          </div>
+        </div>
       </div>
 
       {/* Two-column builder */}
@@ -525,13 +631,13 @@ function NewPlanInner() {
           </div>}
           {sidebarOpen && <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {filteredExercises.map(ex => {
-              const alreadyAdded = planExercises.some(pe => pe.exercise.id === ex.id);
+              const alreadyAdded = activeExercises.some(pe => pe.exercise.id === ex.id);
               return (
                 <button
                   key={ex.id}
                   onClick={() => {
                     if (alreadyAdded) {
-                      const pe = planExercises.find(p => p.exercise.id === ex.id);
+                      const pe = activeExercises.find(p => p.exercise.id === ex.id);
                       if (pe) removeExercise(pe.id);
                     } else {
                       addExercise(ex);
@@ -573,8 +679,54 @@ function NewPlanInner() {
         </div>
 
         {/* Right: Plan builder */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
-          {planExercises.length === 0 ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Day tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 0', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
+            {days.map(day => (
+              <div key={day.id} style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                {editingDayId === day.id ? (
+                  <input
+                    autoFocus
+                    value={editingDayLabel}
+                    onChange={e => setEditingDayLabel(e.target.value)}
+                    onBlur={commitRenameDay}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRenameDay(); if (e.key === 'Escape') setEditingDayId(null); }}
+                    style={{ width: 90, background: 'var(--input-bg)', border: `1px solid ${TEAL}`, borderRadius: 8, padding: '5px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setActiveDayId(day.id)}
+                    onDoubleClick={() => startRenameDay(day)}
+                    title="Double-click to rename"
+                    style={{
+                      background: activeDayId === day.id ? TEAL : 'var(--card-alt)',
+                      color: activeDayId === day.id ? '#0f1117' : 'var(--text-muted)',
+                      border: `1px solid ${activeDayId === day.id ? TEAL : 'var(--border-strong)'}`,
+                      borderRadius: 8, padding: '5px 12px', fontSize: 13, fontWeight: 700,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >{day.label}</button>
+                )}
+                {days.length > 1 && (
+                  <button
+                    onClick={() => removeDay(day.id)}
+                    title="Remove this day"
+                    style={{ marginLeft: 2, background: 'transparent', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 13, padding: '2px 4px', lineHeight: 1 }}
+                  >×</button>
+                )}
+              </div>
+            ))}
+            {days.length < 7 && (
+              <button
+                onClick={addDay}
+                style={{ background: 'transparent', border: `1px dashed var(--border-strong)`, borderRadius: 8, padding: '5px 12px', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
+              >+ Add Day</button>
+            )}
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+          {activeExercises.length === 0 ? (
             <div
               onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, opacity: 0.6, cursor: sidebarOpen ? 'default' : 'pointer' }}
@@ -595,9 +747,9 @@ function NewPlanInner() {
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {planExercises.map((pe, exIdx) => {
-                  const nextPe = planExercises[exIdx + 1];
-                  const prevPe = planExercises[exIdx - 1];
+                {activeExercises.map((pe, exIdx) => {
+                  const nextPe = activeExercises[exIdx + 1];
+                  const prevPe = activeExercises[exIdx - 1];
                   const isSuperset      = !!pe.supersetWithId;
                   const isDragging      = draggedId === pe.id;
                   const isDragOver      = dragOverId === pe.id;
@@ -835,7 +987,8 @@ function NewPlanInner() {
               </div>
             </>
           )}
-        </div>
+          </div>{/* end inner scrollable */}
+        </div>{/* end right panel */}
       </div>
 
       {/* Save to Library bar — only on new plans, not edits */}
