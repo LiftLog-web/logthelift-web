@@ -20,8 +20,9 @@ export function ThemeToggle() {
         alignItems: 'center',
         gap: 7,
         padding: '5px 12px 5px 9px',
-        background: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.13)'}`,
+        background: isDark ? 'rgba(255,255,255,0.09)' : '#ffffff',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.22)'}`,
+        boxShadow: isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.10)',
         borderRadius: 999,
         cursor: 'pointer',
         fontFamily: 'sans-serif',
@@ -31,7 +32,7 @@ export function ThemeToggle() {
       }}
     >
       {/* Moon icon */}
-      <svg width="14" height="14" viewBox="0 0 24 24" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.35)'} style={{ flexShrink: 0 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'} style={{ flexShrink: 0 }}>
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
       </svg>
 
