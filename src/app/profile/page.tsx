@@ -210,7 +210,11 @@ export default function ProfilePage() {
           ) : (
             <div>
               {(isPractitioner ? patients : practitioners).map((person, i) => (
-                <div key={person.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
+                <a key={person.id} href={isPractitioner ? `/patients/${person.id}` : undefined}
+                  style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', color: 'inherit', cursor: isPractitioner ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
+                  onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
+                >
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? `${TEAL}22` : `${PURPLE}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {isPractitioner ? '🏋️' : '🩺'}
                   </div>
@@ -218,7 +222,7 @@ export default function ProfilePage() {
                     <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{person.display_name}</p>
                     <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{person.email}</p>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}
