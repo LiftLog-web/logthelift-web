@@ -99,6 +99,7 @@ function NewPlanInner() {
   const [videoMuscleGroup, setVideoMuscleGroup] = useState('');
   const [videoSaved,       setVideoSaved]       = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('liftlog_weight_unit');
@@ -757,6 +758,7 @@ function NewPlanInner() {
                   const afterConnector  = !!(prevPe && prevPe.supersetWithId === pe.id && pe.supersetWithId === prevPe.id);
                   const isSupersetFirst = supersetMode === pe.id;
                   const canPair         = supersetMode !== null && supersetMode !== pe.id && !pe.supersetWithId;
+                  const isCollapsed     = collapsedExercises.has(pe.id);
                   const topR    = afterConnector  ? 0 : 14;
                   const bottomR = showConnector   ? 0 : 14;
 
@@ -783,7 +785,7 @@ function NewPlanInner() {
                         }}
                       >
                         {/* Card header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isCollapsed ? 0 : 14 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                             <span title="Drag to reorder" style={{ color: 'var(--text-faint)', fontSize: 15, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>⠿</span>
                             <div>
@@ -859,12 +861,18 @@ function NewPlanInner() {
                               </button>
                             )}
                             <button
+                              onClick={() => setCollapsedExercises(prev => { const n = new Set(prev); n.has(pe.id) ? n.delete(pe.id) : n.add(pe.id); return n; })}
+                              style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 13, cursor: 'pointer', lineHeight: 1, transition: 'transform 0.2s' }}
+                              title={isCollapsed ? 'Expand' : 'Collapse'}
+                            >{isCollapsed ? '▸' : '▾'}</button>
+                            <button
                               onClick={() => removeExercise(pe.id)}
                               style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                             >Remove</button>
                           </div>
                         </div>
 
+                        {!isCollapsed && (<>
                         {/* Sets header */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>SETS</span>
@@ -963,6 +971,7 @@ function NewPlanInner() {
                             style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
+                        </>)}
                       </div>
 
                       {/* Superset connector strip between adjacent paired exercises */}
@@ -1008,13 +1017,14 @@ function NewPlanInner() {
                 }}
                 style={{
                   width: 40, height: 22, borderRadius: 11, position: 'relative', cursor: 'pointer', flexShrink: 0,
-                  background: saveToLibrary ? TEAL : 'var(--border-strong)',
+                  background: saveToLibrary ? TEAL : '#6b7280',
                   transition: 'background 0.2s',
                 }}
               >
                 <div style={{
                   position: 'absolute', top: 3, left: saveToLibrary ? 21 : 3,
-                  width: 16, height: 16, borderRadius: '50%', background: 'var(--text)',
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
                   transition: 'left 0.2s',
                 }} />
               </div>
