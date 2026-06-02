@@ -11,15 +11,17 @@ export default function NavShell() {
   const [role, setRole] = useState<NavRole>(null);
 
   useEffect(() => {
-    getSupabase().auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
+    const supabase = getSupabase();
+
+    const resolveRole = async (session: { user: { id: string } } | null) => {
+      if (!session) {
         localStorage.removeItem('ll_pract');
         localStorage.removeItem('ll_patient');
         setRole(null);
         return;
       }
-      const { data: prof } = await getSupabase()
-        .from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
+      const { data: prof } = await supabase
+        .from('profiles').select('role, is_gym_owner').eq('id', session.user.id).single();
 
       if (prof?.role === 'practitioner' || !!prof?.is_gym_owner) {
         localStorage.setItem('ll_pract', '1');
@@ -34,7 +36,15 @@ export default function NavShell() {
         localStorage.removeItem('ll_patient');
         setRole(null);
       }
+    };
+
+    supabase.auth.getSession().then(({ data }) => resolveRole(data.session));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      resolveRole(session);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (role === 'pract')   return <PractitionerNav />;
