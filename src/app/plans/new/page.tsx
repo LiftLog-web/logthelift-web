@@ -435,8 +435,8 @@ function NewPlanInner() {
 
       {/* Sub-header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          <a href="/plans" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Plans</a>
+        <span style={{ color: 'var(--text)', fontSize: 13 }}>
+          <a href="/plans" style={{ color: 'var(--text)', textDecoration: 'none' }}>Plans</a>
           {' / '}{editId ? 'Edit' : 'New'}
         </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -457,7 +457,7 @@ function NewPlanInner() {
       {/* Plan meta */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 32px', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Name *</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Name *</label>
           <input
             value={planName}
             onChange={e => setPlanName(e.target.value)}
@@ -466,7 +466,7 @@ function NewPlanInner() {
           />
         </div>
         <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Patient *</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Patient *</label>
           <select
             value={patientId}
             onChange={e => setPatientId(e.target.value)}
@@ -479,7 +479,7 @@ function NewPlanInner() {
           </select>
         </div>
         <div style={{ flex: '2 1 300px', minWidth: 0 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Description</label>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Description</label>
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -503,7 +503,7 @@ function NewPlanInner() {
             >
               {sidebarOpen ? '◀' : '▶'}
             </button>
-            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
+            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'var(--text)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
           </div>
           {sidebarOpen && <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
             <input
@@ -842,7 +842,7 @@ function NewPlanInner() {
       {!editId && (
         <div style={{
           position: 'sticky', bottom: 0, left: 0, right: 0,
-          background: 'rgba(15,17,23,0.97)', borderTop: '1px solid var(--border)',
+          background: 'var(--bg)', borderTop: '1px solid var(--border)',
           padding: '14px 32px', zIndex: 50,
         }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
