@@ -21,6 +21,13 @@ const MUSCLE_GROUP_SECTIONS = [
 
 type WeightUnit = 'lbs' | 'kg';
 
+interface DropSet {
+  id: string;
+  weight?: number;
+  reps?: number;
+  unit?: WeightUnit;
+}
+
 interface WorkoutSet {
   reps?: number;
   weight?: number;
@@ -28,6 +35,7 @@ interface WorkoutSet {
   seconds?: number;
   minutes?: number;
   rest?: number; // rest after set, in minutes
+  dropSets?: DropSet[];
 }
 
 interface PlanExercise {
@@ -340,6 +348,48 @@ function NewPlanInner() {
     updateActiveDay(prev => prev.map(pe => {
       if (pe.id !== peId) return pe;
       const sets = pe.sets.map((s, i) => i === setIdx ? { ...s, [field]: value } : s);
+      return { ...pe, sets };
+    }));
+  };
+
+  const addDropSet = (peId: string, setIdx: number) => {
+    updateActiveDay(prev => prev.map(pe => {
+      if (pe.id !== peId) return pe;
+      const sets = pe.sets.map((s, i) => {
+        if (i !== setIdx) return s;
+        const newDrop: DropSet = {
+          id: `drop_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          weight: s.weight,
+          reps: s.reps,
+          unit: s.unit ?? pe.unit,
+        };
+        return { ...s, dropSets: [...(s.dropSets ?? []), newDrop] };
+      });
+      return { ...pe, sets };
+    }));
+  };
+
+  const updateDropSet = (peId: string, setIdx: number, dropIdx: number, field: keyof DropSet, value: number | string) => {
+    updateActiveDay(prev => prev.map(pe => {
+      if (pe.id !== peId) return pe;
+      const sets = pe.sets.map((s, i) => {
+        if (i !== setIdx) return s;
+        const drops = (s.dropSets ?? []).map((d, di) =>
+          di === dropIdx ? { ...d, [field]: value } : d
+        );
+        return { ...s, dropSets: drops };
+      });
+      return { ...pe, sets };
+    }));
+  };
+
+  const removeDropSet = (peId: string, setIdx: number, dropIdx: number) => {
+    updateActiveDay(prev => prev.map(pe => {
+      if (pe.id !== peId) return pe;
+      const sets = pe.sets.map((s, i) => {
+        if (i !== setIdx) return s;
+        return { ...s, dropSets: (s.dropSets ?? []).filter((_, di) => di !== dropIdx) };
+      });
       return { ...pe, sets };
     }));
   };
@@ -950,7 +1000,8 @@ function NewPlanInner() {
                         {/* Set rows */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {pe.sets.map((s, si) => (
-                            <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div key={si} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ width: 20, fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{si + 1}</span>
 
                               {pe.exercise.type === 'weighted' && (
@@ -1016,6 +1067,39 @@ function NewPlanInner() {
                                 />
                                 <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>s</span>
                               </div>
+                              </div>
+                              {pe.exercise.type === 'weighted' && (s.dropSets ?? []).map((drop, di) => (
+                                <div key={drop.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 30 }}>
+                                  <span style={{ width: 20, fontSize: 12, color: TEAL, fontWeight: 700, textAlign: 'center', flexShrink: 0 }}>↓</span>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Reps</span>
+                                    <input
+                                      type="number" min={0} value={drop.reps ?? 0}
+                                      onChange={e => updateDropSet(pe.id, si, di, 'reps', Number(e.target.value))}
+                                      style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    />
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Weight ({drop.unit ?? pe.unit ?? preferredUnit})</span>
+                                    <input
+                                      type="number" min={0} step={0.5} value={drop.weight ?? 0}
+                                      onChange={e => updateDropSet(pe.id, si, di, 'weight', Number(e.target.value))}
+                                      onFocus={e => e.target.select()}
+                                      style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                                    />
+                                  </label>
+                                  <button
+                                    onClick={() => removeDropSet(pe.id, si, di)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}
+                                  >✕</button>
+                                </div>
+                              ))}
+                              {pe.exercise.type === 'weighted' && (
+                                <button
+                                  onClick={() => addDropSet(pe.id, si)}
+                                  style={{ alignSelf: 'flex-start', marginLeft: 30, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                >↓ Drop Set</button>
+                              )}
                             </div>
                           ))}
                         </div>

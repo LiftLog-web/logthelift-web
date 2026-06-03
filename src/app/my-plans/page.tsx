@@ -17,6 +17,7 @@ interface PlanSet {
   seconds?: number;
   minutes?: number;
   rest?: number;
+  dropSets?: { id?: string; weight?: number; reps?: number; unit?: string }[];
 }
 
 interface PlanExercise {
@@ -49,7 +50,9 @@ function setLabel(s: PlanSet, type: string): string {
   if (s.reps)   parts.push(`${s.reps} reps`);
   if (s.weight) parts.push(`${s.weight} kg`);
   if (s.rest)   parts.push(`${s.rest} min rest`);
-  return parts.join(' · ') || '—';
+  const base = parts.join(' · ') || '—';
+  const dropCount = s.dropSets?.length ?? 0;
+  return dropCount > 0 ? `${base} + ${dropCount} drop${dropCount === 1 ? '' : 's'}` : base;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -80,9 +83,19 @@ function ExerciseCard({ pe, idx }: { pe: PlanExercise; idx: number }) {
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {pe.sets.map((s, si) => (
-          <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 44, flexShrink: 0 }}>Set {si + 1}</span>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{setLabel(s, pe.exercise.type)}</span>
+          <div key={si} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 44, flexShrink: 0 }}>Set {si + 1}</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{setLabel(s, pe.exercise.type)}</span>
+            </div>
+            {(s.dropSets ?? []).map((drop, di) => (
+              <div key={drop.id ?? di} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 44 }}>
+                <span style={{ color: TEAL, fontWeight: 700, fontSize: 12, marginRight: 2 }}>↓</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {[drop.reps ? `${drop.reps} reps` : null, drop.weight ? `${drop.weight} ${drop.unit ?? 'kg'}` : null].filter(Boolean).join(' · ') || '—'}
+                </span>
+              </div>
+            ))}
           </div>
         ))}
       </div>
