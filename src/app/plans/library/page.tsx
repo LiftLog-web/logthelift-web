@@ -213,7 +213,7 @@ export default function PlanLibraryPage() {
                 </button>
                 {bodyFilterOpen && (
                   <div
-                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 50, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                   >
                     {/* Search inside dropdown */}
                     <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
