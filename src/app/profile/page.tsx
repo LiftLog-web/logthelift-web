@@ -155,7 +155,7 @@ export default function ProfilePage() {
       {!isPractitioner && (
         <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <a href="/profile" style={{ color: TEAL, fontWeight: 800, fontSize: 20, textDecoration: 'none' }}>LiftLog</a>
-          <button onClick={handleSignOut} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>Sign Out</button>
+          <button onClick={handleSignOut} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Sign Out</button>
         </nav>
       )}
 
@@ -171,7 +171,7 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
-              <button onClick={handleSignOut} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
+              <button onClick={handleSignOut} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
               <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import Patients</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
             </div>
-            <a href="/import" style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <a href="/import" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap', border: 'none' }}>
               Import Patients
             </a>
           </div>

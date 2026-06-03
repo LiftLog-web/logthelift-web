@@ -10,7 +10,13 @@ import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 
-const BODY_PART_TAGS = ['Arms','Back','Balance','Calves','Cardio','Chest','Core','Full Body','Glutes','Hamstrings','Hip','Isometrics','Legs','Lower Back','Lower Body','Pilates','Plyometrics','Shoulders','Upper Body','Yoga'];
+const BODY_PART_GROUPS: { label: string; tags: string[] }[] = [
+  { label: 'Upper Body', tags: ['Arms', 'Back', 'Chest', 'Shoulders', 'Upper Body'] },
+  { label: 'Lower Body', tags: ['Calves', 'Glutes', 'Hamstrings', 'Hip', 'Legs', 'Lower Back', 'Lower Body'] },
+  { label: 'Core', tags: ['Core'] },
+  { label: 'General', tags: ['Balance', 'Cardio', 'Full Body', 'Isometrics', 'Pilates', 'Plyometrics', 'Yoga'] },
+];
+const BODY_PART_TAGS = BODY_PART_GROUPS.flatMap(g => g.tags);
 
 interface Template {
   id: string;
@@ -201,7 +207,7 @@ export default function PlanLibraryPage() {
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={() => setBodyFilterOpen(o => !o)}
-                  style={{ background: bodyFilter ? 'var(--badge-teal-bg)' : 'var(--border-subtle)', border: `1px solid ${bodyFilter ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 14, fontWeight: bodyFilter ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ background: bodyFilter ? 'var(--badge-teal-bg)' : 'var(--btn-purple-bg)', border: `1px solid ${bodyFilter ? 'var(--btn-teal-border)' : 'var(--btn-purple-border)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? 'var(--badge-teal-text)' : 'var(--btn-purple-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   {bodyFilter || 'Body Part'} {bodyFilterOpen ? '▲' : '▼'}
                 </button>
@@ -226,18 +232,39 @@ export default function PlanLibraryPage() {
                     >
                       All body parts
                     </button>
-                    <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-                      {BODY_PART_TAGS.filter(tag => tag.toLowerCase().includes(bodySearch.toLowerCase())).map(tag => (
-                        <button
-                          key={tag}
-                          onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', borderBottom: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
-                          onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
-                          onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
-                        >
-                          {tag}
-                        </button>
-                      ))}
+                    <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                      {bodySearch ? (
+                        BODY_PART_TAGS.filter(tag => tag.toLowerCase().includes(bodySearch.toLowerCase())).map(tag => (
+                          <button
+                            key={tag}
+                            onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
+                            onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
+                            onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                          >
+                            {tag}
+                          </button>
+                        ))
+                      ) : (
+                        BODY_PART_GROUPS.map(group => (
+                          <div key={group.label}>
+                            <div style={{ padding: '7px 16px 4px', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', borderTop: '1px solid var(--border-subtle)' }}>
+                              {group.label}
+                            </div>
+                            {group.tags.map(tag => (
+                              <button
+                                key={tag}
+                                onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 16px 8px 24px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
+                                onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
+                                onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                              >
+                                {tag}
+                              </button>
+                            ))}
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
