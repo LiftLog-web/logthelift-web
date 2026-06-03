@@ -534,7 +534,7 @@ export default function TemplateEditorPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => router.push(`/plans/new?template=${templateId}`)}
-            style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
           >
             Assign to Patient →
           </button>
@@ -584,9 +584,9 @@ export default function TemplateEditorPage() {
                       onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
                       style={{
                         padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                        border: `1px solid ${on ? TEAL : 'var(--border-strong)'}`,
-                        background: on ? `${TEAL}22` : 'transparent',
-                        color: on ? TEAL : 'var(--text-muted)',
+                        border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
+                        background: on ? 'var(--badge-teal-bg)' : 'transparent',
+                        color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)',
                         cursor: 'pointer', transition: 'all 0.15s',
                       }}
                     >
@@ -616,14 +616,14 @@ export default function TemplateEditorPage() {
           ))}
           <button
             onClick={handleAddWeek}
-            style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: `1px dashed ${TEAL}60`, background: 'transparent', color: TEAL, cursor: 'pointer' }}
+            style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}
           >
             + Add Week
           </button>
           {totalWeeks > 1 && (
             <button
               onClick={handleRemoveLastWeek}
-              style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: RED, cursor: 'pointer' }}
+              style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}
             >
               Remove Week {totalWeeks}
             </button>
@@ -638,7 +638,7 @@ export default function TemplateEditorPage() {
           </h2>
           <button
             onClick={() => setShowAddModal(true)}
-            style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 10, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+            style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 10, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
           >
             + Add Exercise
           </button>
@@ -693,9 +693,9 @@ export default function TemplateEditorPage() {
                     <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
                     {isOverridden && (
-                      <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
+                      <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
                     )}
-                    <span style={{ background: `${TEAL}15`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+                    <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
                       {weekExercise.muscleGroup}
                     </span>
                     <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
@@ -704,7 +704,7 @@ export default function TemplateEditorPage() {
                     {mediaMap[weekExercise.name] ? (
                       <button
                         onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, border: 'none', cursor: 'pointer' }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }}
                         title="Click to preview demo"
                       >
                         {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
@@ -746,7 +746,7 @@ export default function TemplateEditorPage() {
                       >↓</button>
                       <button
                         onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
-                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, padding: '5px 10px', color: RED, cursor: 'pointer', fontSize: 12 }}
+                        style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}
                       >
                         Remove
                       </button>
@@ -874,7 +874,7 @@ export default function TemplateEditorPage() {
                         <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
                         <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
                       </span>
-                      <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
+                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
                     </button>
                   ))}
                   {addCandidates.length === 0 && (

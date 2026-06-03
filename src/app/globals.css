@@ -18,6 +18,25 @@
   --sk-bg:         rgba(255,255,255,0.07);
   --sk-glow:       rgba(255,255,255,0.14);
   --sk-clear:      rgba(255,255,255,0);
+  /* buttons — dark mode: keep ghost/transparent feel */
+  --btn-teal-bg:     rgba(95,207,191,0.13);
+  --btn-teal-text:   #5fcfbf;
+  --btn-teal-border: rgba(95,207,191,0.40);
+  --btn-purple-bg:   rgba(196,113,237,0.13);
+  --btn-purple-text: #C471ED;
+  --btn-purple-border: rgba(196,113,237,0.40);
+  --btn-red-bg:      rgba(239,68,68,0.10);
+  --btn-red-text:    #EF4444;
+  --btn-red-border:  rgba(239,68,68,0.30);
+  /* badges — dark mode */
+  --badge-teal-bg:   rgba(95,207,191,0.13);
+  --badge-teal-text: #5fcfbf;
+  --badge-purple-bg:   rgba(196,113,237,0.13);
+  --badge-purple-text: #C471ED;
+  --badge-yellow-bg:   rgba(249,242,149,0.13);
+  --badge-yellow-text: #F9F295;
+  --badge-red-bg:    rgba(239,68,68,0.13);
+  --badge-red-text:  #EF4444;
 }
 
 [data-theme="light"] {
@@ -37,6 +56,25 @@
   --sk-bg:         rgba(0,0,0,0.06);
   --sk-glow:       rgba(255,255,255,0.70);
   --sk-clear:      rgba(0,0,0,0);
+  /* buttons — light mode: solid fills for contrast */
+  --btn-teal-bg:     #5fcfbf;
+  --btn-teal-text:   #0f1117;
+  --btn-teal-border: #5fcfbf;
+  --btn-purple-bg:   #C471ED;
+  --btn-purple-text: #ffffff;
+  --btn-purple-border: #C471ED;
+  --btn-red-bg:      #EF4444;
+  --btn-red-text:    #ffffff;
+  --btn-red-border:  #EF4444;
+  /* badges — light mode: stronger tints */
+  --badge-teal-bg:   rgba(95,207,191,0.22);
+  --badge-teal-text: #1a8a7e;
+  --badge-purple-bg:   rgba(196,113,237,0.22);
+  --badge-purple-text: #8b2db5;
+  --badge-yellow-bg:   rgba(180,160,0,0.15);
+  --badge-yellow-text: #7a6800;
+  --badge-red-bg:    rgba(239,68,68,0.18);
+  --badge-red-text:  #b91c1c;
 }
 
 /* Apply bg + text to body so the whole page follows the theme */

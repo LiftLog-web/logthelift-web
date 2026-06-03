@@ -81,6 +81,16 @@ const STATUS_COLOR: Record<ExStatus, string> = {
   partial:   YELLOW,
   none:      '#EF4444',
 };
+const STATUS_BG_CSS: Record<ExStatus, string> = {
+  completed: 'var(--badge-teal-bg)',
+  partial:   'var(--badge-yellow-bg)',
+  none:      'var(--badge-red-bg)',
+};
+const STATUS_TEXT_CSS: Record<ExStatus, string> = {
+  completed: 'var(--badge-teal-text)',
+  partial:   'var(--badge-yellow-text)',
+  none:      'var(--badge-red-text)',
+};
 const STATUS_LABEL: Record<ExStatus, string> = {
   completed: 'Completed',
   partial:   'Partial',
@@ -464,7 +474,7 @@ export default function PatientProgressPage() {
           {patientEmail && (
             <button
               onClick={() => { setEmailOpen(true); setSendResult(null); }}
-              style={{ background: `${PURPLE}20`, border: `1px solid ${PURPLE}50`, color: PURPLE, borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
             >
               ✉ Email Patient
             </button>
@@ -482,7 +492,7 @@ export default function PatientProgressPage() {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${PURPLE}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
             🏋️
           </div>
           <div>
@@ -718,7 +728,7 @@ export default function PatientProgressPage() {
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
                     <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
                     {badge && (
-                      <span style={{ background: `${TEAL}25`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>
+                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>
                     )}
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
@@ -798,7 +808,7 @@ export default function PatientProgressPage() {
                                             onClick={() => toggleEx(ex.id)}
                                             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', background: `${STATUS_COLOR[st]}08`, border: 'none', cursor: 'pointer', textAlign: 'left' }}
                                           >
-                                            <span style={{ background: `${STATUS_COLOR[st]}25`, color: STATUS_COLOR[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>{STATUS_LABEL[st]}</span>
+                                            <span style={{ background: STATUS_BG_CSS[st], color: STATUS_TEXT_CSS[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>{STATUS_LABEL[st]}</span>
                                             <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{ex.exercise.name}</span>
                                             <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                               {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}

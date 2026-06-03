@@ -83,9 +83,9 @@ function toDateStr(d: Date): string {
 
 function statusBadge(status: string) {
   const styles: Record<string, { bg: string; color: string; label: string }> = {
-    accepted: { bg: `${TEAL}22`, color: TEAL,   label: 'Active'   },
-    pending:  { bg: `${YELLOW}22`, color: YELLOW, label: 'Pending' },
-    declined: { bg: '#EF444422',   color: '#EF4444', label: 'Declined' },
+    accepted: { bg: 'var(--badge-teal-bg)',   color: 'var(--badge-teal-text)',   label: 'Active'   },
+    pending:  { bg: 'var(--badge-yellow-bg)', color: 'var(--badge-yellow-text)', label: 'Pending'  },
+    declined: { bg: 'var(--badge-red-bg)',    color: 'var(--badge-red-text)',    label: 'Declined' },
   };
   const s = styles[status] ?? styles.pending;
   return (

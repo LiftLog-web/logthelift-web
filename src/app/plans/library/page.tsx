@@ -201,7 +201,7 @@ export default function PlanLibraryPage() {
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={() => setBodyFilterOpen(o => !o)}
-                  style={{ background: bodyFilter ? `${TEAL}22` : 'var(--border-subtle)', border: `1px solid ${bodyFilter ? TEAL : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? TEAL : 'var(--text-muted)', fontSize: 14, fontWeight: bodyFilter ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ background: bodyFilter ? 'var(--badge-teal-bg)' : 'var(--border-subtle)', border: `1px solid ${bodyFilter ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 14, fontWeight: bodyFilter ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   {bodyFilter || 'Body Part'} {bodyFilterOpen ? '▲' : '▼'}
                 </button>
@@ -222,7 +222,7 @@ export default function PlanLibraryPage() {
                     </div>
                     <button
                       onMouseDown={() => { setBodyFilter(''); setBodyFilterOpen(false); setBodySearch(''); }}
-                      style={{ textAlign: 'left', padding: '9px 16px', background: !bodyFilter ? `${TEAL}18` : 'none', border: 'none', color: !bodyFilter ? TEAL : 'var(--text-muted)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid var(--border-subtle)' }}
+                      style={{ textAlign: 'left', padding: '9px 16px', background: !bodyFilter ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: !bodyFilter ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid var(--border-subtle)' }}
                     >
                       All body parts
                     </button>
@@ -231,7 +231,7 @@ export default function PlanLibraryPage() {
                         <button
                           key={tag}
                           onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? `${TEAL}18` : 'none', border: 'none', borderBottom: 'none', color: bodyFilter === tag ? TEAL : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', borderBottom: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
                           onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
                           onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
                         >
@@ -260,9 +260,9 @@ export default function PlanLibraryPage() {
               onClick={() => setActiveTag(null)}
               style={{
                 padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-                border: `1px solid ${!activeTag ? TEAL : 'var(--border-strong)'}`,
-                background: !activeTag ? `${TEAL}22` : 'transparent',
-                color: !activeTag ? TEAL : 'var(--text-muted)',
+                border: `1px solid ${!activeTag ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
+                background: !activeTag ? 'var(--badge-teal-bg)' : 'transparent',
+                color: !activeTag ? 'var(--badge-teal-text)' : 'var(--text-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -274,9 +274,9 @@ export default function PlanLibraryPage() {
                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
                 style={{
                   padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-                  border: `1px solid ${activeTag === tag ? TEAL : 'var(--border-strong)'}`,
-                  background: activeTag === tag ? `${TEAL}22` : 'transparent',
-                  color: activeTag === tag ? TEAL : 'var(--text-muted)',
+                  border: `1px solid ${activeTag === tag ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
+                  background: activeTag === tag ? 'var(--badge-teal-bg)' : 'transparent',
+                  color: activeTag === tag ? 'var(--badge-teal-text)' : 'var(--text-muted)',
                   cursor: 'pointer',
                 }}
               >
@@ -351,14 +351,14 @@ export default function PlanLibraryPage() {
                       <span style={{ fontWeight: 700, fontSize: 16, color: t.name ? 'var(--text)' : 'var(--text-faint)', fontStyle: t.name ? 'normal' : 'italic' }}>
                         {t.name || 'Untitled template'}
                       </span>
-                      <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
                       {!isGrouped && Array.from({ length: weeks }, (_, i) => i + 1).map(w => (
                         <button
                           key={w}
                           onClick={e => { e.stopPropagation(); setPreviewTpl(t); setPreviewWeek(w); }}
-                          style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                          style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: '1px solid var(--btn-purple-border)', cursor: 'pointer' }}
                           title={`Preview Week ${w}`}
                         >
                           W{w}
@@ -375,7 +375,7 @@ export default function PlanLibraryPage() {
                             <button
                               key={v.id}
                               onClick={e => { e.stopPropagation(); router.push(`/plans/library/${v.id}`); }}
-                              style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontSize: 11, fontWeight: 700, padding: '3px 11px', borderRadius: 999, border: '1px solid rgba(239,68,68,0.35)', cursor: 'pointer' }}
+                              style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', fontSize: 11, fontWeight: 700, padding: '3px 11px', borderRadius: 999, border: '1px solid var(--btn-red-border)', cursor: 'pointer' }}
                               title={tooltipName ? `Week ${vWeeks} — ${tooltipName}` : `View / Edit Week ${vWeeks} version`}
                             >
                               Week {vWeeks} →
@@ -411,14 +411,14 @@ export default function PlanLibraryPage() {
                     {!isGrouped && (
                       <button
                         onClick={() => router.push(`/plans/library/${t.id}`)}
-                        style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                       >
                         View / Edit
                       </button>
                     )}
                     <button
                       onClick={() => router.push(`/plans/new?template=${t.id}`)}
-                      style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Assign to Patient
                     </button>
@@ -429,7 +429,7 @@ export default function PlanLibraryPage() {
                           key={v.id}
                           onClick={() => handleDelete(v)}
                           disabled={deleting === v.id}
-                          style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deleting === v.id ? 0.5 : 1 }}
+                          style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deleting === v.id ? 0.5 : 1 }}
                         >
                           Del {numWeeks(v.exercises)}wk
                         </button>
@@ -438,7 +438,7 @@ export default function PlanLibraryPage() {
                       <button
                         onClick={() => handleDelete(t)}
                         disabled={deleting === t.id}
-                        style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
+                        style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
                       >
                         Delete
                       </button>
@@ -493,7 +493,7 @@ export default function PlanLibraryPage() {
                   {previewTpl.description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 6px' }}>{previewTpl.description}</p>
                   )}
-                  <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                  <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                     {previewTpl.exercises.length} exercise{previewTpl.exercises.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -503,7 +503,7 @@ export default function PlanLibraryPage() {
               {previewTotalWeeks > 1 && (
                 <div style={{ display: 'flex', gap: 6 }}>
                   {Array.from({ length: previewTotalWeeks }, (_, i) => i + 1).map(w => (
-                    <button key={w} onClick={() => setPreviewWeek(w)} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `1px solid ${previewWeek === w ? PURPLE : 'var(--border-strong)'}`, background: previewWeek === w ? `${PURPLE}22` : 'transparent', color: previewWeek === w ? PURPLE : 'var(--text-muted)', cursor: 'pointer' }}>
+                    <button key={w} onClick={() => setPreviewWeek(w)} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `1px solid ${previewWeek === w ? 'var(--btn-purple-border)' : 'var(--border-strong)'}`, background: previewWeek === w ? 'var(--badge-purple-bg)' : 'transparent', color: previewWeek === w ? 'var(--badge-purple-text)' : 'var(--text-muted)', cursor: 'pointer' }}>
                       Week {w}
                     </button>
                   ))}
@@ -545,7 +545,7 @@ export default function PlanLibraryPage() {
             <div style={{ padding: '16px 28px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 10 }}>
               <button
                 onClick={() => router.push(`/plans/library/${previewTpl.id}`)}
-                style={{ flex: 1, background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
                 View / Edit
               </button>

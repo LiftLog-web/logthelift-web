@@ -29,9 +29,9 @@ interface CustomExercise {
 }
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  weighted: { bg: `${TEAL}22`,   color: TEAL   },
-  duration: { bg: `${PURPLE}22`, color: PURPLE  },
-  cardio:   { bg: '#F9F29522',   color: '#F9F295' },
+  weighted: { bg: 'var(--badge-teal-bg)',   color: 'var(--badge-teal-text)'   },
+  duration: { bg: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)' },
+  cardio:   { bg: 'var(--badge-yellow-bg)', color: 'var(--badge-yellow-text)' },
 };
 
 export default function ExercisesPage() {
@@ -300,7 +300,7 @@ export default function ExercisesPage() {
                   <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                     <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{ex.name}</h3>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ background: `${PURPLE}22`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>
+                      <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>
                         {ex.muscle_group}
                       </span>
                       <span style={{ background: typeStyle.bg, color: typeStyle.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>
@@ -312,7 +312,7 @@ export default function ExercisesPage() {
                       <button
                         onClick={() => handleDelete(ex.id)}
                         disabled={deleting === ex.id}
-                        style={{ width: '100%', background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 13, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', opacity: deleting === ex.id ? 0.5 : 1 }}
+                        style={{ width: '100%', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === ex.id ? 0.5 : 1 }}
                       >
                         {deleting === ex.id ? 'Deleting…' : 'Delete'}
                       </button>

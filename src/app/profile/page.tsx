@@ -163,7 +163,7 @@ export default function ProfilePage() {
 
         {/* Profile card */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? `${PURPLE}33` : `${TEAL}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (isPractitioner ? '🩺' : '🏋️')}
@@ -175,11 +175,11 @@ export default function ProfilePage() {
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ background: isPractitioner ? `${PURPLE}22` : `${TEAL}22`, color: isPractitioner ? PURPLE : TEAL, padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+              <span style={{ background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
                 {isPractitioner ? 'Practitioner' : 'Patient'}
               </span>
               {isPractitioner && (
-                <span style={{ background: profile?.approved ? `${TEAL}22` : `${YELLOW}22`, color: profile?.approved ? TEAL : YELLOW, padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+                <span style={{ background: profile?.approved ? 'var(--badge-teal-bg)' : 'var(--badge-yellow-bg)', color: profile?.approved ? 'var(--badge-teal-text)' : 'var(--badge-yellow-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
                   {profile?.approved ? 'Approved' : 'Pending Approval'}
                 </span>
               )}
@@ -215,7 +215,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
                   onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
                 >
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? `${TEAL}22` : `${PURPLE}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? 'var(--badge-teal-bg)' : 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {isPractitioner ? '🏋️' : '🩺'}
                   </div>
                   <div>

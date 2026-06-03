@@ -278,6 +278,11 @@ export default function MediaLibraryPage() {
   const typeIcon  = (t: string) => t === 'link' ? '🔗' : t === 'video' ? '📹' : '📷';
   const typeLabel = (t: string) => t === 'link' ? 'Video link' : t === 'video' ? 'Video' : 'Photo';
   const typeColor = (t: string) => t === 'link' ? TEAL : t === 'video' ? PURPLE : '#F9F295';
+  const TYPE_CSS: Record<string, { bg: string; text: string }> = {
+    link:  { bg: 'var(--badge-teal-bg)',    text: 'var(--badge-teal-text)' },
+    video: { bg: 'var(--badge-purple-bg)',  text: 'var(--badge-purple-text)' },
+    photo: { bg: 'var(--badge-yellow-bg)', text: 'var(--badge-yellow-text)' },
+  };
 
   function getViewers(exerciseName: string): PlanViewer[] {
     return (allPlans as Array<{ id: string; name: string; patient_id: string; patientName: string; exercises: unknown[] }>)
@@ -343,7 +348,7 @@ export default function MediaLibraryPage() {
                 onClick={() => openUploadModal()}
                 disabled={atUploadCap}
                 title={atUploadCap ? `Upload limit of ${MEDIA_CAP} files reached` : undefined}
-                style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}55`, color: atUploadCap ? 'var(--text-dim)' : PURPLE, borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer', opacity: atUploadCap ? 0.5 : 1 }}
+                style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: atUploadCap ? 'var(--text-dim)' : 'var(--btn-purple-text)', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: atUploadCap ? 'not-allowed' : 'pointer', opacity: atUploadCap ? 0.5 : 1 }}
               >
                 Upload File
               </button>
@@ -369,7 +374,7 @@ export default function MediaLibraryPage() {
           </div>
         </div>
 
-        <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ background: 'var(--badge-teal-bg)', border: '1px solid var(--btn-teal-border)', borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
             <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
@@ -394,7 +399,7 @@ export default function MediaLibraryPage() {
               Add a video link or upload a file to get started.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => openUploadModal()} style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}55`, color: PURPLE, borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
+              <button onClick={() => openUploadModal()} style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Upload File</button>
               <button onClick={() => openUrlModal()} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>+ Add Video Link</button>
             </div>
           </div>
@@ -462,7 +467,7 @@ export default function MediaLibraryPage() {
                           </td>
 
                           <td style={{ padding: '12px 24px' }}>
-                            <span style={{ background: `${typeColor(item.media_type)}18`, color: typeColor(item.media_type), padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
                               {typeIcon(item.media_type)} {typeLabel(item.media_type)}
                             </span>
                           </td>

@@ -51,7 +51,7 @@ function fmtDate(d: string) {
 
 function Av({ p, size = 40 }: { p: Pick<FriendProfile, 'display_name' | 'avatar_url'>; size?: number }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: `${TEAL}22`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: size * 0.36, fontWeight: 700, color: TEAL }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--badge-teal-bg)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: size * 0.36, fontWeight: 700, color: 'var(--badge-teal-text)' }}>
       {p.avatar_url
         ? <img src={p.avatar_url} alt={p.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : initials(p.display_name)}
@@ -369,7 +369,7 @@ export default function FriendsPage() {
                       const mine  = myReaction?.reaction === emoji;
                       return (
                         <button key={emoji} onClick={() => react(item.workoutId, item.userId, emoji)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: mine ? `${TEAL}20` : 'var(--border-subtle)', border: `1px solid ${mine ? `${TEAL}50` : 'transparent'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 14, color: mine ? TEAL : 'var(--text-muted)', fontWeight: mine ? 700 : 400, transition: 'all 0.15s' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: mine ? 'var(--btn-teal-bg)' : 'var(--border-subtle)', border: mine ? '1px solid var(--btn-teal-border)' : '1px solid transparent', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 14, color: mine ? 'var(--btn-teal-text)' : 'var(--text-muted)', fontWeight: mine ? 700 : 400, transition: 'all 0.15s' }}>
                           {emoji}{count > 0 && <span style={{ fontSize: 12 }}>{count}</span>}
                         </button>
                       );
@@ -516,7 +516,7 @@ export default function FriendsPage() {
                         <span style={{ fontSize: 11, color: 'var(--text-dim)', background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px' }}>Private</span>
                       )}
                       <button onClick={() => removeFriend(friendshipId)}
-                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
+                        style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Remove</button>
                     </div>
                   ))}
                 </div>

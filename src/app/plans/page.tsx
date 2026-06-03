@@ -204,13 +204,13 @@ export default function PlansPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <button
                         onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
-                        style={{ background: `${PURPLE}20`, color: PURPLE, border: `1px solid ${PURPLE}40`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                       >
                         View Progress
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
-                        style={{ background: `${TEAL}20`, color: TEAL, border: `1px solid ${TEAL}40`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                       >
                         + Add Plan
                       </button>
@@ -227,7 +227,7 @@ export default function PlansPage() {
                         <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
-                            <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {plan.exerciseCount} ex
                             </span>
                           </div>
@@ -240,14 +240,14 @@ export default function PlansPage() {
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
-                              style={{ flex: 1, background: `${TEAL}20`, color: TEAL, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${TEAL}40`, cursor: 'pointer' }}
+                              style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-teal-border)', cursor: 'pointer' }}
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDelete(plan.id)}
                               disabled={deleting === plan.id}
-                              style={{ flex: 1, background: 'rgba(239,68,68,0.1)', color: '#EF4444', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
+                              style={{ flex: 1, background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
                             >
                               Delete
                             </button>

@@ -212,7 +212,7 @@ mike@example.com`}
                       <td className="px-4 py-3 text-white/50">{r.name || '—'}</td>
                       <td className="px-4 py-3 text-right">
                         {r.valid
-                          ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(95,207,191,0.15)', color: TEAL }}>Ready</span>
+                          ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)' }}>Ready</span>
                           : <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-400">Invalid</span>}
                       </td>
                     </tr>
@@ -270,7 +270,7 @@ mike@example.com`}
                       <td className="px-4 py-3 text-white/70">{r.email}</td>
                       <td className="px-4 py-3 text-right">
                         {r.success
-                          ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(95,207,191,0.15)', color: TEAL }}>Sent</span>
+                          ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)' }}>Sent</span>
                           : <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-400" title={r.error}>Failed</span>}
                       </td>
                     </tr>

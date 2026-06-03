@@ -205,7 +205,7 @@ pt@example.com`}
 
             <button
               onClick={downloadTemplate}
-              style={{ background: 'none', border: `1px solid ${TEAL}50`, color: TEAL, borderRadius: 10, padding: '10px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              style={{ background: 'var(--btn-teal-bg)', border: '1px solid var(--btn-teal-border)', color: 'var(--btn-teal-text)', borderRadius: 10, padding: '10px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
             >
               Download CSV Template
             </button>
@@ -240,8 +240,8 @@ pt@example.com`}
                       <td style={{ padding: '12px 20px', color: 'var(--text-muted)' }}>{r.name || '—'}</td>
                       <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                         {r.valid
-                          ? <span style={{ background: `${TEAL}22`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Ready</span>
-                          : <span style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Invalid</span>}
+                          ? <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Ready</span>
+                          : <span style={{ background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Invalid</span>}
                       </td>
                     </tr>
                   ))}
@@ -296,8 +296,8 @@ pt@example.com`}
                       <td style={{ padding: '12px 20px', color: 'var(--text-muted)' }}>{r.email}</td>
                       <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                         {r.success
-                          ? <span style={{ background: `${TEAL}22`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Sent</span>
-                          : <span style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }} title={r.error}>Failed</span>}
+                          ? <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Sent</span>
+                          : <span style={{ background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }} title={r.error}>Failed</span>}
                       </td>
                     </tr>
                   ))}

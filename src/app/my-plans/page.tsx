@@ -57,6 +57,8 @@ const TYPE_COLOR: Record<string, string> = {
   duration: PURPLE,
   cardio:   YELLOW,
 };
+const TYPE_BG_CSS:   Record<string, string> = { weighted: 'var(--badge-teal-bg)',   duration: 'var(--badge-purple-bg)',   cardio: 'var(--badge-yellow-bg)'   };
+const TYPE_TEXT_CSS: Record<string, string> = { weighted: 'var(--badge-teal-text)', duration: 'var(--badge-purple-text)', cardio: 'var(--badge-yellow-text)' };
 
 function ExerciseCard({ pe, idx }: { pe: PlanExercise; idx: number }) {
   return (
@@ -64,7 +66,7 @@ function ExerciseCard({ pe, idx }: { pe: PlanExercise; idx: number }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: pe.notes ? 10 : 12 }}>
         <span style={{ color: 'var(--text-dim)', fontSize: 13, flexShrink: 0 }}>{idx + 1}.</span>
         <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{pe.exercise.name}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TYPE_COLOR[pe.exercise.type]}22`, color: TYPE_COLOR[pe.exercise.type] }}>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: TYPE_BG_CSS[pe.exercise.type], color: TYPE_TEXT_CSS[pe.exercise.type] }}>
           {pe.exercise.type}
         </span>
         <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
@@ -72,7 +74,7 @@ function ExerciseCard({ pe, idx }: { pe: PlanExercise; idx: number }) {
         </span>
       </div>
       {pe.notes?.trim() && (
-        <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+        <div style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>
           PT note: {pe.notes}
         </div>
       )}

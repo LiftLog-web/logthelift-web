@@ -308,7 +308,7 @@ function LogWorkoutInner() {
                   onMouseLeave={e => { (e.currentTarget.style.borderTopColor = `${TEAL}30`); (e.currentTarget.style.borderRightColor = `${TEAL}30`); (e.currentTarget.style.borderBottomColor = `${TEAL}30`); }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: `${TEAL}20`, color: TEAL, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{idx + 1}</span>
+                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{idx + 1}</span>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{day.label}</div>
                       <div style={{ fontSize: 12, color: TEAL, marginTop: 2 }}>{day.exercises.length} exercises</div>
@@ -348,7 +348,7 @@ function LogWorkoutInner() {
             )}
 
             <button onClick={() => { setSelectedPlan({ id: '', name: 'Free Workout', description: null, exercises: [] }); setLoggedExs([]); }}
-              style={{ width: '100%', background: 'rgba(95,207,191,0.08)', border: `1px solid ${TEAL}40`, borderRadius: 14, padding: '16px 22px', cursor: 'pointer', color: TEAL, fontWeight: 700, fontSize: 15 }}>
+              style={{ width: '100%', background: 'var(--btn-teal-bg)', border: '1px solid var(--btn-teal-border)', borderRadius: 14, padding: '16px 22px', cursor: 'pointer', color: 'var(--btn-teal-text)', fontWeight: 700, fontSize: 15 }}>
               + Free Workout (no plan)
             </button>
           </>
@@ -362,7 +362,7 @@ function LogWorkoutInner() {
                 {selectedPlan.description && <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{selectedPlan.description}</p>}
               </div>
               <button onClick={() => { setSelectedPlan(null); setLoggedExs([]); }}
-                style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}`, color: TEAL, borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
+                style={{ background: 'var(--btn-teal-bg)', border: '1px solid var(--btn-teal-border)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
                 ← Change Plan
               </button>
             </div>
@@ -437,7 +437,7 @@ function LogWorkoutInner() {
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.exercise.name}</div>
                     {selectedPlan.id === '' && (
                       <button onClick={() => removeFreeExercise(ex.id)}
-                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444', borderRadius: 6, padding: '2px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                        style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 6, padding: '2px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
                         Remove
                       </button>
                     )}
@@ -446,7 +446,7 @@ function LogWorkoutInner() {
                     {ex.exercise.muscleGroup} · {ex.exercise.equipment}
                   </div>
                   {ex.practitionerNotes && (
-                    <div style={{ background: `${PURPLE}18`, border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                    <div style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
                       Note from PT: {ex.practitionerNotes}
                     </div>
                   )}
@@ -456,7 +456,7 @@ function LogWorkoutInner() {
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, color: TEAL, fontWeight: 700, alignSelf: 'center' }}>TARGET:</span>
                       {(ex.targetSets ?? []).map((t, i) => (
-                        <span key={i} style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30`, borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
+                        <span key={i} style={{ background: 'var(--badge-teal-bg)', border: '1px solid var(--btn-teal-border)', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
                           {ex.exercise.type === 'cardio' ? `${t.cardioduration ?? '?'} min`
                            : ex.exercise.type === 'duration' ? `${t.duration ?? '?'}s`
                            : `${t.reps ?? '?'} reps × ${t.weight ?? 0}kg`}

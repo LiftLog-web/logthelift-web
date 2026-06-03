@@ -660,7 +660,7 @@ function NewPlanInner() {
                   {/* All option */}
                   <button
                     onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? `${TEAL}22` : 'transparent', color: muscleFilter === 'All' ? TEAL : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === 'All' ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}
                   >
                     All muscle groups
                   </button>
@@ -670,7 +670,7 @@ function NewPlanInner() {
                       {/* Group header — clickable to select all in group */}
                       <button
                         onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? `${TEAL}22` : 'transparent', color: muscleFilter === section.label ? TEAL : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === section.label ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}
                       >
                         {section.label}
                       </button>
@@ -679,7 +679,7 @@ function NewPlanInner() {
                         <button
                           key={mg}
                           onClick={() => { setMuscleFilter(mg); setMuscleDropdownOpen(false); }}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? `${TEAL}22` : 'transparent', color: muscleFilter === mg ? TEAL : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === mg ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}
                         >
                           {mg}
                         </button>
@@ -802,8 +802,8 @@ function NewPlanInner() {
           ) : (
             <>
               {supersetMode && (
-                <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, color: PURPLE, fontWeight: 600 }}>Superset mode — click &ldquo;Pair Here&rdquo; on another exercise to link them</span>
+                <div style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, color: 'var(--badge-purple-text)', fontWeight: 600 }}>Superset mode — click &ldquo;Pair Here&rdquo; on another exercise to link them</span>
                   <button onClick={() => setSupersetMode(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>✕ Cancel</button>
                 </div>
               )}
@@ -861,7 +861,7 @@ function NewPlanInner() {
                                 return (
                                   <button
                                     onClick={e => { e.stopPropagation(); setDemoPreview({ name: pe.exercise.name, ...m }); }}
-                                    style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${TEAL}18`, color: TEAL, border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                                    style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
                                     title="Click to preview demo"
                                   >
                                     {m.type === 'link' ? '🔗 Link' : m.type === 'video' ? '📹 Video' : '📷 Photo'}
@@ -889,29 +889,29 @@ function NewPlanInner() {
                               )}
                             </div>
                             {isSuperset && (
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: `${PURPLE}22`, color: PURPLE, flexShrink: 0 }}>SS</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', flexShrink: 0 }}>SS</span>
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                             {isSuperset ? (
                               <button
                                 onClick={() => removeSuperset(pe.id)}
-                                style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}40`, color: PURPLE, borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                                style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                               >Remove SS</button>
                             ) : isSupersetFirst ? (
                               <button
                                 onClick={() => setSupersetMode(null)}
-                                style={{ background: 'rgba(249,242,149,0.12)', border: '1px solid rgba(249,242,149,0.4)', color: '#F9F295', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                                style={{ background: 'var(--badge-yellow-bg)', border: '1px solid var(--btn-teal-border)', color: 'var(--badge-yellow-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                               >Cancel</button>
                             ) : canPair ? (
                               <button
                                 onClick={() => handleSupersetClick(pe.id)}
-                                style={{ background: `${PURPLE}22`, border: `1px solid ${PURPLE}70`, color: PURPLE, borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                                style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                               >Pair Here</button>
                             ) : (
                               <button
                                 onClick={() => handleSupersetClick(pe.id)}
-                                style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}35`, color: PURPLE, borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+                                style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                               >Superset</button>
                             )}
                             {pe.exercise.type === 'weighted' && (
@@ -925,7 +925,7 @@ function NewPlanInner() {
                             )}
                             <button
                               onClick={() => removeExercise(pe.id)}
-                              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                              style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                             >Remove</button>
                           </div>
                         </div>
@@ -1037,15 +1037,15 @@ function NewPlanInner() {
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '5px 20px',
-                          border: `1px solid ${PURPLE}60`,
+                          border: '1px solid var(--btn-purple-border)',
                           borderTop: 'none',
                           borderBottom: 'none',
-                          background: `${PURPLE}0a`,
+                          background: 'var(--badge-purple-bg)',
                           marginBottom: 0,
                         }}>
-                          <div style={{ flex: 1, height: 1, background: `${PURPLE}35` }} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: PURPLE, letterSpacing: '0.05em' }}>⚡ SUPERSET</span>
-                          <div style={{ flex: 1, height: 1, background: `${PURPLE}35` }} />
+                          <div style={{ flex: 1, height: 1, background: 'var(--btn-purple-border)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--badge-purple-text)', letterSpacing: '0.05em' }}>⚡ SUPERSET</span>
+                          <div style={{ flex: 1, height: 1, background: 'var(--btn-purple-border)' }} />
                         </div>
                       )}
                     </Fragment>
@@ -1099,7 +1099,7 @@ function NewPlanInner() {
                 placeholder="Library name (can differ from patient plan name)"
                 style={{
                   flex: 1, minWidth: 220,
-                  background: 'var(--card-alt)', border: `1px solid ${TEAL}60`,
+                  background: 'var(--card-alt)', border: '1px solid var(--btn-teal-border)',
                   borderRadius: 10, padding: '9px 14px', color: 'var(--text)', fontSize: 14, outline: 'none',
                 }}
               />
@@ -1189,7 +1189,7 @@ function NewPlanInner() {
                   <>
                     <label style={{ display: 'block', marginBottom: 16, cursor: 'pointer' }}>
                       <input type="file" accept="video/mp4,video/quicktime,video/webm,video/*" style={{ display: 'none' }} onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
-                      <div style={{ border: `2px dashed ${videoFile ? TEAL : 'var(--border-strong)'}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', background: videoFile ? `${TEAL}10` : 'var(--card)' }}>
+                      <div style={{ border: `2px dashed ${videoFile ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', background: videoFile ? 'var(--badge-teal-bg)' : 'var(--card)' }}>
                         {videoFile ? (
                           <>
                             <p style={{ fontSize: 28, margin: '0 0 6px' }}>🎬</p>
