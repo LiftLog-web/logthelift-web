@@ -32,7 +32,7 @@ interface WorkoutSet {
 interface WeekData {
   week: number;
   sets: WorkoutSet[];
-  exerciseOverride?: Exercise; // different exercise for this week only
+  exerciseOverride?: Exercise;
 }
 
 type WeightUnit = 'lbs' | 'kg';
@@ -40,20 +40,28 @@ type WeightUnit = 'lbs' | 'kg';
 interface TemplateExercise {
   id: string;
   exercise: Exercise;
-  sets: WorkoutSet[];     // Week 1 baseline
+  sets: WorkoutSet[];
   notes?: string;
-  weeks?: WeekData[];     // Weeks 2+ overrides
-  unit?: WeightUnit;      // per-exercise unit preference
-  rest?: number;          // rest between sets (seconds), same for all weeks
+  weeks?: WeekData[];
+  unit?: WeightUnit;
+  rest?: number;
+}
+
+interface TemplateDay {
+  id: string;
+  label: string;
+  exercises: TemplateExercise[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function numWeeks(exercises: TemplateExercise[]): number {
+function numWeeks(days: TemplateDay[]): number {
   let max = 1;
-  for (const ex of exercises) {
-    for (const w of ex.weeks ?? []) {
-      if (w.week > max) max = w.week;
+  for (const day of days) {
+    for (const ex of day.exercises) {
+      for (const w of ex.weeks ?? []) {
+        if (w.week > max) max = w.week;
+      }
     }
   }
   return max;
@@ -91,6 +99,24 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function parseExercise(e: any): TemplateExercise {
+  return {
+    id: e.id ?? uid(),
+    exercise: e.exercise,
+    sets: (e.sets ?? [defaultSet(e.exercise)]).map((s: any) => {
+      const { rest: _r, ...rest } = s;
+      return rest;
+    }),
+    notes: e.notes ?? '',
+    weeks: (e.weeks ?? []).map((w: any) => ({
+      ...w,
+      sets: (w.sets ?? []).map((s: any) => { const { rest: _r, ...s2 } = s; return s2; }),
+    })),
+    unit: e.unit ?? undefined,
+    rest: e.rest ?? e.sets?.[0]?.rest ?? undefined,
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TemplateEditorPage() {
@@ -104,7 +130,13 @@ export default function TemplateEditorPage() {
   const [name,        setName]        = useState('');
   const [description, setDescription] = useState('');
   const [tags,        setTags]        = useState<string[]>([]);
-  const [exercises,   setExercises]   = useState<TemplateExercise[]>([]);
+
+  // Day state
+  const [days,            setDays]            = useState<TemplateDay[]>([{ id: 'day-1', label: 'Day 1', exercises: [] }]);
+  const [activeDayId,     setActiveDayId]     = useState('day-1');
+  const [editingDayId,    setEditingDayId]    = useState<string | null>(null);
+  const [editingDayLabel, setEditingDayLabel] = useState('');
+
   const [activeWeek,  setActiveWeek]  = useState(1);
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,    setDragOverId]    = useState<string | null>(null);
@@ -116,7 +148,7 @@ export default function TemplateEditorPage() {
     }
     return 'lbs';
   });
-  const lastRestRef = useRef<number>(60); // seconds; carries to next added exercise
+  const lastRestRef = useRef<number>(60);
 
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
@@ -131,7 +163,6 @@ export default function TemplateEditorPage() {
   const muscleDropdownRef = useRef<HTMLDivElement>(null);
   const [search,             setSearch]             = useState('');
   const [muscleFilter,       setMuscleFilter]       = useState('All');
-  // Custom exercise form within the sidebar
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName,     setCustomName]     = useState('');
   const [customMuscle,   setCustomMuscle]   = useState(MUSCLE_GROUPS[0]);
@@ -139,8 +170,18 @@ export default function TemplateEditorPage() {
   const [customType,     setCustomType]     = useState<'weighted' | 'duration' | 'cardio'>('weighted');
 
   // Substitution modal
-  const [subTarget,   setSubTarget]   = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
-  const [subSearch,   setSubSearch]   = useState('');
+  const [subTarget, setSubTarget] = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
+  const [subSearch, setSubSearch] = useState('');
+
+  // Derived active-day values
+  const activeDay      = days.find(d => d.id === activeDayId) ?? days[0];
+  const exercises      = activeDay?.exercises ?? [];
+
+  const updateActiveDay = useCallback((fn: (exs: TemplateExercise[]) => TemplateExercise[]) => {
+    setDays(prev => prev.map(d => d.id === activeDayId ? { ...d, exercises: fn(d.exercises) } : d));
+  }, [activeDayId]);
+
+  // ── Load ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const sb = getSupabase();
@@ -151,7 +192,6 @@ export default function TemplateEditorPage() {
       setAuthed(true);
       setUserId(data.session.user.id);
 
-      // Load exercise media so cards can show video badges + previews
       const { data: mediaItems } = await sb
         .from('exercise_media')
         .select('exercise_name, media_type, file_path, url_link')
@@ -177,34 +217,33 @@ export default function TemplateEditorPage() {
       setName(tpl.name);
       setDescription(tpl.description ?? '');
       setTags(tpl.tags ?? []);
-      const loadedExercises: TemplateExercise[] = (tpl.exercises ?? []).map((e: any) => ({
-        id: e.id ?? uid(),
-        exercise: e.exercise,
-        sets: (e.sets ?? [defaultSet(e.exercise)]).map((s: any) => {
-          const { rest: _r, ...setWithoutRest } = s;
-          return setWithoutRest;
-        }),
-        notes: e.notes ?? '',
-        weeks: (e.weeks ?? []).map((w: any) => ({
-          ...w,
-          sets: (w.sets ?? []).map((s: any) => { const { rest: _r, ...s2 } = s; return s2; }),
-        })),
-        unit: e.unit ?? undefined,
-        // migrate from old per-set rest if present, else use saved exercise rest
-        rest: e.rest ?? e.sets?.[0]?.rest ?? undefined,
-      }));
-      if (loadedExercises.length > 0) {
-        const firstUnit = loadedExercises[0].unit;
-        if (firstUnit) setPreferredUnit(firstUnit);
-        const firstRest = loadedExercises[loadedExercises.length - 1].rest;
-        if (firstRest) lastRestRef.current = firstRest;
+
+      const raw = tpl.exercises;
+      let loadedDays: TemplateDay[];
+      if (raw && !Array.isArray(raw) && raw.days) {
+        // New multi-day format
+        loadedDays = (raw.days as any[]).map((day: any) => ({
+          id: day.id ?? uid(),
+          label: day.label ?? 'Day',
+          exercises: (day.exercises ?? []).map(parseExercise),
+        }));
+      } else {
+        // Legacy flat-array format — wrap in a single day
+        loadedDays = [{ id: 'day-1', label: 'Day 1', exercises: (raw ?? []).map(parseExercise) }];
       }
-      setExercises(loadedExercises);
+
+      const firstEx = loadedDays[0]?.exercises[0];
+      if (firstEx?.unit) setPreferredUnit(firstEx.unit);
+      const lastEx = loadedDays[0]?.exercises.at(-1);
+      if (lastEx?.rest) lastRestRef.current = lastEx.rest;
+
+      setDays(loadedDays);
+      setActiveDayId(loadedDays[0]?.id ?? 'day-1');
       setLoading(false);
     });
   }, [router, templateId]);
 
-  // Close muscle group dropdown on outside click
+  // Close muscle dropdown on outside click
   useEffect(() => {
     if (!muscleDropdownOpen) return;
     const handler = (e: MouseEvent) => {
@@ -216,26 +255,59 @@ export default function TemplateEditorPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [muscleDropdownOpen]);
 
-  const totalWeeks = numWeeks(exercises);
+  const totalWeeks = numWeeks(days);
+
+  // ── Day management ────────────────────────────────────────────────────────
+
+  const addDay = () => {
+    const newId    = `day-${Date.now()}`;
+    const newLabel = `Day ${days.length + 1}`;
+    setDays(prev => [...prev, { id: newId, label: newLabel, exercises: [] }]);
+    setActiveDayId(newId);
+  };
+
+  const removeDay = (dayId: string) => {
+    if (days.length <= 1) return;
+    setDays(prev => prev.filter(d => d.id !== dayId));
+    if (activeDayId === dayId) {
+      setActiveDayId(days[0].id !== dayId ? days[0].id : days[1].id);
+    }
+  };
+
+  const startRenameDay = (day: TemplateDay) => {
+    setEditingDayId(day.id);
+    setEditingDayLabel(day.label);
+  };
+
+  const commitRenameDay = () => {
+    if (!editingDayId) return;
+    setDays(prev => prev.map(d => d.id === editingDayId ? { ...d, label: editingDayLabel.trim() || d.label } : d));
+    setEditingDayId(null);
+  };
 
   // ── Week management ────────────────────────────────────────────────────────
 
   const handleAddWeek = () => {
     const newWeek = totalWeeks + 1;
-    setExercises(prev => prev.map(ex => {
-      const lastSets = getWeekSets(ex, totalWeeks);
-      const weeks = [...(ex.weeks ?? []), { week: newWeek, sets: lastSets.map(s => ({ ...s })) }];
-      return { ...ex, weeks };
-    }));
+    setDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.map(ex => {
+        const lastSets = getWeekSets(ex, totalWeeks);
+        return { ...ex, weeks: [...(ex.weeks ?? []), { week: newWeek, sets: lastSets.map(s => ({ ...s })) }] };
+      }),
+    })));
     setActiveWeek(newWeek);
   };
 
   const handleRemoveLastWeek = () => {
     if (totalWeeks <= 1) return;
     const removing = totalWeeks;
-    setExercises(prev => prev.map(ex => ({
-      ...ex,
-      weeks: (ex.weeks ?? []).filter(w => w.week !== removing),
+    setDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.map(ex => ({
+        ...ex,
+        weeks: (ex.weeks ?? []).filter(w => w.week !== removing),
+      })),
     })));
     setActiveWeek(Math.min(activeWeek, removing - 1));
   };
@@ -243,7 +315,7 @@ export default function TemplateEditorPage() {
   // ── Set editing ───────────────────────────────────────────────────────────
 
   const updateSet = (exId: string, setIdx: number, field: keyof WorkoutSet, value: number) => {
-    setExercises(prev => prev.map(ex => {
+    updateActiveDay(prev => prev.map(ex => {
       if (ex.id !== exId) return ex;
       const sets = getWeekSets(ex, activeWeek).map((s, i) =>
         i === setIdx ? { ...s, [field]: value } : s
@@ -253,7 +325,7 @@ export default function TemplateEditorPage() {
   };
 
   const addSet = (exId: string) => {
-    setExercises(prev => prev.map(ex => {
+    updateActiveDay(prev => prev.map(ex => {
       if (ex.id !== exId) return ex;
       const current = getWeekSets(ex, activeWeek);
       const last = current[current.length - 1] ?? defaultSet(ex.exercise);
@@ -262,7 +334,7 @@ export default function TemplateEditorPage() {
   };
 
   const removeSet = (exId: string, setIdx: number) => {
-    setExercises(prev => prev.map(ex => {
+    updateActiveDay(prev => prev.map(ex => {
       if (ex.id !== exId) return ex;
       const current = getWeekSets(ex, activeWeek);
       if (current.length <= 1) return ex;
@@ -271,11 +343,11 @@ export default function TemplateEditorPage() {
   };
 
   const removeExercise = (exId: string) => {
-    setExercises(prev => prev.filter(ex => ex.id !== exId));
+    updateActiveDay(prev => prev.filter(ex => ex.id !== exId));
   };
 
   const moveExercise = (exId: string, dir: -1 | 1) => {
-    setExercises(prev => {
+    updateActiveDay(prev => {
       const idx = prev.findIndex(e => e.id === exId);
       if (idx < 0) return prev;
       const next = [...prev];
@@ -299,12 +371,12 @@ export default function TemplateEditorPage() {
     if (tag === 'input' || tag === 'button' || tag === 'textarea') { e.preventDefault(); return; }
     setDraggedId(id);
   };
-  const handleDragEnd   = () => { setDraggedId(null); setDragOverId(null); };
-  const handleDragOver  = (e: React.DragEvent, id: string) => { e.preventDefault(); if (id !== draggedId) setDragOverId(id); };
-  const handleDrop      = (e: React.DragEvent, targetId: string) => {
+  const handleDragEnd  = () => { setDraggedId(null); setDragOverId(null); };
+  const handleDragOver = (e: React.DragEvent, id: string) => { e.preventDefault(); if (id !== draggedId) setDragOverId(id); };
+  const handleDrop     = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return; }
-    setExercises(prev => {
+    updateActiveDay(prev => {
       const items = [...prev];
       const from  = items.findIndex(p => p.id === draggedId);
       const to    = items.findIndex(p => p.id === targetId);
@@ -316,7 +388,7 @@ export default function TemplateEditorPage() {
     setDragOverId(null);
   };
 
-  // ── Add exercise ──────────────────────────────────────────────────────────
+  // ── Add / remove exercise ─────────────────────────────────────────────────
 
   const handleAddExercise = (ex: Exercise) => {
     const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
@@ -337,11 +409,11 @@ export default function TemplateEditorPage() {
       unit: preferredUnit,
       rest: lastRestRef.current,
     };
-    setExercises(prev => [...prev, newEx]);
+    updateActiveDay(prev => [...prev, newEx]);
   };
 
   const toggleUnit = (exId: string) => {
-    setExercises(prev => prev.map(ex => {
+    updateActiveDay(prev => prev.map(ex => {
       if (ex.id !== exId) return ex;
       const current = ex.unit ?? preferredUnit;
       const next: WeightUnit = current === 'lbs' ? 'kg' : 'lbs';
@@ -353,7 +425,7 @@ export default function TemplateEditorPage() {
 
   const updateExerciseRest = (exId: string, value: number) => {
     lastRestRef.current = value;
-    setExercises(prev => prev.map(ex => ex.id === exId ? { ...ex, rest: value } : ex));
+    updateActiveDay(prev => prev.map(ex => ex.id === exId ? { ...ex, rest: value } : ex));
   };
 
   const handleAddCustomExercise = () => {
@@ -390,13 +462,11 @@ export default function TemplateEditorPage() {
   const handleSubstitute = (newExercise: Exercise) => {
     if (!subTarget) return;
     const { exId, scope } = subTarget;
-    setExercises(prev => prev.map(ex => {
+    updateActiveDay(prev => prev.map(ex => {
       if (ex.id !== exId) return ex;
       if (scope === 'template') {
-        // Replace exercise across all weeks
         return { ...ex, exercise: newExercise, sets: ex.sets.map(_ => defaultSet(newExercise)) };
       } else {
-        // Replace exercise for active week only
         if (activeWeek === 1) {
           return { ...ex, exercise: newExercise, sets: ex.sets.map(_ => defaultSet(newExercise)) };
         }
@@ -421,7 +491,7 @@ export default function TemplateEditorPage() {
     setSaving(true);
     const { error } = await getSupabase()
       .from('plan_templates')
-      .update({ name: name.trim(), description: description.trim() || null, exercises, tags })
+      .update({ name: name.trim(), description: description.trim() || null, exercises: { days }, tags })
       .eq('id', templateId);
     setSaving(false);
     if (error) { alert('Could not save: ' + error.message); return; }
@@ -435,33 +505,17 @@ export default function TemplateEditorPage() {
     const unit = ex.unit ?? preferredUnit;
     return (
       <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid var(--card-alt)' : 'none' }}>
-        <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>
-          {setIdx + 1}
-        </span>
+        <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>{setIdx + 1}</span>
 
         {exType === 'weighted' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="number"
-                value={set.reps ?? ''}
-                onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))}
-                onFocus={e => e.target.select()}
-                style={inputStyle}
-                placeholder="0"
-              />
+              <input type="number" value={set.reps ?? ''} onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
             </div>
             <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="number"
-                value={set.weight ?? ''}
-                onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))}
-                onFocus={e => e.target.select()}
-                style={inputStyle}
-                placeholder="0"
-              />
+              <input type="number" value={set.weight ?? ''} onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
             </div>
           </>
@@ -469,26 +523,12 @@ export default function TemplateEditorPage() {
 
         {(exType === 'duration' || exType === 'cardio') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input
-              type="number"
-              value={set.seconds ?? ''}
-              onChange={e => updateSet(ex.id, setIdx, 'seconds', Number(e.target.value))}
-              onFocus={e => e.target.select()}
-              style={inputStyle}
-              placeholder="0"
-            />
+            <input type="number" value={set.seconds ?? ''} onChange={e => updateSet(ex.id, setIdx, 'seconds', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
             <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>sec</span>
           </div>
         )}
 
-        <button
-          onClick={() => removeSet(ex.id, setIdx)}
-          disabled={totalSets <= 1}
-          style={{ marginLeft: 'auto', color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', opacity: totalSets <= 1 ? 0.3 : 1 }}
-          title="Remove set"
-        >
-          ×
-        </button>
+        <button onClick={() => removeSet(ex.id, setIdx)} disabled={totalSets <= 1} style={{ marginLeft: 'auto', color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', opacity: totalSets <= 1 ? 0.3 : 1 }} title="Remove set">×</button>
       </div>
     );
   };
@@ -524,7 +564,6 @@ export default function TemplateEditorPage() {
     );
   }
 
-  // Substitution target exercise info
   const subEx = subTarget ? exercises.find(e => e.id === subTarget.exId) : null;
   const subMuscle = subEx ? getWeekExercise(subEx, subTarget?.scope === 'week' ? activeWeek : 1).muscleGroup : '';
   const subCandidates = EXERCISES.filter(e =>
@@ -533,7 +572,6 @@ export default function TemplateEditorPage() {
     (subSearch === '' || e.name.toLowerCase().includes(subSearch.toLowerCase()))
   );
 
-  // Sidebar exercise list
   const filteredExercises = EXERCISES.filter(ex => {
     const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
     const matchesMuscle = muscleFilter === 'All'
@@ -547,6 +585,7 @@ export default function TemplateEditorPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif', overflow: 'hidden' }}>
+
       {/* Sub-header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
@@ -570,12 +609,11 @@ export default function TemplateEditorPage() {
         </div>
       </div>
 
-      {/* Two-column layout */}
+      {/* Two-column body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {/* Left: Exercise Library — collapsible */}
         <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease', background: 'var(--bg)' }}>
-          {/* Sidebar header with toggle */}
           <div style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={() => setSidebarOpen(v => !v)}
@@ -596,7 +634,6 @@ export default function TemplateEditorPage() {
                   placeholder="Search exercises…"
                   style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
                 />
-                {/* Custom grouped muscle group dropdown */}
                 <div ref={muscleDropdownRef} style={{ position: 'relative' }}>
                   <button
                     onClick={() => setMuscleDropdownOpen(v => !v)}
@@ -607,28 +644,12 @@ export default function TemplateEditorPage() {
                   </button>
                   {muscleDropdownOpen && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 200, maxHeight: 280, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-                      <button
-                        onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === 'All' ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}
-                      >
-                        All muscle groups
-                      </button>
+                      <button onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === 'All' ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}>All muscle groups</button>
                       {MUSCLE_GROUP_SECTIONS.map(section => (
                         <Fragment key={section.label}>
-                          <button
-                            onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }}
-                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === section.label ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}
-                          >
-                            {section.label}
-                          </button>
+                          <button onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === section.label ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}>{section.label}</button>
                           {section.members.map(mg => (
-                            <button
-                              key={mg}
-                              onClick={() => { setMuscleFilter(mg); setMuscleDropdownOpen(false); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === mg ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}
-                            >
-                              {mg}
-                            </button>
+                            <button key={mg} onClick={() => { setMuscleFilter(mg); setMuscleDropdownOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === mg ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}>{mg}</button>
                           ))}
                         </Fragment>
                       ))}
@@ -644,32 +665,16 @@ export default function TemplateEditorPage() {
                     <button
                       key={ex.id}
                       onClick={() => handleAddExercise(ex)}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent',
-                        border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`,
-                        borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
-                          ? 'rgba(239,68,68,0.1)'
-                          : 'var(--card-alt)';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
-                          ? 'rgba(95,207,191,0.08)'
-                          : 'transparent';
-                      }}
-                      title={alreadyAdded ? 'Click to remove from template' : 'Click to add to template'}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent', border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`, borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer', transition: 'background 0.15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(239,68,68,0.1)' : 'var(--card-alt)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent'; }}
+                      title={alreadyAdded ? 'Click to remove from this day' : 'Click to add to this day'}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : 'var(--text)' }}>{ex.name}</span>
                         {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                        {ex.muscleGroup} · {ex.equipment}
-                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{ex.muscleGroup} · {ex.equipment}</div>
                     </button>
                   );
                 })}
@@ -678,7 +683,6 @@ export default function TemplateEditorPage() {
                 )}
               </div>
 
-              {/* Create custom exercise */}
               <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                 <button
                   onClick={() => { setShowCustomForm(true); setCustomName(search); }}
@@ -692,58 +696,34 @@ export default function TemplateEditorPage() {
 
           {sidebarOpen && showCustomForm && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-              <button
-                onClick={() => setShowCustomForm(false)}
-                style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}
-              >
-                ‹ Back to search
-              </button>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
-                Add an exercise that isn't in the standard library.
-              </p>
+              <button onClick={() => setShowCustomForm(false)} style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}>‹ Back to search</button>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Add an exercise that isn't in the standard library.</p>
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
-              <input
-                value={customName}
-                onChange={e => setCustomName(e.target.value)}
-                placeholder="e.g. Bulgarian Split Squat"
-                autoFocus
-                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }}
-              />
+              <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Bulgarian Split Squat" autoFocus style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }} />
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                 {MUSCLE_GROUPS.map(mg => (
-                  <button key={mg} onClick={() => setCustomMuscle(mg)}
-                    style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}
-                  >{mg}</button>
+                  <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
                 ))}
               </div>
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                 {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
-                  <button key={eq} onClick={() => setCustomEquip(eq)}
-                    style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}
-                  >{eq}</button>
+                  <button key={eq} onClick={() => setCustomEquip(eq)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}>{eq}</button>
                 ))}
               </div>
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
               <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
                 {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
-                  <button key={val} onClick={() => setCustomType(val)}
-                    style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}
-                  >{label}</button>
+                  <button key={val} onClick={() => setCustomType(val)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}>{label}</button>
                 ))}
               </div>
 
-              <button
-                onClick={handleAddCustomExercise}
-                disabled={!customName.trim()}
-                style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
-              >
+              <button onClick={handleAddCustomExercise} disabled={!customName.trim()} style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}>
                 Add "{customName.trim() || 'exercise'}" to template
               </button>
             </div>
@@ -751,282 +731,181 @@ export default function TemplateEditorPage() {
         </div>
 
         {/* Right: Plan builder */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 32px 80px', minWidth: 0 }}>
-          {/* Template name + description */}
-          <div style={{ marginBottom: 28 }}>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Template name"
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }}
-            />
-            <input
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters"
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }}
-            />
-          </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Tag picker */}
-          <div style={{ marginBottom: 28 }}>
-            {[
-              { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
-              { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
-            ].map(group => (
-              <div key={group.label} style={{ marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
-                  {group.label}
-                </span>
-                <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {group.tags.map(t => {
-                    const on = tags.includes(t);
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
-                        style={{
-                          padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                          border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
-                          background: on ? 'var(--badge-teal-bg)' : 'transparent',
-                          color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)',
-                          cursor: 'pointer', transition: 'all 0.15s',
-                        }}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                </div>
+          {/* Day tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 0', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
+            {days.map(day => (
+              <div key={day.id} style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                {editingDayId === day.id ? (
+                  <input
+                    autoFocus
+                    value={editingDayLabel}
+                    onChange={e => setEditingDayLabel(e.target.value)}
+                    onBlur={commitRenameDay}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRenameDay(); if (e.key === 'Escape') setEditingDayId(null); }}
+                    style={{ width: 90, background: 'var(--input-bg)', border: `1px solid ${TEAL}`, borderRadius: 8, padding: '5px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setActiveDayId(day.id)}
+                    onDoubleClick={() => startRenameDay(day)}
+                    title="Double-click to rename"
+                    style={{ background: activeDayId === day.id ? TEAL : 'var(--card-alt)', color: activeDayId === day.id ? '#0f1117' : 'var(--text-muted)', border: `1px solid ${activeDayId === day.id ? TEAL : 'var(--border-strong)'}`, borderRadius: 8, padding: '5px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >{day.label}</button>
+                )}
+                {days.length > 1 && (
+                  <button onClick={() => removeDay(day.id)} title="Remove this day" style={{ marginLeft: 2, background: 'transparent', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 13, padding: '2px 4px', lineHeight: 1 }}>×</button>
+                )}
               </div>
             ))}
-          </div>
-
-          {/* Week tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, flexWrap: 'wrap' }}>
-            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
-              <button
-                key={w}
-                onClick={() => setActiveWeek(w)}
-                style={{
-                  padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                  background: activeWeek === w ? TEAL : 'var(--input-bg)',
-                  color: activeWeek === w ? '#0f1117' : 'var(--text-muted)',
-                }}
-              >
-                Week {w}
-              </button>
-            ))}
-            <button
-              onClick={handleAddWeek}
-              style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}
-            >
-              + Add Week
-            </button>
-            {totalWeeks > 1 && (
-              <button
-                onClick={handleRemoveLastWeek}
-                style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}
-              >
-                Remove Week {totalWeeks}
-              </button>
+            {days.length < 7 && (
+              <button onClick={addDay} style={{ background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '5px 12px', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>+ Add Day</button>
             )}
           </div>
 
-          {/* Week label */}
-          <div style={{ marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-              Week {activeWeek}
-              {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
-            </h2>
-          </div>
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px 80px', minWidth: 0 }}>
 
-          {/* Exercise cards */}
-          {exercises.length === 0 ? (
-            <div
-              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
-              style={{ background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 16, padding: 48, textAlign: 'center', cursor: sidebarOpen ? 'default' : 'pointer' }}
-            >
-              <p style={{ color: 'var(--text-dim)', marginBottom: 0 }}>
-                {sidebarOpen
-                  ? 'Click exercises on the left to add them to this template'
-                  : 'Open the exercise library (▶ on the left) or click here to add exercises'}
-              </p>
+            {/* Template name + description */}
+            <div style={{ marginBottom: 24 }}>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }} />
+              <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }} />
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {exercises.map((ex, exIdx) => {
-                const weekExercise = getWeekExercise(ex, activeWeek);
-                const weekSets = getWeekSets(ex, activeWeek);
-                const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
-                const isDragging  = draggedId === ex.id;
-                const isDragOver  = dragOverId === ex.id;
-                const isCollapsed = collapsedIds.has(ex.id);
-                const firstSet    = weekSets[0];
-                const collapseSummary = weekSets.length > 0
-                  ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
-                    + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
-                    + (ex.rest ? ` · ${ex.rest}s rest` : '')
-                  : 'No sets';
-                return (
-                  <div
-                    key={ex.id}
-                    draggable
-                    onDragStart={e => handleDragStart(e, ex.id)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={e => handleDragOver(e, ex.id)}
-                    onDrop={e => handleDrop(e, ex.id)}
-                    style={{
-                      background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
-                      border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`,
-                      borderRadius: 14, padding: '18px 20px',
-                      opacity: isDragging ? 0.4 : 1,
-                      cursor: 'grab',
-                      transition: 'border-color 0.15s, opacity 0.15s',
-                    }}
-                  >
-                    {/* Exercise header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                      {/* Drag handle */}
-                      <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
-                      <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
-                      {isOverridden && (
-                        <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
-                      )}
-                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
-                        {weekExercise.muscleGroup}
-                      </span>
-                      <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
-                        {weekExercise.equipment}
-                      </span>
-                      {mediaMap[weekExercise.name] ? (
-                        <button
-                          onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
-                          style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }}
-                          title="Click to preview demo"
-                        >
-                          {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
-                          style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }}
-                          title="Add a video demo link for this exercise"
-                        >
-                          + Add Video
-                        </button>
-                      )}
-                      <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {/* Collapse / expand toggle */}
-                        <button
-                          onClick={() => toggleCollapse(ex.id)}
-                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
-                          title={isCollapsed ? 'Expand' : 'Minimise'}
-                        >
-                          {isCollapsed ? '▶' : '▼'}
-                        </button>
-                        <button
-                          onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }}
-                          style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
-                          title="Substitute this exercise"
-                        >
-                          ⇄ Substitute
-                        </button>
-                        <button
-                          onClick={() => moveExercise(ex.id, -1)}
-                          disabled={exIdx === 0}
-                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
-                        >↑</button>
-                        <button
-                          onClick={() => moveExercise(ex.id, 1)}
-                          disabled={exIdx === exercises.length - 1}
-                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
-                        >↓</button>
-                        <button
-                          onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
-                          style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
 
-                    {/* Collapsed summary */}
-                    {isCollapsed && (
-                      <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>
-                    )}
-
-                    {/* Set rows */}
-                    {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
-                        {weekExercise.type === 'weighted' && (
-                          <>
-                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
-                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>
-                              Weight ({ex.unit ?? preferredUnit})
-                            </span>
-                          </>
-                        )}
-                        {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
-                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
-                        )}
-                        {/* Unit toggle — only for weighted exercises */}
-                        {weekExercise.type === 'weighted' && (
-                          <button
-                            onClick={() => toggleUnit(ex.id)}
-                            style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                            title="Toggle weight unit for this exercise"
-                          >
-                            {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
-                          </button>
-                        )}
-                      </div>
-                      {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
-                      <button
-                        onClick={() => addSet(ex.id)}
-                        style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}
-                      >
-                        + Add Set
-                      </button>
-
-                      {/* Rest between sets — one per exercise, carries to next */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
-                        <input
-                          type="number"
-                          value={ex.rest ?? lastRestRef.current}
-                          onChange={e => updateExerciseRest(ex.id, Number(e.target.value))}
-                          onFocus={e => e.target.select()}
-                          style={{ ...inputStyle, width: 56 }}
-                          min={0}
-                        />
-                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
-                      </div>
-                    </div>}
+            {/* Tag picker */}
+            <div style={{ marginBottom: 24 }}>
+              {[
+                { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
+                { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
+              ].map(group => (
+                <div key={group.label} style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>{group.label}</span>
+                  <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {group.tags.map(t => {
+                      const on = tags.includes(t);
+                      return (
+                        <button key={t} onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])} style={{ padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, background: on ? 'var(--badge-teal-bg)' : 'transparent', color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s' }}>{t}</button>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
-          )}
+
+            {/* Week tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+              {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+                <button key={w} onClick={() => setActiveWeek(w)} style={{ padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', background: activeWeek === w ? TEAL : 'var(--input-bg)', color: activeWeek === w ? '#0f1117' : 'var(--text-muted)' }}>Week {w}</button>
+              ))}
+              <button onClick={handleAddWeek} style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}>+ Add Week</button>
+              {totalWeeks > 1 && (
+                <button onClick={handleRemoveLastWeek} style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}>Remove Week {totalWeeks}</button>
+              )}
+            </div>
+
+            {/* Week label */}
+            <div style={{ marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                {activeDay?.label ?? 'Day'} — Week {activeWeek}
+                {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
+              </h2>
+            </div>
+
+            {/* Exercise cards */}
+            {exercises.length === 0 ? (
+              <div onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }} style={{ background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 16, padding: 48, textAlign: 'center', cursor: sidebarOpen ? 'default' : 'pointer' }}>
+                <p style={{ color: 'var(--text-dim)', marginBottom: 0 }}>
+                  {sidebarOpen ? `Click exercises on the left to add them to ${activeDay?.label ?? 'this day'}` : 'Open the exercise library (▶ on the left) or click here to add exercises'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {exercises.map((ex, exIdx) => {
+                  const weekExercise = getWeekExercise(ex, activeWeek);
+                  const weekSets = getWeekSets(ex, activeWeek);
+                  const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
+                  const isDragging  = draggedId === ex.id;
+                  const isDragOver  = dragOverId === ex.id;
+                  const isCollapsed = collapsedIds.has(ex.id);
+                  const firstSet    = weekSets[0];
+                  const collapseSummary = weekSets.length > 0
+                    ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
+                      + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
+                      + (ex.rest ? ` · ${ex.rest}s rest` : '')
+                    : 'No sets';
+                  return (
+                    <div
+                      key={ex.id}
+                      draggable
+                      onDragStart={e => handleDragStart(e, ex.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={e => handleDragOver(e, ex.id)}
+                      onDrop={e => handleDrop(e, ex.id)}
+                      style={{ background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)', border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`, borderRadius: 14, padding: '18px 20px', opacity: isDragging ? 0.4 : 1, cursor: 'grab', transition: 'border-color 0.15s, opacity 0.15s' }}
+                    >
+                      {/* Exercise header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
+                        <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
+                        {isOverridden && <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>}
+                        <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.muscleGroup}</span>
+                        <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.equipment}</span>
+                        {mediaMap[weekExercise.name] ? (
+                          <button onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }} title="Click to preview demo">
+                            {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
+                          </button>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }} style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }} title="Add a video demo link">+ Add Video</button>
+                        )}
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => toggleCollapse(ex.id)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }} title={isCollapsed ? 'Expand' : 'Minimise'}>{isCollapsed ? '▶' : '▼'}</button>
+                          <button onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }} title="Substitute this exercise">⇄ Substitute</button>
+                          <button onClick={() => moveExercise(ex.id, -1)} disabled={exIdx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}>↑</button>
+                          <button onClick={() => moveExercise(ex.id, 1)} disabled={exIdx === exercises.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}>↓</button>
+                          <button onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}>Remove</button>
+                        </div>
+                      </div>
+
+                      {isCollapsed && <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>}
+
+                      {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
+                          {weekExercise.type === 'weighted' && (
+                            <>
+                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
+                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Weight ({ex.unit ?? preferredUnit})</span>
+                            </>
+                          )}
+                          {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
+                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
+                          )}
+                          {weekExercise.type === 'weighted' && (
+                            <button onClick={() => toggleUnit(ex.id)} style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }} title="Toggle weight unit">{ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}</button>
+                          )}
+                        </div>
+                        {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
+                        <button onClick={() => addSet(ex.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>+ Add Set</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
+                          <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ ...inputStyle, width: 56 }} min={0} />
+                          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
+                        </div>
+                      </div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Fixed bottom save bar */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
-        <button
-          onClick={() => router.push('/plans/library')}
-          style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-        >
-          {saving ? 'Saving…' : 'Save Template'}
-        </button>
+        <button onClick={() => router.push('/plans/library')} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+        <button onClick={handleSave} disabled={saving} style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Template'}</button>
       </div>
 
       {/* ── Substitution Modal ─────────────────────────────────────────────── */}
@@ -1040,51 +919,21 @@ export default function TemplateEditorPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
               Replacing: <strong style={{ color: 'var(--text)' }}>{getWeekExercise(subEx, subTarget.scope === 'week' ? activeWeek : 1).name}</strong>
             </p>
-
-            {/* Scope toggle */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               {(['template', 'week'] as const).map(scope => (
-                <button
-                  key={scope}
-                  onClick={() => setSubTarget(prev => prev ? { ...prev, scope } : prev)}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer',
-                    background: subTarget.scope === scope ? TEAL : 'var(--input-bg)',
-                    color: subTarget.scope === scope ? '#0f1117' : 'var(--text-muted)',
-                  }}
-                >
-                  {scope === 'template' ? 'All weeks (permanent)' : `Week ${activeWeek} only`}
-                </button>
+                <button key={scope} onClick={() => setSubTarget(prev => prev ? { ...prev, scope } : prev)} style={{ padding: '7px 16px', borderRadius: 20, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer', background: subTarget.scope === scope ? TEAL : 'var(--input-bg)', color: subTarget.scope === scope ? '#0f1117' : 'var(--text-muted)' }}>{scope === 'template' ? 'All weeks (permanent)' : `Week ${activeWeek} only`}</button>
               ))}
             </div>
-
-            <input
-              value={subSearch}
-              onChange={e => setSubSearch(e.target.value)}
-              placeholder={`Search ${subMuscle} alternatives…`}
-              autoFocus
-              style={searchInputStyle}
-            />
-            <p style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
-              Showing {subMuscle} exercises
-            </p>
+            <input value={subSearch} onChange={e => setSubSearch(e.target.value)} placeholder={`Search ${subMuscle} alternatives…`} autoFocus style={searchInputStyle} />
+            <p style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>Showing {subMuscle} exercises</p>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {subCandidates.slice(0, 40).map(ex => (
-                <button
-                  key={ex.id}
-                  onClick={() => handleSubstitute(ex)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <span>
-                    <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
-                    <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
-                  </span>
+                <button key={ex.id} onClick={() => handleSubstitute(ex)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left' }}>
+                  <span><span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span><span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span></span>
                   <span style={{ color: TEAL, fontSize: 13, fontWeight: 700 }}>Use this →</span>
                 </button>
               ))}
-              {subCandidates.length === 0 && (
-                <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 24 }}>No alternatives found for {subMuscle}</p>
-              )}
+              {subCandidates.length === 0 && <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 24 }}>No alternatives found for {subMuscle}</p>}
             </div>
           </div>
         </div>
@@ -1109,9 +958,7 @@ export default function TemplateEditorPage() {
               <div style={{ padding: '32px 24px', textAlign: 'center' }}>
                 <p style={{ fontSize: 36, marginBottom: 12 }}>🔗</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20, wordBreak: 'break-all' }}>{demoPreview.urlLink}</p>
-                <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
-                  Open video ↗
-                </a>
+                <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>Open video ↗</a>
               </div>
             ) : null}
           </div>
@@ -1124,23 +971,10 @@ export default function TemplateEditorPage() {
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Add Video Link</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{addVideoTarget}</p>
-            <input
-              autoFocus
-              value={videoUrl}
-              onChange={e => setVideoUrl(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }}
-              placeholder="https://youtube.com/watch?v=..."
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 16 }}
-            />
+            <input autoFocus value={videoUrl} onChange={e => setVideoUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && videoUrl.trim()) handleSaveVideo(addVideoTarget, videoUrl); if (e.key === 'Escape') setAddVideoTarget(null); }} placeholder="https://youtube.com/watch?v=..." style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
-              <button
-                onClick={() => handleSaveVideo(addVideoTarget, videoUrl)}
-                disabled={!videoUrl.trim() || savingVideo}
-                style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}
-              >
-                {savingVideo ? 'Saving…' : 'Save Video Link'}
-              </button>
+              <button onClick={() => handleSaveVideo(addVideoTarget, videoUrl)} disabled={!videoUrl.trim() || savingVideo} style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>{savingVideo ? 'Saving…' : 'Save Video Link'}</button>
             </div>
           </div>
         </div>
