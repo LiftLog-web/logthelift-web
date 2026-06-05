@@ -356,8 +356,11 @@ export default function ProfilePage() {
         {isPractitioner && (
           <div style={{ marginTop: 16, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Invite by Email</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 8px' }}>
               Send a patient their unique invite code and app download link by email.
+            </p>
+            <p style={{ fontSize: 14, margin: '0 0 20px' }}>
+              <strong>Remind your patient to check their junk/spam folder</strong> if they don&apos;t see the email in their inbox.
             </p>
             <div style={{ display: 'flex', gap: 10, marginBottom: inviteError ? 8 : 12, flexWrap: 'wrap' }}>
               <input
