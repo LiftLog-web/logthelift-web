@@ -188,7 +188,13 @@ export default function ProgressPage() {
   const [bodyWts,   setBodyWts]   = useState<BodyWeightRow[]>([]);
   const [newWt,     setNewWt]     = useState('');
   const [newWtDate, setNewWtDate] = useState(new Date().toISOString().split('T')[0]);
-  const [wtUnit,    setWtUnit]    = useState<'kg' | 'lbs'>('kg');
+  const [wtUnit,    setWtUnit]    = useState<'kg' | 'lbs'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('liftlog_weight_unit');
+      if (saved === 'kg' || saved === 'lbs') return saved;
+    }
+    return 'kg';
+  });
   const [savingWt,  setSavingWt]  = useState(false);
   const [wtError,   setWtError]   = useState('');
 
@@ -667,7 +673,7 @@ export default function ProgressPage() {
                 style={{ width: 130, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
               <div style={{ display: 'flex', background: 'var(--card-alt)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
                 {(['kg', 'lbs'] as const).map(u => (
-                  <button key={u} onClick={() => setWtUnit(u)}
+                  <button key={u} onClick={() => { setWtUnit(u); localStorage.setItem('liftlog_weight_unit', u); }}
                     style={{ padding: '7px 14px', background: wtUnit === u ? PURPLE : 'transparent', color: wtUnit === u ? 'var(--text)' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: wtUnit === u ? 700 : 400 }}>
                     {u}
                   </button>
