@@ -37,16 +37,19 @@ function buildInviteHtml(practitionerName: string, firstName: string, code: stri
 
       <p style="color:rgba(255,255,255,0.6);font-size:14px;font-weight:600;margin:0 0 12px;">How to get started:</p>
       <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2;margin:0 0 28px;padding-left:20px;">
-        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store</li>
+        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store (iOS) or Google Play (Android)</li>
         <li>Create your free account</li>
-        <li>Go to <strong style="color:#fff;">Settings → Redeem Invite Code</strong></li>
+        <li>Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong></li>
         <li>Enter the code above — you'll be connected instantly</li>
       </ol>
 
       <a href="https://apps.apple.com/app/id6762567982"
          style="display:block;background:#5fcfbf;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;margin-bottom:12px;">
-        Download LiftLog on the App Store
+        Download LiftLog on iPhone (App Store)
       </a>
+      <p style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;margin:0 0 4px;">
+        Android version coming soon to Google Play.
+      </p>
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
         <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">

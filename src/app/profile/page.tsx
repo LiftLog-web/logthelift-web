@@ -35,12 +35,30 @@ interface Patient {
 
 type PageState = 'loading' | 'ready' | 'unauthenticated';
 
+function makeCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [pageState, setPageState]     = useState<PageState>('loading');
   const [profile, setProfile]         = useState<Profile | null>(null);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [patients, setPatients]       = useState<Patient[]>([]);
+  const [sessionToken, setSessionToken] = useState('');
+
+  // Invite code state
+  const [inviteCode, setInviteCode]   = useState<{ code: string; expires_at: string } | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [copiedCode, setCopiedCode]   = useState(false);
+
+  // Email invite state
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName]   = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSent, setInviteSent]   = useState(false);
+  const [inviteError, setInviteError] = useState('');
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -51,6 +69,7 @@ export default function ProfilePage() {
       }
 
       const userId = data.session.user.id;
+      setSessionToken(data.session.access_token);
 
       const { data: prof } = await supabase
         .from('profiles')
@@ -79,6 +98,18 @@ export default function ProfilePage() {
           .eq('practitioner_id', userId);
         const pats = (links ?? []).map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles).filter(Boolean);
         setPatients(pats);
+
+        // Load active invite code
+        const { data: codeData } = await supabase
+          .from('invite_codes')
+          .select('code, expires_at')
+          .eq('practitioner_id', userId)
+          .is('used_by', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        setInviteCode(codeData ?? null);
       }
 
       setPageState('ready');
@@ -88,6 +119,57 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     await getSupabase().auth.signOut();
     router.push('/login');
+  };
+
+  const handleGenerateCode = async () => {
+    if (!profile) return;
+    setInviteLoading(true);
+    const sb = getSupabase();
+    await sb.from('invite_codes').delete().eq('practitioner_id', profile.id).is('used_by', null);
+    const code = makeCode();
+    await sb.from('invite_codes').insert({ practitioner_id: profile.id, code });
+    const { data } = await sb
+      .from('invite_codes')
+      .select('code, expires_at')
+      .eq('practitioner_id', profile.id)
+      .is('used_by', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    setInviteCode(data ?? null);
+    setInviteLoading(false);
+  };
+
+  const handleCopyCode = () => {
+    if (!inviteCode?.code) return;
+    navigator.clipboard.writeText(inviteCode.code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setSendingInvite(true);
+    setInviteError('');
+    try {
+      const res = await fetch('/api/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ patients: [{ email: inviteEmail.trim(), name: inviteName.trim() || undefined }] }),
+      });
+      const json = await res.json();
+      if (json.sent > 0) {
+        setInviteSent(true);
+        setInviteEmail('');
+        setInviteName('');
+        setTimeout(() => setInviteSent(false), 4000);
+      } else {
+        setInviteError(json.results?.[0]?.error ?? 'Failed to send. Please try again.');
+      }
+    } catch {
+      setInviteError('Failed to send. Please try again.');
+    }
+    setSendingInvite(false);
   };
 
   if (pageState === 'loading') {
@@ -199,13 +281,15 @@ export default function ProfilePage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
                 {isPractitioner
-                  ? 'No patients linked yet. Share your invite code in the LiftLog app.'
+                  ? 'No patients linked yet. Use your invite code below or send an invite email.'
                   : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
               </p>
-              <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
-                style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
-                Open LiftLog App
-              </a>
+              {!isPractitioner && (
+                <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
+                  style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                  Open LiftLog App
+                </a>
+              )}
             </div>
           ) : (
             <div>
@@ -228,9 +312,81 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Invite code (practitioners only) */}
+        {isPractitioner && (
+          <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>My Invite Code</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>
+              Share this code with a patient. They enter it in the LiftLog app under <strong style={{ color: 'var(--text)' }}>Stats → Link to Practitioner</strong>.
+            </p>
+
+            {inviteLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 14 }}>Generating…</div>
+            ) : inviteCode ? (
+              <>
+                <div style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}44`, borderRadius: 14, padding: '20px', textAlign: 'center', marginBottom: 16 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, letterSpacing: '1px', margin: '0 0 8px', textTransform: 'uppercase' }}>Your Code</p>
+                  <p style={{ color: TEAL, fontSize: 40, fontWeight: 800, letterSpacing: '8px', margin: '0 0 8px', fontFamily: 'monospace' }}>{inviteCode.code}</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>Expires {new Date(inviteCode.expires_at).toLocaleDateString()}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={handleCopyCode}
+                    style={{ flex: 1, background: copiedCode ? TEAL : 'var(--card-alt)', color: copiedCode ? '#0f1117' : 'var(--text)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    {copiedCode ? 'Copied!' : 'Copy Code'}
+                  </button>
+                  <button onClick={handleGenerateCode}
+                    style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                    New Code
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', marginBottom: 16 }}>No active code. Generate one to share with a patient.</p>
+                <button onClick={handleGenerateCode}
+                  style={{ width: '100%', background: TEAL, color: '#0f1117', border: 'none', borderRadius: 12, padding: '13px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
+                  Generate Invite Code
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Invite by email (practitioners only) */}
+        {isPractitioner && (
+          <div style={{ marginTop: 16, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Invite by Email</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>
+              Send a patient their unique invite code and app download link by email.
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginBottom: inviteError ? 8 : 12, flexWrap: 'wrap' }}>
+              <input
+                value={inviteName}
+                onChange={e => setInviteName(e.target.value)}
+                placeholder="Patient name (optional)"
+                style={{ flex: 1, minWidth: 150, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
+              />
+              <input
+                value={inviteEmail}
+                onChange={e => { setInviteEmail(e.target.value); setInviteError(''); }}
+                placeholder="patient@email.com"
+                type="email"
+                style={{ flex: 2, minWidth: 200, background: 'var(--card-alt)', border: `1px solid ${inviteError ? '#ff6b6b' : 'var(--border)'}`, borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
+              />
+            </div>
+            {inviteError && <p style={{ color: '#ff6b6b', fontSize: 13, margin: '0 0 10px' }}>{inviteError}</p>}
+            <button
+              onClick={handleSendInvite}
+              disabled={sendingInvite || !inviteEmail.trim()}
+              style={{ width: '100%', background: inviteSent ? TEAL : PURPLE, color: inviteSent ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 12, padding: '13px', fontWeight: 700, fontSize: 15, cursor: sendingInvite || !inviteEmail.trim() ? 'not-allowed' : 'pointer', opacity: !inviteEmail.trim() ? 0.55 : 1, transition: 'background 0.2s' }}>
+              {inviteSent ? 'Invite Sent!' : sendingInvite ? 'Sending…' : 'Send Invite Email'}
+            </button>
+          </div>
+        )}
+
         {/* Practitioner utilities */}
         {isPractitioner && (
-          <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 16, background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
               <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import Patients</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
@@ -291,7 +447,7 @@ export default function ProfilePage() {
           </div>
           <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
             style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
-            Download App
+            Download on iOS
           </a>
         </div>
 
