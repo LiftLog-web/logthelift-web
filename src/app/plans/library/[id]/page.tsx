@@ -160,6 +160,7 @@ export default function TemplateEditorPage() {
     return 'lbs';
   });
   const lastRestRef = useRef<number>(60);
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
 
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
@@ -233,6 +234,7 @@ export default function TemplateEditorPage() {
       let loadedDays: TemplateDay[];
       if (raw && !Array.isArray(raw) && raw.days) {
         // New multi-day format
+        if (raw.frequencyPerWeek) setFrequencyPerWeek(raw.frequencyPerWeek);
         loadedDays = (raw.days as any[]).map((day: any) => ({
           id: day.id ?? uid(),
           label: day.label ?? 'Day',
@@ -523,7 +525,7 @@ export default function TemplateEditorPage() {
     setSaving(true);
     const { error } = await getSupabase()
       .from('plan_templates')
-      .update({ name: name.trim(), description: description.trim() || null, exercises: { days }, tags })
+      .update({ name: name.trim(), description: description.trim() || null, exercises: { frequencyPerWeek, days }, tags })
       .eq('id', templateId);
     setSaving(false);
     if (error) { alert('Could not save: ' + error.message); return; }
@@ -581,7 +583,7 @@ export default function TemplateEditorPage() {
                 <input type="number" value={set.reps ?? ''} onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
                 <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
               </div>
-              <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>@</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input type="number" value={set.weight ?? ''} onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
                 <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
@@ -595,8 +597,6 @@ export default function TemplateEditorPage() {
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>sec</span>
             </div>
           )}
-
-          <button onClick={() => removeSet(ex.id, setIdx)} disabled={totalSets <= 1} style={{ marginLeft: 'auto', color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', opacity: totalSets <= 1 ? 0.3 : 1 }} title="Remove set">×</button>
         </div>
 
         {exType === 'weighted' && (set.dropSets ?? []).map((drop, di) => (
@@ -606,7 +606,7 @@ export default function TemplateEditorPage() {
               <input type="number" value={drop.reps ?? ''} onChange={e => updateDropSet(ex.id, setIdx, di, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
             </div>
-            <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
+            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>@</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input type="number" value={drop.weight ?? ''} onChange={e => updateDropSet(ex.id, setIdx, di, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{drop.unit ?? unit}</span>
@@ -870,7 +870,13 @@ export default function TemplateEditorPage() {
             {/* Template name + description */}
             <div style={{ marginBottom: 24 }}>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }} />
-              <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }} />
+              <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0, marginBottom: 14 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Times / Week</span>
+                <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>−</button>
+                <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
+                <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
+              </div>
             </div>
 
             {/* Tag picker */}
@@ -1002,8 +1008,6 @@ export default function TemplateEditorPage() {
                                 {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
                               </button>
                             )}
-                            <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, -1); }} disabled={exIdx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}>↑</button>
-                            <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, 1); }} disabled={exIdx === exercises.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}>↓</button>
                             <button onClick={e => { e.stopPropagation(); if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '4px 12px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Remove</button>
                           </div>
                         </div>
@@ -1012,24 +1016,19 @@ export default function TemplateEditorPage() {
 
                         {!isCollapsed && (
                           <div style={{ padding: '4px 0' }}>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
-                              {weekExercise.type === 'weighted' && (
-                                <>
-                                  <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
-                                  <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Weight ({ex.unit ?? preferredUnit})</span>
-                                </>
-                              )}
-                              {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
-                                <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
-                              )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>SETS</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <button onClick={() => removeSet(ex.id, weekSets.length - 1)} disabled={weekSets.length <= 1} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: weekSets.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1, opacity: weekSets.length <= 1 ? 0.3 : 1 }}>−</button>
+                                <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 16, color: TEAL }}>{weekSets.length}</span>
+                                <button onClick={() => addSet(ex.id)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
+                              </div>
                             </div>
                             {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
-                            <button onClick={() => addSet(ex.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>+ Add Set</button>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
-                              <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ ...inputStyle, width: 56 }} min={0} />
-                              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Rest between sets</span>
+                              <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ width: 60, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} min={0} />
+                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>seconds</span>
                             </div>
                           </div>
                         )}
