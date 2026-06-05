@@ -59,7 +59,11 @@ export default function PlansPage() {
           patient_id: p.patient_id,
           patientName: patient?.display_name ?? 'Unknown',
           created_at: p.created_at,
-          exerciseCount: Array.isArray(p.exercises) ? p.exercises.length : 0,
+          exerciseCount: (() => {
+            if (Array.isArray(p.exercises)) return p.exercises.length;
+            if (p.exercises?.days) return (p.exercises.days as any[]).reduce((n: number, d: any) => n + (d.exercises?.length ?? 0), 0);
+            return 0;
+          })(),
         };
       });
 
