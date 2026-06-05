@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
@@ -11,6 +11,14 @@ import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const RED    = '#EF4444';
+
+const MUSCLE_GROUP_SECTIONS = [
+  { label: 'Upper Body', members: ['Chest', 'Back', 'Shoulders'] },
+  { label: 'Arms',       members: ['Biceps', 'Triceps', 'Forearms'] },
+  { label: 'Core',       members: ['Core'] },
+  { label: 'Legs',       members: ['Quadriceps', 'Hamstrings', 'Adductors', 'Glutes', 'Calves', 'Hip Flexors'] },
+  { label: 'Other',      members: ['Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics', 'Rotator Cuff', 'Ankle & Foot', 'Cervical', 'Lumbar'] },
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -117,11 +125,13 @@ export default function TemplateEditorPage() {
   const [savingVideo,    setSavingVideo]    = useState(false);
   const [userId,         setUserId]         = useState('');
 
-  // Add exercise modal
-  const [showAddModal,   setShowAddModal]   = useState(false);
-  const [exSearch,       setExSearch]       = useState('');
-  const [exMuscle,       setExMuscle]       = useState('All');
-  // Custom exercise form within the modal
+  // Sidebar
+  const [sidebarOpen,        setSidebarOpen]        = useState(true);
+  const [muscleDropdownOpen, setMuscleDropdownOpen] = useState(false);
+  const muscleDropdownRef = useRef<HTMLDivElement>(null);
+  const [search,             setSearch]             = useState('');
+  const [muscleFilter,       setMuscleFilter]       = useState('All');
+  // Custom exercise form within the sidebar
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName,     setCustomName]     = useState('');
   const [customMuscle,   setCustomMuscle]   = useState(MUSCLE_GROUPS[0]);
@@ -190,11 +200,21 @@ export default function TemplateEditorPage() {
         if (firstRest) lastRestRef.current = firstRest;
       }
       setExercises(loadedExercises);
-      // Auto-open the exercise picker when the template is brand new (no exercises yet)
-      if (loadedExercises.length === 0) setShowAddModal(true);
       setLoading(false);
     });
   }, [router, templateId]);
+
+  // Close muscle group dropdown on outside click
+  useEffect(() => {
+    if (!muscleDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (muscleDropdownRef.current && !muscleDropdownRef.current.contains(e.target as Node)) {
+        setMuscleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [muscleDropdownOpen]);
 
   const totalWeeks = numWeeks(exercises);
 
@@ -298,16 +318,13 @@ export default function TemplateEditorPage() {
 
   // ── Add exercise ──────────────────────────────────────────────────────────
 
-  const closeAddModal = () => {
-    setShowAddModal(false);
-    setExSearch('');
-    setExMuscle('All');
-    setShowCustomForm(false);
-    setCustomName('');
-  };
-
   const handleAddExercise = (ex: Exercise) => {
-    if (exercises.some(e => e.exercise.id === ex.id)) return;
+    const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
+    if (alreadyAdded) {
+      const te = exercises.find(e => e.exercise.id === ex.id);
+      if (te) removeExercise(te.id);
+      return;
+    }
     const baseSet = defaultSet(ex);
     const newEx: TemplateExercise = {
       id: uid(),
@@ -321,7 +338,6 @@ export default function TemplateEditorPage() {
       rest: lastRestRef.current,
     };
     setExercises(prev => [...prev, newEx]);
-    closeAddModal();
   };
 
   const toggleUnit = (exId: string) => {
@@ -350,6 +366,8 @@ export default function TemplateEditorPage() {
       type: customType,
     };
     handleAddExercise(ex);
+    setCustomName('');
+    setShowCustomForm(false);
   };
 
   const handleSaveVideo = async (exerciseName: string, url: string) => {
@@ -515,18 +533,22 @@ export default function TemplateEditorPage() {
     (subSearch === '' || e.name.toLowerCase().includes(subSearch.toLowerCase()))
   );
 
-  // Add exercise modal candidates
-  const addCandidates = EXERCISES.filter(ex => {
-    const notAdded = !exercises.some(e => e.exercise.id === ex.id);
-    const matchMuscle = exMuscle === 'All' || ex.muscleGroup === exMuscle;
-    const matchSearch = exSearch === '' || ex.name.toLowerCase().includes(exSearch.toLowerCase());
-    return notAdded && matchMuscle && matchSearch;
+  // Sidebar exercise list
+  const filteredExercises = EXERCISES.filter(ex => {
+    const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
+    const matchesMuscle = muscleFilter === 'All'
+      ? true
+      : section
+        ? section.members.includes(ex.muscleGroup)
+        : ex.muscleGroup === muscleFilter;
+    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
+    return matchesMuscle && matchesSearch;
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       {/* Sub-header */}
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           <a href="/plans/library" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Library</a>
           {' / Edit'}
@@ -548,409 +570,464 @@ export default function TemplateEditorPage() {
         </div>
       </div>
 
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
-        {/* Template name + description */}
-        <div style={{ marginBottom: 28 }}>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Template name"
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }}
-          />
-          <input
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters"
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }}
-          />
-        </div>
+      {/* Two-column layout */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* Tag picker */}
-        <div style={{ marginBottom: 28 }}>
-          {[
-            { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
-            { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
-          ].map(group => (
-            <div key={group.label} style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
-                {group.label}
-              </span>
-              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                {group.tags.map(t => {
-                  const on = tags.includes(t);
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
-                      style={{
-                        padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                        border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
-                        background: on ? 'var(--badge-teal-bg)' : 'transparent',
-                        color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)',
-                        cursor: 'pointer', transition: 'all 0.15s',
-                      }}
-                    >
-                      {t}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Week tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, flexWrap: 'wrap' }}>
-          {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+        {/* Left: Exercise Library — collapsible */}
+        <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease', background: 'var(--bg)' }}>
+          {/* Sidebar header with toggle */}
+          <div style={{ padding: '12px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
-              key={w}
-              onClick={() => setActiveWeek(w)}
-              style={{
-                padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                background: activeWeek === w ? TEAL : 'var(--input-bg)',
-                color: activeWeek === w ? '#0f1117' : 'var(--text-muted)',
-              }}
+              onClick={() => setSidebarOpen(v => !v)}
+              title={sidebarOpen ? 'Collapse library' : 'Expand library'}
+              style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
             >
-              Week {w}
+              {sidebarOpen ? '◀' : '▶'}
             </button>
-          ))}
-          <button
-            onClick={handleAddWeek}
-            style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}
-          >
-            + Add Week
-          </button>
-          {totalWeeks > 1 && (
-            <button
-              onClick={handleRemoveLastWeek}
-              style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}
-            >
-              Remove Week {totalWeeks}
-            </button>
-          )}
-        </div>
-
-        {/* Week label */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-            Week {activeWeek}
-            {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
-          </h2>
-          <button
-            onClick={() => setShowAddModal(true)}
-            style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 10, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-          >
-            + Add Exercise
-          </button>
-        </div>
-
-        {/* Exercise cards */}
-        {exercises.length === 0 ? (
-          <div style={{ background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 16, padding: 48, textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>No exercises yet. Add exercises to build this template.</p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
-            >
-              + Add First Exercise
-            </button>
+            {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'var(--text)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {exercises.map((ex, exIdx) => {
-              const weekExercise = getWeekExercise(ex, activeWeek);
-              const weekSets = getWeekSets(ex, activeWeek);
-              const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
-              const isDragging  = draggedId === ex.id;
-              const isDragOver  = dragOverId === ex.id;
-              const isCollapsed = collapsedIds.has(ex.id);
-              const firstSet    = weekSets[0];
-              const collapseSummary = weekSets.length > 0
-                ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
-                  + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
-                  + (ex.rest ? ` · ${ex.rest}s rest` : '')
-                : 'No sets';
-              return (
-                <div
-                  key={ex.id}
-                  draggable
-                  onDragStart={e => handleDragStart(e, ex.id)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={e => handleDragOver(e, ex.id)}
-                  onDrop={e => handleDrop(e, ex.id)}
-                  style={{
-                    background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
-                    border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`,
-                    borderRadius: 14, padding: '18px 20px',
-                    opacity: isDragging ? 0.4 : 1,
-                    cursor: 'grab',
-                    transition: 'border-color 0.15s, opacity 0.15s',
-                  }}
-                >
-                  {/* Exercise header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                    {/* Drag handle */}
-                    <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
-                    <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
-                    {isOverridden && (
-                      <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
-                    )}
-                    <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
-                      {weekExercise.muscleGroup}
-                    </span>
-                    <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
-                      {weekExercise.equipment}
-                    </span>
-                    {mediaMap[weekExercise.name] ? (
-                      <button
-                        onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }}
-                        title="Click to preview demo"
-                      >
-                        {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
-                        style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }}
-                        title="Add a video demo link for this exercise"
-                      >
-                        + Add Video
-                      </button>
-                    )}
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {/* Collapse / expand toggle */}
-                      <button
-                        onClick={() => toggleCollapse(ex.id)}
-                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
-                        title={isCollapsed ? 'Expand' : 'Minimise'}
-                      >
-                        {isCollapsed ? '▶' : '▼'}
-                      </button>
-                      <button
-                        onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }}
-                        style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
-                        title="Substitute this exercise"
-                      >
-                        ⇄ Substitute
-                      </button>
-                      <button
-                        onClick={() => moveExercise(ex.id, -1)}
-                        disabled={exIdx === 0}
-                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
-                      >↑</button>
-                      <button
-                        onClick={() => moveExercise(ex.id, 1)}
-                        disabled={exIdx === exercises.length - 1}
-                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
-                      >↓</button>
-                      <button
-                        onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
-                        style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Collapsed summary */}
-                  {isCollapsed && (
-                    <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>
-                  )}
-
-                  {/* Set rows */}
-                  {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                      <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
-                      {weekExercise.type === 'weighted' && (
-                        <>
-                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
-                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>
-                            Weight ({ex.unit ?? preferredUnit})
-                          </span>
-                        </>
-                      )}
-                      {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
-                        <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
-                      )}
-                      {/* Unit toggle — only for weighted exercises */}
-                      {weekExercise.type === 'weighted' && (
-                        <button
-                          onClick={() => toggleUnit(ex.id)}
-                          style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                          title="Toggle weight unit for this exercise"
-                        >
-                          {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
-                        </button>
-                      )}
-                    </div>
-                    {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
-                    <button
-                      onClick={() => addSet(ex.id)}
-                      style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}
-                    >
-                      + Add Set
-                    </button>
-
-                    {/* Rest between sets — one per exercise, carries to next */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                      <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
-                      <input
-                        type="number"
-                        value={ex.rest ?? lastRestRef.current}
-                        onChange={e => updateExerciseRest(ex.id, Number(e.target.value))}
-                        onFocus={e => e.target.select()}
-                        style={{ ...inputStyle, width: 56 }}
-                        min={0}
-                      />
-                      <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
-                    </div>
-                  </div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Bottom save bar */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
-          <button
-            onClick={() => router.push('/plans/library')}
-            style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-          >
-            {saving ? 'Saving…' : 'Save Template'}
-          </button>
-        </div>
-      </main>
-
-      {/* ── Add Exercise Modal ─────────────────────────────────────────────── */}
-      {showAddModal && (
-        <div style={overlayStyle} onClick={closeAddModal}>
-          <div style={modalStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Exercise</h3>
-              <button onClick={closeAddModal} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>×</button>
-            </div>
-
-            {!showCustomForm ? (
-              <>
+          {sidebarOpen && !showCustomForm && (
+            <>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                 <input
-                  value={exSearch}
-                  onChange={e => setExSearch(e.target.value)}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                   placeholder="Search exercises…"
-                  autoFocus
-                  style={searchInputStyle}
+                  style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
                 />
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                  {['All', ...MUSCLE_GROUPS].map(mg => (
-                    <button
-                      key={mg}
-                      onClick={() => setExMuscle(mg)}
-                      style={{
-                        padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                        background: exMuscle === mg ? TEAL : 'var(--input-bg)',
-                        color: exMuscle === mg ? '#0f1117' : 'var(--text-muted)',
-                      }}
-                    >
-                      {mg}
-                    </button>
-                  ))}
+                {/* Custom grouped muscle group dropdown */}
+                <div ref={muscleDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setMuscleDropdownOpen(v => !v)}
+                    style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <span>{muscleFilter === 'All' ? 'All muscle groups' : muscleFilter}</span>
+                    <span style={{ opacity: 0.5, fontSize: 10 }}>{muscleDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {muscleDropdownOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 200, maxHeight: 280, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                      <button
+                        onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === 'All' ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}
+                      >
+                        All muscle groups
+                      </button>
+                      {MUSCLE_GROUP_SECTIONS.map(section => (
+                        <Fragment key={section.label}>
+                          <button
+                            onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === section.label ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}
+                          >
+                            {section.label}
+                          </button>
+                          {section.members.map(mg => (
+                            <button
+                              key={mg}
+                              onClick={() => { setMuscleFilter(mg); setMuscleDropdownOpen(false); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: muscleFilter === mg ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === mg ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, cursor: 'pointer', border: 'none' }}
+                            >
+                              {mg}
+                            </button>
+                          ))}
+                        </Fragment>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                  {addCandidates.slice(0, 60).map(ex => (
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+                {filteredExercises.map(ex => {
+                  const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
+                  return (
                     <button
                       key={ex.id}
                       onClick={() => handleAddExercise(ex)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', textAlign: 'left' }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent',
+                        border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`,
+                        borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
+                          ? 'rgba(239,68,68,0.1)'
+                          : 'var(--card-alt)';
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded
+                          ? 'rgba(95,207,191,0.08)'
+                          : 'transparent';
+                      }}
+                      title={alreadyAdded ? 'Click to remove from template' : 'Click to add to template'}
                     >
-                      <span>
-                        <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
-                        <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{ex.equipment}</span>
-                      </span>
-                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{ex.muscleGroup}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : 'var(--text)' }}>{ex.name}</span>
+                        {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        {ex.muscleGroup} · {ex.equipment}
+                      </div>
                     </button>
-                  ))}
-                  {addCandidates.length === 0 && (
-                    <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 16, marginBottom: 0 }}>No matching exercises</p>
-                  )}
-                </div>
-                {/* Custom exercise CTA */}
+                  );
+                })}
+                {filteredExercises.length === 0 && (
+                  <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
+                )}
+              </div>
+
+              {/* Create custom exercise */}
+              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                 <button
-                  onClick={() => { setShowCustomForm(true); setCustomName(exSearch); }}
-                  style={{ width: '100%', marginTop: 12, padding: '11px 14px', background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  onClick={() => { setShowCustomForm(true); setCustomName(search); }}
+                  style={{ width: '100%', padding: '10px 14px', background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
-                  + Create custom exercise{exSearch ? ` "${exSearch}"` : ''}
+                  + Create custom exercise{search ? ` "${search}"` : ''}
                 </button>
-              </>
-            ) : (
-              /* Custom exercise form */
-              <>
-                <button
-                  onClick={() => setShowCustomForm(false)}
-                  style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}
-                >
-                  ‹ Back to search
-                </button>
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
-                  Add an exercise that isn't in the standard library.
-                </p>
+              </div>
+            </>
+          )}
 
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
-                <input
-                  value={customName}
-                  onChange={e => setCustomName(e.target.value)}
-                  placeholder="e.g. Bulgarian Split Squat"
-                  autoFocus
-                  style={{ ...searchInputStyle, marginBottom: 14 }}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }}
-                />
+          {sidebarOpen && showCustomForm && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              <button
+                onClick={() => setShowCustomForm(false)}
+                style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}
+              >
+                ‹ Back to search
+              </button>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+                Add an exercise that isn't in the standard library.
+              </p>
 
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {MUSCLE_GROUPS.map(mg => (
-                    <button key={mg} onClick={() => setCustomMuscle(mg)}
-                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}
-                    >{mg}</button>
-                  ))}
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+              <input
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+                placeholder="e.g. Bulgarian Split Squat"
+                autoFocus
+                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }}
+              />
+
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {MUSCLE_GROUPS.map(mg => (
+                  <button key={mg} onClick={() => setCustomMuscle(mg)}
+                    style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}
+                  >{mg}</button>
+                ))}
+              </div>
+
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
+                  <button key={eq} onClick={() => setCustomEquip(eq)}
+                    style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}
+                  >{eq}</button>
+                ))}
+              </div>
+
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+                {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setCustomType(val)}
+                    style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}
+                  >{label}</button>
+                ))}
+              </div>
+
+              <button
+                onClick={handleAddCustomExercise}
+                disabled={!customName.trim()}
+                style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                Add "{customName.trim() || 'exercise'}" to template
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Plan builder */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 32px 80px', minWidth: 0 }}>
+          {/* Template name + description */}
+          <div style={{ marginBottom: 28 }}>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Template name"
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 8 }}
+            />
+            <input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters"
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0 }}
+            />
+          </div>
+
+          {/* Tag picker */}
+          <div style={{ marginBottom: 28 }}>
+            {[
+              { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
+              { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
+            ].map(group => (
+              <div key={group.label} style={{ marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>
+                  {group.label}
+                </span>
+                <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {group.tags.map(t => {
+                    const on = tags.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])}
+                        style={{
+                          padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                          border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`,
+                          background: on ? 'var(--badge-teal-bg)' : 'transparent',
+                          color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)',
+                          cursor: 'pointer', transition: 'all 0.15s',
+                        }}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+            ))}
+          </div>
 
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
-                    <button key={eq} onClick={() => setCustomEquip(eq)}
-                      style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}
-                    >{eq}</button>
-                  ))}
-                </div>
-
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-                  {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
-                    <button key={val} onClick={() => setCustomType(val)}
-                      style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}
-                    >{label}</button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleAddCustomExercise}
-                  disabled={!customName.trim()}
-                  style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}
-                >
-                  Add "{customName.trim() || 'exercise'}" to template
-                </button>
-              </>
+          {/* Week tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, flexWrap: 'wrap' }}>
+            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+              <button
+                key={w}
+                onClick={() => setActiveWeek(w)}
+                style={{
+                  padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                  background: activeWeek === w ? TEAL : 'var(--input-bg)',
+                  color: activeWeek === w ? '#0f1117' : 'var(--text-muted)',
+                }}
+              >
+                Week {w}
+              </button>
+            ))}
+            <button
+              onClick={handleAddWeek}
+              style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}
+            >
+              + Add Week
+            </button>
+            {totalWeeks > 1 && (
+              <button
+                onClick={handleRemoveLastWeek}
+                style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}
+              >
+                Remove Week {totalWeeks}
+              </button>
             )}
           </div>
+
+          {/* Week label */}
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+              Week {activeWeek}
+              {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
+            </h2>
+          </div>
+
+          {/* Exercise cards */}
+          {exercises.length === 0 ? (
+            <div
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
+              style={{ background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 16, padding: 48, textAlign: 'center', cursor: sidebarOpen ? 'default' : 'pointer' }}
+            >
+              <p style={{ color: 'var(--text-dim)', marginBottom: 0 }}>
+                {sidebarOpen
+                  ? 'Click exercises on the left to add them to this template'
+                  : 'Open the exercise library (▶ on the left) or click here to add exercises'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {exercises.map((ex, exIdx) => {
+                const weekExercise = getWeekExercise(ex, activeWeek);
+                const weekSets = getWeekSets(ex, activeWeek);
+                const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
+                const isDragging  = draggedId === ex.id;
+                const isDragOver  = dragOverId === ex.id;
+                const isCollapsed = collapsedIds.has(ex.id);
+                const firstSet    = weekSets[0];
+                const collapseSummary = weekSets.length > 0
+                  ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
+                    + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
+                    + (ex.rest ? ` · ${ex.rest}s rest` : '')
+                  : 'No sets';
+                return (
+                  <div
+                    key={ex.id}
+                    draggable
+                    onDragStart={e => handleDragStart(e, ex.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={e => handleDragOver(e, ex.id)}
+                    onDrop={e => handleDrop(e, ex.id)}
+                    style={{
+                      background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
+                      border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`,
+                      borderRadius: 14, padding: '18px 20px',
+                      opacity: isDragging ? 0.4 : 1,
+                      cursor: 'grab',
+                      transition: 'border-color 0.15s, opacity 0.15s',
+                    }}
+                  >
+                    {/* Exercise header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                      {/* Drag handle */}
+                      <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
+                      {isOverridden && (
+                        <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>
+                      )}
+                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+                        {weekExercise.muscleGroup}
+                      </span>
+                      <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>
+                        {weekExercise.equipment}
+                      </span>
+                      {mediaMap[weekExercise.name] ? (
+                        <button
+                          onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
+                          style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }}
+                          title="Click to preview demo"
+                        >
+                          {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }}
+                          style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }}
+                          title="Add a video demo link for this exercise"
+                        >
+                          + Add Video
+                        </button>
+                      )}
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {/* Collapse / expand toggle */}
+                        <button
+                          onClick={() => toggleCollapse(ex.id)}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}
+                          title={isCollapsed ? 'Expand' : 'Minimise'}
+                        >
+                          {isCollapsed ? '▶' : '▼'}
+                        </button>
+                        <button
+                          onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }}
+                          style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}
+                          title="Substitute this exercise"
+                        >
+                          ⇄ Substitute
+                        </button>
+                        <button
+                          onClick={() => moveExercise(ex.id, -1)}
+                          disabled={exIdx === 0}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}
+                        >↑</button>
+                        <button
+                          onClick={() => moveExercise(ex.id, 1)}
+                          disabled={exIdx === exercises.length - 1}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}
+                        >↓</button>
+                        <button
+                          onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }}
+                          style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Collapsed summary */}
+                    {isCollapsed && (
+                      <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>
+                    )}
+
+                    {/* Set rows */}
+                    {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
+                        {weekExercise.type === 'weighted' && (
+                          <>
+                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
+                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>
+                              Weight ({ex.unit ?? preferredUnit})
+                            </span>
+                          </>
+                        )}
+                        {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
+                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
+                        )}
+                        {/* Unit toggle — only for weighted exercises */}
+                        {weekExercise.type === 'weighted' && (
+                          <button
+                            onClick={() => toggleUnit(ex.id)}
+                            style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            title="Toggle weight unit for this exercise"
+                          >
+                            {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                          </button>
+                        )}
+                      </div>
+                      {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
+                      <button
+                        onClick={() => addSet(ex.id)}
+                        style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}
+                      >
+                        + Add Set
+                      </button>
+
+                      {/* Rest between sets — one per exercise, carries to next */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
+                        <input
+                          type="number"
+                          value={ex.rest ?? lastRestRef.current}
+                          onChange={e => updateExerciseRest(ex.id, Number(e.target.value))}
+                          onFocus={e => e.target.select()}
+                          style={{ ...inputStyle, width: 56 }}
+                          min={0}
+                        />
+                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
+                      </div>
+                    </div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Fixed bottom save bar */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
+        <button
+          onClick={() => router.push('/plans/library')}
+          style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+        >
+          {saving ? 'Saving…' : 'Save Template'}
+        </button>
+      </div>
 
       {/* ── Substitution Modal ─────────────────────────────────────────────── */}
       {subTarget && subEx && (
