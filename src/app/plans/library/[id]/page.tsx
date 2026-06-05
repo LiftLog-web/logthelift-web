@@ -45,6 +45,7 @@ interface TemplateExercise {
   weeks?: WeekData[];
   unit?: WeightUnit;
   rest?: number;
+  supersetWithId?: string;
 }
 
 interface TemplateDay {
@@ -114,6 +115,7 @@ function parseExercise(e: any): TemplateExercise {
     })),
     unit: e.unit ?? undefined,
     rest: e.rest ?? e.sets?.[0]?.rest ?? undefined,
+    supersetWithId: e.supersetWithId ?? undefined,
   };
 }
 
@@ -141,6 +143,7 @@ export default function TemplateEditorPage() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,    setDragOverId]    = useState<string | null>(null);
   const [collapsedIds,  setCollapsedIds]  = useState<Set<string>>(new Set());
+  const [supersetMode,  setSupersetMode]  = useState<string | null>(null);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('liftlog_weight_unit');
@@ -364,6 +367,27 @@ export default function TemplateEditorPage() {
       next.has(exId) ? next.delete(exId) : next.add(exId);
       return next;
     });
+  };
+
+  const removeSuperset = (exId: string) => {
+    updateActiveDay(prev => prev.map(ex =>
+      ex.id === exId || ex.supersetWithId === exId ? { ...ex, supersetWithId: undefined } : ex
+    ));
+  };
+
+  const handleSupersetClick = (exId: string) => {
+    if (supersetMode === null) {
+      setSupersetMode(exId);
+    } else if (supersetMode === exId) {
+      setSupersetMode(null);
+    } else {
+      updateActiveDay(prev => prev.map(ex => {
+        if (ex.id === supersetMode) return { ...ex, supersetWithId: exId };
+        if (ex.id === exId)         return { ...ex, supersetWithId: supersetMode };
+        return ex;
+      }));
+      setSupersetMode(null);
+    }
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -733,6 +757,17 @@ export default function TemplateEditorPage() {
         {/* Right: Plan builder */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
+          {/* Week tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
+            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+              <button key={w} onClick={() => setActiveWeek(w)} style={{ padding: '6px 16px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', background: activeWeek === w ? TEAL : 'var(--input-bg)', color: activeWeek === w ? '#0f1117' : 'var(--text-muted)' }}>Week {w}</button>
+            ))}
+            <button onClick={handleAddWeek} style={{ padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}>+ Add Week</button>
+            {totalWeeks > 1 && (
+              <button onClick={handleRemoveLastWeek} style={{ padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}>Remove Week {totalWeeks}</button>
+            )}
+          </div>
+
           {/* Day tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 0', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
             {days.map(day => (
@@ -793,24 +828,19 @@ export default function TemplateEditorPage() {
               ))}
             </div>
 
-            {/* Week tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-              {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
-                <button key={w} onClick={() => setActiveWeek(w)} style={{ padding: '8px 18px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', background: activeWeek === w ? TEAL : 'var(--input-bg)', color: activeWeek === w ? '#0f1117' : 'var(--text-muted)' }}>Week {w}</button>
-              ))}
-              <button onClick={handleAddWeek} style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--btn-teal-border)', background: 'transparent', color: 'var(--btn-teal-text)', cursor: 'pointer' }}>+ Add Week</button>
-              {totalWeeks > 1 && (
-                <button onClick={handleRemoveLastWeek} style={{ padding: '8px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}>Remove Week {totalWeeks}</button>
-              )}
-            </div>
+            {activeWeek > 1 && (
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13 }}>Week {activeWeek} — Inherited from Week 1 unless edited below</span>
+              </div>
+            )}
 
-            {/* Week label */}
-            <div style={{ marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-                {activeDay?.label ?? 'Day'} — Week {activeWeek}
-                {activeWeek > 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13, marginLeft: 10 }}>Inherited from Week 1 unless edited below</span>}
-              </h2>
-            </div>
+            {/* Superset mode banner */}
+            {supersetMode && (
+              <div style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, color: 'var(--badge-purple-text)', fontWeight: 600 }}>Superset mode — click &ldquo;Pair Here&rdquo; on another exercise to link them</span>
+                <button onClick={() => setSupersetMode(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>✕ Cancel</button>
+              </div>
+            )}
 
             {/* Exercise cards */}
             {exercises.length === 0 ? (
@@ -820,80 +850,118 @@ export default function TemplateEditorPage() {
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {exercises.map((ex, exIdx) => {
-                  const weekExercise = getWeekExercise(ex, activeWeek);
-                  const weekSets = getWeekSets(ex, activeWeek);
-                  const isOverridden = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
-                  const isDragging  = draggedId === ex.id;
-                  const isDragOver  = dragOverId === ex.id;
-                  const isCollapsed = collapsedIds.has(ex.id);
-                  const firstSet    = weekSets[0];
+                  const prevEx        = exIdx > 0 ? exercises[exIdx - 1] : null;
+                  const nextEx        = exIdx < exercises.length - 1 ? exercises[exIdx + 1] : null;
+                  const weekExercise  = getWeekExercise(ex, activeWeek);
+                  const weekSets      = getWeekSets(ex, activeWeek);
+                  const isOverridden  = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
+                  const isDragging    = draggedId === ex.id;
+                  const isDragOver    = dragOverId === ex.id;
+                  const isCollapsed   = collapsedIds.has(ex.id);
+                  const isSuperset    = !!ex.supersetWithId;
+                  const isSupersetFirst = supersetMode === ex.id;
+                  const canPair       = supersetMode !== null && supersetMode !== ex.id && !ex.supersetWithId;
+                  const showConnector = !!(nextEx && ex.supersetWithId === nextEx.id && nextEx.supersetWithId === ex.id);
+                  const afterConnector = !!(prevEx && prevEx.supersetWithId === ex.id && ex.supersetWithId === prevEx.id);
+                  const topR    = afterConnector ? 0 : 14;
+                  const bottomR = showConnector ? 0 : 14;
+                  const firstSet = weekSets[0];
                   const collapseSummary = weekSets.length > 0
                     ? `${weekSets.length} set${weekSets.length !== 1 ? 's' : ''}`
                       + (weekExercise.type === 'weighted' && firstSet?.reps ? ` · ${firstSet.reps} reps @ ${firstSet.weight ?? 0} ${ex.unit ?? preferredUnit}` : '')
                       + (ex.rest ? ` · ${ex.rest}s rest` : '')
                     : 'No sets';
                   return (
-                    <div
-                      key={ex.id}
-                      draggable
-                      onDragStart={e => handleDragStart(e, ex.id)}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={e => handleDragOver(e, ex.id)}
-                      onDrop={e => handleDrop(e, ex.id)}
-                      style={{ background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)', border: `1px solid ${isDragOver ? `${TEAL}80` : 'var(--border)'}`, borderRadius: 14, padding: '18px 20px', opacity: isDragging ? 0.4 : 1, cursor: 'grab', transition: 'border-color 0.15s, opacity 0.15s' }}
-                    >
-                      {/* Exercise header */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                        <span style={{ color: 'var(--text-faint)', fontSize: 16, cursor: 'grab', userSelect: 'none', marginRight: 2 }} title="Drag to reorder">⠿</span>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
-                        {isOverridden && <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} substitute</span>}
-                        <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.muscleGroup}</span>
-                        <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.equipment}</span>
-                        {mediaMap[weekExercise.name] ? (
-                          <button onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }} title="Click to preview demo">
-                            {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
-                          </button>
-                        ) : (
-                          <button onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }} style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }} title="Add a video demo link">+ Add Video</button>
+                    <Fragment key={ex.id}>
+                      <div
+                        draggable
+                        onDragStart={e => handleDragStart(e, ex.id)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={e => handleDragOver(e, ex.id)}
+                        onDrop={e => handleDrop(e, ex.id)}
+                        style={{
+                          background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
+                          border: `1px solid ${isDragOver ? `${TEAL}80` : isSuperset ? `${PURPLE}60` : isSupersetFirst ? `${PURPLE}99` : `${PURPLE}30`}`,
+                          borderRadius: `${topR}px ${topR}px ${bottomR}px ${bottomR}px`,
+                          padding: '18px 20px',
+                          opacity: isDragging ? 0.4 : 1,
+                          marginBottom: showConnector ? 0 : 12,
+                          cursor: 'grab',
+                          transition: 'border-color 0.15s, opacity 0.15s',
+                        }}
+                      >
+                        {/* Card header — left side clicks to collapse */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isCollapsed ? 0 : 14, flexWrap: 'wrap' }}>
+                          <div onClick={() => toggleCollapse(ex.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                            <span style={{ color: 'var(--text-faint)', fontSize: 16, userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                            <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
+                            {isOverridden && <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>Week {activeWeek} sub</span>}
+                            <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.muscleGroup}</span>
+                            <span style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>{weekExercise.equipment}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                            {mediaMap[weekExercise.name] ? (
+                              <button onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer' }} title="Click to preview demo">
+                                {mediaMap[weekExercise.name].type === 'link' ? '🔗 Link' : mediaMap[weekExercise.name].type === 'video' ? '📹 Video' : '📷 Photo'}
+                              </button>
+                            ) : (
+                              <button onClick={e => { e.stopPropagation(); setAddVideoTarget(weekExercise.name); setVideoUrl(''); }} style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: 'pointer' }} title="Add a video demo link">+ Add Video</button>
+                            )}
+                            {weekExercise.type === 'weighted' && (
+                              <button onClick={e => { e.stopPropagation(); toggleUnit(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '3px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }} title="Toggle weight unit">{ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}</button>
+                            )}
+                            {isSuperset ? (
+                              <button onClick={e => { e.stopPropagation(); removeSuperset(ex.id); }} style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 6, padding: '3px 10px', color: 'var(--badge-purple-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Remove SS</button>
+                            ) : isSupersetFirst ? (
+                              <button onClick={e => { e.stopPropagation(); setSupersetMode(null); }} style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 6, padding: '3px 10px', color: 'var(--badge-purple-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                            ) : canPair ? (
+                              <button onClick={e => { e.stopPropagation(); handleSupersetClick(ex.id); }} style={{ background: PURPLE, border: '1px solid var(--btn-purple-border)', borderRadius: 6, padding: '3px 10px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Pair Here</button>
+                            ) : (
+                              <button onClick={e => { e.stopPropagation(); handleSupersetClick(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Superset</button>
+                            )}
+                            <button onClick={e => { e.stopPropagation(); setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>⇄ Sub</button>
+                            <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, -1); }} disabled={exIdx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}>↑</button>
+                            <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, 1); }} disabled={exIdx === exercises.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}>↓</button>
+                            <button onClick={e => { e.stopPropagation(); if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '3px 8px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 11 }}>Remove</button>
+                          </div>
+                        </div>
+
+                        {isCollapsed && <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>}
+
+                        {!isCollapsed && (
+                          <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
+                              {weekExercise.type === 'weighted' && (
+                                <>
+                                  <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
+                                  <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Weight ({ex.unit ?? preferredUnit})</span>
+                                </>
+                              )}
+                              {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
+                                <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
+                              )}
+                            </div>
+                            {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
+                            <button onClick={() => addSet(ex.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>+ Add Set</button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
+                              <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ ...inputStyle, width: 56 }} min={0} />
+                              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
+                            </div>
+                          </div>
                         )}
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <button onClick={() => toggleCollapse(ex.id)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }} title={isCollapsed ? 'Expand' : 'Minimise'}>{isCollapsed ? '▶' : '▼'}</button>
-                          <button onClick={() => { setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }} title="Substitute this exercise">⇄ Substitute</button>
-                          <button onClick={() => moveExercise(ex.id, -1)} disabled={exIdx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}>↑</button>
-                          <button onClick={() => moveExercise(ex.id, 1)} disabled={exIdx === exercises.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}>↓</button>
-                          <button onClick={() => { if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 6, padding: '5px 10px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12 }}>Remove</button>
-                        </div>
                       </div>
-
-                      {isCollapsed && <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>}
-
-                      {!isCollapsed && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '8px 12px' }}>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                          <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 24 }}>#</span>
-                          {weekExercise.type === 'weighted' && (
-                            <>
-                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Reps</span>
-                              <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Weight ({ex.unit ?? preferredUnit})</span>
-                            </>
-                          )}
-                          {(weekExercise.type === 'duration' || weekExercise.type === 'cardio') && (
-                            <span style={{ color: 'var(--text-faint)', fontSize: 11, width: 80 }}>Duration (s)</span>
-                          )}
-                          {weekExercise.type === 'weighted' && (
-                            <button onClick={() => toggleUnit(ex.id)} style={{ marginLeft: 'auto', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }} title="Toggle weight unit">{ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}</button>
-                          )}
+                      {showConnector && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 20px', border: '1px solid var(--btn-purple-border)', borderTop: 'none', borderBottom: 'none', background: 'var(--badge-purple-bg)', marginBottom: 0 }}>
+                          <div style={{ flex: 1, height: 1, background: 'var(--btn-purple-border)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--badge-purple-text)', letterSpacing: '0.05em' }}>⚡ SUPERSET</span>
+                          <div style={{ flex: 1, height: 1, background: 'var(--btn-purple-border)' }} />
                         </div>
-                        {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
-                        <button onClick={() => addSet(ex.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>+ Add Set</button>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Rest between sets:</span>
-                          <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ ...inputStyle, width: 56 }} min={0} />
-                          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>seconds</span>
-                        </div>
-                      </div>}
-                    </div>
+                      )}
+                    </Fragment>
                   );
                 })}
               </div>
