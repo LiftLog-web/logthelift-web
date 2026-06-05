@@ -462,6 +462,10 @@ export default function TemplateEditorPage() {
     updateActiveDay(prev => prev.map(ex => ex.id === exId ? { ...ex, rest: value } : ex));
   };
 
+  const updateNotes = (exId: string, value: string) => {
+    updateActiveDay(prev => prev.map(ex => ex.id === exId ? { ...ex, notes: value } : ex));
+  };
+
   const handleAddCustomExercise = () => {
     if (!customName.trim()) return;
     const ex: Exercise = {
@@ -1030,6 +1034,14 @@ export default function TemplateEditorPage() {
                               <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ width: 60, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} min={0} />
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>seconds</span>
                             </div>
+                            <div style={{ marginTop: 8 }}>
+                              <input
+                                value={ex.notes ?? ''}
+                                onChange={e => updateNotes(ex.id, e.target.value)}
+                                placeholder="Practitioner notes (e.g. focus on form, keep elbows tucked)…"
+                                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1050,7 +1062,7 @@ export default function TemplateEditorPage() {
       </div>
 
       {/* Fixed bottom save bar */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,17,23,0.95)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--card)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
         <button onClick={() => router.push('/plans/library')} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
         <button onClick={handleSave} disabled={saving} style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Template'}</button>
       </div>
