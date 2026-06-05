@@ -685,7 +685,13 @@ export default function TemplateEditorPage() {
           <a href="/plans/library" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Library</a>
           {' / Edit'}
         </span>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={() => router.push('/plans/library')}
+            style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
           <button
             onClick={() => router.push(`/plans/new?template=${templateId}`)}
             style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
@@ -1059,12 +1065,6 @@ export default function TemplateEditorPage() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Fixed bottom save bar */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--card)', borderTop: '1px solid var(--border)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', gap: 12, zIndex: 100 }}>
-        <button onClick={() => router.push('/plans/library')} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
-        <button onClick={handleSave} disabled={saving} style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Template'}</button>
       </div>
 
       {/* ── Substitution Modal ─────────────────────────────────────────────── */}
