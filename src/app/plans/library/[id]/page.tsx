@@ -22,11 +22,21 @@ const MUSCLE_GROUP_SECTIONS = [
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type WeightUnit = 'lbs' | 'kg';
+
+interface DropSet {
+  id: string;
+  weight?: number;
+  reps?: number;
+  unit?: WeightUnit;
+}
+
 interface WorkoutSet {
   reps?: number;
   weight?: number;
   seconds?: number;
   rest?: number;
+  dropSets?: DropSet[];
 }
 
 interface WeekData {
@@ -34,8 +44,6 @@ interface WeekData {
   sets: WorkoutSet[];
   exerciseOverride?: Exercise;
 }
-
-type WeightUnit = 'lbs' | 'kg';
 
 interface TemplateExercise {
   id: string;
@@ -522,37 +530,94 @@ export default function TemplateEditorPage() {
     router.push('/plans/library');
   };
 
+  // ── Drop sets ─────────────────────────────────────────────────────────────
+
+  const addDropSet = (exId: string, setIdx: number) => {
+    updateActiveDay(prev => prev.map(ex => {
+      if (ex.id !== exId) return ex;
+      const weekSets = getWeekSets(ex, activeWeek);
+      const s = weekSets[setIdx];
+      const newDrop: DropSet = { id: `drop_${Date.now()}_${Math.random().toString(36).slice(2)}`, weight: s.weight, reps: s.reps, unit: ex.unit };
+      const newSets = weekSets.map((ws, i) => i === setIdx ? { ...ws, dropSets: [...(ws.dropSets ?? []), newDrop] } : ws);
+      return setWeekSets(ex, activeWeek, newSets);
+    }));
+  };
+
+  const updateDropSet = (exId: string, setIdx: number, dropIdx: number, field: keyof DropSet, value: number | string) => {
+    updateActiveDay(prev => prev.map(ex => {
+      if (ex.id !== exId) return ex;
+      const weekSets = getWeekSets(ex, activeWeek);
+      const newSets = weekSets.map((ws, i) => {
+        if (i !== setIdx) return ws;
+        const drops = (ws.dropSets ?? []).map((d, di) => di === dropIdx ? { ...d, [field]: value } : d);
+        return { ...ws, dropSets: drops };
+      });
+      return setWeekSets(ex, activeWeek, newSets);
+    }));
+  };
+
+  const removeDropSet = (exId: string, setIdx: number, dropIdx: number) => {
+    updateActiveDay(prev => prev.map(ex => {
+      if (ex.id !== exId) return ex;
+      const weekSets = getWeekSets(ex, activeWeek);
+      const newSets = weekSets.map((ws, i) => i === setIdx ? { ...ws, dropSets: (ws.dropSets ?? []).filter((_, di) => di !== dropIdx) } : ws);
+      return setWeekSets(ex, activeWeek, newSets);
+    }));
+  };
+
   // ── Render helpers ────────────────────────────────────────────────────────
 
   const renderSetRow = (ex: TemplateExercise, set: WorkoutSet, setIdx: number, totalSets: number) => {
     const exType = getWeekExercise(ex, activeWeek).type;
     const unit = ex.unit ?? preferredUnit;
     return (
-      <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid var(--card-alt)' : 'none' }}>
-        <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>{setIdx + 1}</span>
+      <div key={setIdx} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 0', borderBottom: setIdx < totalSets - 1 ? '1px solid var(--card-alt)' : 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--text-dim)', fontSize: 12, width: 24, flexShrink: 0 }}>{setIdx + 1}</span>
 
-        {exType === 'weighted' && (
-          <>
+          {exType === 'weighted' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="number" value={set.reps ?? ''} onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
+                <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
+              </div>
+              <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="number" value={set.weight ?? ''} onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
+                <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
+              </div>
+            </>
+          )}
+
+          {(exType === 'duration' || exType === 'cardio') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input type="number" value={set.reps ?? ''} onChange={e => updateSet(ex.id, setIdx, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
+              <input type="number" value={set.seconds ?? ''} onChange={e => updateSet(ex.id, setIdx, 'seconds', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
+              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>sec</span>
+            </div>
+          )}
+
+          <button onClick={() => removeSet(ex.id, setIdx)} disabled={totalSets <= 1} style={{ marginLeft: 'auto', color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', opacity: totalSets <= 1 ? 0.3 : 1 }} title="Remove set">×</button>
+        </div>
+
+        {exType === 'weighted' && (set.dropSets ?? []).map((drop, di) => (
+          <div key={drop.id} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 28 }}>
+            <span style={{ width: 20, fontSize: 12, color: TEAL, fontWeight: 700, textAlign: 'center', flexShrink: 0 }}>↓</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="number" value={drop.reps ?? ''} onChange={e => updateDropSet(ex.id, setIdx, di, 'reps', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
               <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>reps</span>
             </div>
             <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>@</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input type="number" value={set.weight ?? ''} onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
-              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
+              <input type="number" value={drop.weight ?? ''} onChange={e => updateDropSet(ex.id, setIdx, di, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
+              <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{drop.unit ?? unit}</span>
             </div>
-          </>
-        )}
-
-        {(exType === 'duration' || exType === 'cardio') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="number" value={set.seconds ?? ''} onChange={e => updateSet(ex.id, setIdx, 'seconds', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
-            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>sec</span>
+            <button onClick={() => removeDropSet(ex.id, setIdx, di)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>✕</button>
           </div>
-        )}
+        ))}
 
-        <button onClick={() => removeSet(ex.id, setIdx)} disabled={totalSets <= 1} style={{ marginLeft: 'auto', color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', opacity: totalSets <= 1 ? 0.3 : 1 }} title="Remove set">×</button>
+        {exType === 'weighted' && (
+          <button onClick={() => addDropSet(ex.id, setIdx)} style={{ alignSelf: 'flex-start', marginLeft: 28, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>↓ Drop Set</button>
+        )}
       </div>
     );
   };
@@ -923,11 +988,6 @@ export default function TemplateEditorPage() {
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                            {weekExercise.type === 'weighted' && (
-                              <button onClick={e => { e.stopPropagation(); toggleUnit(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title="Toggle weight unit">
-                                {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
-                              </button>
-                            )}
                             {isSuperset ? (
                               <button onClick={e => { e.stopPropagation(); removeSuperset(ex.id); }} style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>Remove SS</button>
                             ) : isSupersetFirst ? (
@@ -937,7 +997,11 @@ export default function TemplateEditorPage() {
                             ) : (
                               <button onClick={e => { e.stopPropagation(); handleSupersetClick(ex.id); }} style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Superset</button>
                             )}
-                            <button onClick={e => { e.stopPropagation(); setSubTarget({ exId: ex.id, scope: 'template' }); setSubSearch(''); }} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>⇄ Sub</button>
+                            {weekExercise.type === 'weighted' && (
+                              <button onClick={e => { e.stopPropagation(); toggleUnit(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title="Toggle weight unit">
+                                {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                              </button>
+                            )}
                             <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, -1); }} disabled={exIdx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === 0 ? 'not-allowed' : 'pointer', opacity: exIdx === 0 ? 0.3 : 1 }}>↑</button>
                             <button onClick={e => { e.stopPropagation(); moveExercise(ex.id, 1); }} disabled={exIdx === exercises.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)', cursor: exIdx === exercises.length - 1 ? 'not-allowed' : 'pointer', opacity: exIdx === exercises.length - 1 ? 0.3 : 1 }}>↓</button>
                             <button onClick={e => { e.stopPropagation(); if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '4px 12px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Remove</button>

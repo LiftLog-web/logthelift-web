@@ -46,6 +46,7 @@ interface PlanExercise {
   notes: string;
   supersetWithId?: string;
   unit?: WeightUnit;   // per-exercise unit preference
+  rest?: number;       // rest between sets in seconds
 }
 
 interface PlanDay {
@@ -54,15 +55,6 @@ interface PlanDay {
   exercises: PlanExercise[];
 }
 
-// Rest is stored in minutes (fractional). These helpers convert for display.
-function toMinSec(restMin: number): { m: number; s: number } {
-  const m = Math.floor(restMin);
-  const s = Math.round((restMin - m) * 60);
-  return { m, s };
-}
-function fromMinSec(m: number, s: number): number {
-  return m + s / 60;
-}
 
 interface Patient {
   id: string;
@@ -327,8 +319,8 @@ function NewPlanInner() {
   const addExercise = useCallback((ex: Exercise) => {
     updateActiveDay(prev => {
       if (prev.some(pe => pe.exercise.id === ex.id)) return prev;
-      const sets = [defaultSet(ex), defaultSet(ex), defaultSet(ex)].map(s => ({ ...s, rest: 1 }));
-      return [...prev, { id: String(Date.now()), exercise: ex, sets, targetSets: 3, notes: '', unit: preferredUnitRef.current }];
+      const sets = [defaultSet(ex), defaultSet(ex), defaultSet(ex)];
+      return [...prev, { id: String(Date.now()), exercise: ex, sets, targetSets: 3, notes: '', unit: preferredUnitRef.current, rest: 60 }];
     });
   }, [updateActiveDay]);
 
@@ -392,6 +384,10 @@ function NewPlanInner() {
       });
       return { ...pe, sets };
     }));
+  };
+
+  const updateExRest = (peId: string, seconds: number) => {
+    updateActiveDay(prev => prev.map(pe => pe.id !== peId ? pe : { ...pe, rest: seconds }));
   };
 
   const updateTargetSets = (peId: string, count: number) => {
@@ -1048,25 +1044,6 @@ function NewPlanInner() {
                                 </label>
                               )}
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Rest</span>
-                                <input
-                                  type="number" min={0} max={59}
-                                  value={toMinSec(s.rest ?? 1).m}
-                                  onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(Number(e.target.value), toMinSec(s.rest ?? 1).s))}
-                                  onFocus={e => e.target.select()}
-                                  style={{ width: 42, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 6px', color: 'var(--text-muted)', fontSize: 13, outline: 'none', textAlign: 'center' }}
-                                />
-                                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>m</span>
-                                <input
-                                  type="number" min={0} max={59}
-                                  value={toMinSec(s.rest ?? 1).s}
-                                  onChange={e => updateSet(pe.id, si, 'rest', fromMinSec(toMinSec(s.rest ?? 1).m, Number(e.target.value)))}
-                                  onFocus={e => e.target.select()}
-                                  style={{ width: 42, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 6px', color: 'var(--text-muted)', fontSize: 13, outline: 'none', textAlign: 'center' }}
-                                />
-                                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>s</span>
-                              </div>
                               </div>
                               {pe.exercise.type === 'weighted' && (s.dropSets ?? []).map((drop, di) => (
                                 <div key={drop.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 30 }}>
@@ -1102,6 +1079,19 @@ function NewPlanInner() {
                               )}
                             </div>
                           ))}
+                        </div>
+
+                        {/* Shared rest between sets */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rest between sets</span>
+                          <input
+                            type="number" min={0}
+                            value={pe.rest ?? (pe.sets[0]?.rest ? Math.round(pe.sets[0].rest * 60) : 60)}
+                            onChange={e => updateExRest(pe.id, Number(e.target.value))}
+                            onFocus={e => e.target.select()}
+                            style={{ width: 60, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>seconds</span>
                         </div>
 
                         {/* Practitioner notes */}
