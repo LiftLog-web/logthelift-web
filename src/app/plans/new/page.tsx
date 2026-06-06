@@ -542,9 +542,12 @@ function NewPlanInner() {
     let error;
     if (editId) {
       ({ error } = await sb.from('workout_plans').update(payload).eq('id', editId));
+      if (!error && patientId) {
+        sb.functions.invoke('notify-plan-assigned', { body: { patient_id: patientId, plan_name: planName.trim(), notif_title: 'Plan Updated', notif_body: `Your trainer has updated your plan: ${planName.trim()}` } });
+      }
     } else {
       ({ error } = await sb.from('workout_plans').insert({ ...payload, created_at: new Date().toISOString() }));
-      if (!error) {
+      if (!error && patientId) {
         sb.functions.invoke('notify-plan-assigned', { body: { patient_id: patientId, plan_name: planName.trim() } });
       }
     }
@@ -1074,12 +1077,20 @@ function NewPlanInner() {
                           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rest between sets</span>
                           <input
                             type="number" min={0}
-                            value={pe.rest ?? (pe.sets[0]?.rest ? Math.round(pe.sets[0].rest * 60) : 60)}
-                            onChange={e => updateExRest(pe.id, Number(e.target.value))}
+                            value={Math.floor((pe.rest ?? 60) / 60)}
+                            onChange={e => updateExRest(pe.id, Number(e.target.value) * 60 + ((pe.rest ?? 60) % 60))}
                             onFocus={e => e.target.select()}
-                            style={{ width: 60, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                            style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                           />
-                          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>seconds</span>
+                          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>m</span>
+                          <input
+                            type="number" min={0} max={59}
+                            value={(pe.rest ?? 60) % 60}
+                            onChange={e => updateExRest(pe.id, Math.floor((pe.rest ?? 60) / 60) * 60 + Math.min(59, Number(e.target.value)))}
+                            onFocus={e => e.target.select()}
+                            style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>s</span>
                         </div>
 
                         {/* Practitioner notes */}

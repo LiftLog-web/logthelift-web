@@ -1037,8 +1037,10 @@ export default function TemplateEditorPage() {
                             {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Rest between sets</span>
-                              <input type="number" value={ex.rest ?? lastRestRef.current} onChange={e => updateExerciseRest(ex.id, Number(e.target.value))} onFocus={e => e.target.select()} style={{ width: 60, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} min={0} />
-                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>seconds</span>
+                              <input type="number" min={0} value={Math.floor((ex.rest ?? lastRestRef.current) / 60)} onChange={e => updateExerciseRest(ex.id, Number(e.target.value) * 60 + ((ex.rest ?? lastRestRef.current) % 60))} onFocus={e => e.target.select()} style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} />
+                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>m</span>
+                              <input type="number" min={0} max={59} value={(ex.rest ?? lastRestRef.current) % 60} onChange={e => updateExerciseRest(ex.id, Math.floor((ex.rest ?? lastRestRef.current) / 60) * 60 + Math.min(59, Number(e.target.value)))} onFocus={e => e.target.select()} style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} />
+                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>s</span>
                             </div>
                             <div style={{ marginTop: 8 }}>
                               <input
