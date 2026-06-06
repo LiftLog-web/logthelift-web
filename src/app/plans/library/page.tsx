@@ -26,6 +26,16 @@ interface Template {
   created_at: string;
 }
 
+// Normalize exercises from either a flat array or the { frequencyPerWeek, days } object
+// saved by the library editor — the DB column can hold either format.
+function flatExercises(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object' && Array.isArray(raw.days)) {
+    return (raw.days as any[]).flatMap((d: any) => d.exercises ?? []);
+  }
+  return [];
+}
+
 function numWeeks(exercises: any[]): number {
   let max = 1;
   for (const ex of exercises) {
@@ -68,7 +78,7 @@ export default function PlanLibraryPage() {
         .select('*')
         .eq('practitioner_id', data.session.user.id)
         .order('created_at', { ascending: false });
-      setTemplates(rows ?? []);
+      setTemplates((rows ?? []).map((t: any) => ({ ...t, exercises: flatExercises(t.exercises) })));
       setLoading(false);
     });
   }, [router]);
