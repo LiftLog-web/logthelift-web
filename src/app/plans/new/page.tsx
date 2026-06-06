@@ -182,6 +182,7 @@ function NewPlanInner() {
                 notes: e.notes ?? '',
                 supersetWithId: e.supersetWithId,
                 unit: e.unit ?? undefined,
+                rest: e.rest ?? undefined,
               })),
             }));
             setDays(loadedDays);
@@ -197,6 +198,7 @@ function NewPlanInner() {
               targetSets: e.sets?.length ?? 3,
               notes: e.notes ?? '',
               unit: e.unit ?? undefined,
+              rest: e.rest ?? undefined,
             }));
             const tplUnit = loaded[0]?.unit;
             if (tplUnit) setPreferredUnit(tplUnit);
@@ -232,6 +234,7 @@ function NewPlanInner() {
                 notes: e.notes ?? '',
                 supersetWithId: e.supersetWithId,
                 unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
+                rest: e.rest ?? undefined,
               })),
             }));
             setDays(loadedDays);
@@ -248,6 +251,7 @@ function NewPlanInner() {
               notes: e.notes ?? '',
               supersetWithId: e.supersetWithId,
               unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
+              rest: e.rest ?? undefined,
             }));
             const planUnit = loaded[0]?.unit;
             if (planUnit) setPreferredUnit(planUnit);
