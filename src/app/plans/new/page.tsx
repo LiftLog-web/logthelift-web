@@ -544,6 +544,9 @@ function NewPlanInner() {
       ({ error } = await sb.from('workout_plans').update(payload).eq('id', editId));
     } else {
       ({ error } = await sb.from('workout_plans').insert({ ...payload, created_at: new Date().toISOString() }));
+      if (!error) {
+        sb.functions.invoke('notify-plan-assigned', { body: { patient_id: patientId, plan_name: planName.trim() } });
+      }
     }
 
     setSaving(false);
