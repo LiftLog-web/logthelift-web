@@ -980,74 +980,76 @@ function NewPlanInner() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {pe.sets.map((s, si) => (
                             <div key={si} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ width: 20, fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{si + 1}</span>
 
                               {pe.exercise.type === 'weighted' && (
                                 <>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Reps</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
                                       type="number" min={1} value={s.reps ?? 10}
                                       onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value))}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
-                                  </label>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Weight ({pe.unit ?? preferredUnit})</span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>reps</span>
+                                  </div>
+                                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>@</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
                                       type="number" min={0} step={0.5} value={s.weight ?? 0}
                                       onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value))}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
-                                  </label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{pe.unit ?? preferredUnit}</span>
+                                  </div>
                                 </>
                               )}
 
                               {pe.exercise.type === 'duration' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                  <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Seconds</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <input
                                     type="number" min={1} value={s.seconds ?? 30}
                                     onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value))}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
-                                </label>
+                                  <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>sec</span>
+                                </div>
                               )}
 
                               {pe.exercise.type === 'cardio' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                  <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Minutes</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <input
                                     type="number" min={1} value={s.minutes ?? 20}
                                     onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value))}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
-                                </label>
+                                  <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>min</span>
+                                </div>
                               )}
 
                               </div>
                               {pe.exercise.type === 'weighted' && (s.dropSets ?? []).map((drop, di) => (
-                                <div key={drop.id} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 30 }}>
+                                <div key={drop.id} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 30 }}>
                                   <span style={{ width: 20, fontSize: 12, color: TEAL, fontWeight: 700, textAlign: 'center', flexShrink: 0 }}>↓</span>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Reps</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
                                       type="number" min={0} value={drop.reps ?? 0}
                                       onChange={e => updateDropSet(pe.id, si, di, 'reps', Number(e.target.value))}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
-                                  </label>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Weight ({drop.unit ?? pe.unit ?? preferredUnit})</span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>reps</span>
+                                  </div>
+                                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>@</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
                                       type="number" min={0} step={0.5} value={drop.weight ?? 0}
                                       onChange={e => updateDropSet(pe.id, si, di, 'weight', Number(e.target.value))}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
-                                  </label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{drop.unit ?? pe.unit ?? preferredUnit}</span>
+                                  </div>
                                   <button
                                     onClick={() => removeDropSet(pe.id, si, di)}
                                     style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}
