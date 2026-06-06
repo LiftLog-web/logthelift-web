@@ -708,6 +708,18 @@ export default function TemplateEditorPage() {
         </div>
       </div>
 
+      {/* Pinned: Template name + description */}
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 32px 16px', flexShrink: 0 }}>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 6 }} />
+        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0, marginBottom: 14 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Times / Week</span>
+          <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>−</button>
+          <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
+          <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
+        </div>
+      </div>
+
       {/* Two-column body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
@@ -872,18 +884,6 @@ export default function TemplateEditorPage() {
             {days.length < 7 && (
               <button onClick={addDay} style={{ background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '5px 12px', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>+ Add Day</button>
             )}
-          </div>
-
-          {/* Pinned: Template name + description */}
-          <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 32px 16px', flexShrink: 0 }}>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 6 }} />
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0, marginBottom: 14 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Times / Week</span>
-              <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>−</button>
-              <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
-              <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
-            </div>
           </div>
 
           {/* Scrollable content */}
