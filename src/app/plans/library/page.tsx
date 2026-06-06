@@ -64,6 +64,8 @@ export default function PlanLibraryPage() {
   const [bodySearch,     setBodySearch]     = useState('');
   const [nameModal,      setNameModal]      = useState(false);
   const [newName,        setNewName]        = useState('');
+  const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string }>>>({});
+  const [unassigning,    setUnassigning]    = useState<string | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -79,6 +81,17 @@ export default function PlanLibraryPage() {
         .eq('practitioner_id', data.session.user.id)
         .order('created_at', { ascending: false });
       setTemplates((rows ?? []).map((t: any) => ({ ...t, exercises: flatExercises(t.exercises) })));
+      const { data: plans } = await sb
+        .from('workout_plans')
+        .select('id, name, patient_id, patient:patient_id(display_name)')
+        .eq('practitioner_id', data.session.user.id);
+      const assignMap: Record<string, Array<{ planId: string; patientId: string; patientName: string }>> = {};
+      for (const p of plans ?? []) {
+        const key = (p as any).name ?? '';
+        if (!assignMap[key]) assignMap[key] = [];
+        assignMap[key].push({ planId: (p as any).id, patientId: (p as any).patient_id, patientName: ((p as any).patient as any)?.display_name ?? 'Unknown' });
+      }
+      setPlanAssignments(assignMap);
       setLoading(false);
     });
   }, [router]);
@@ -104,6 +117,18 @@ export default function PlanLibraryPage() {
     await getSupabase().from('plan_templates').delete().eq('id', t.id);
     setTemplates(prev => prev.filter(x => x.id !== t.id));
     setDeleting(null);
+  };
+
+  const handleUnassign = async (planId: string, planName: string) => {
+    if (!confirm('Remove this patient from the plan?')) return;
+    setUnassigning(planId);
+    await getSupabase().from('workout_plans').delete().eq('id', planId);
+    setPlanAssignments(prev => {
+      const updated = { ...prev };
+      if (updated[planName]) updated[planName] = updated[planName].filter(a => a.planId !== planId);
+      return updated;
+    });
+    setUnassigning(null);
   };
 
   // Collect all unique tags across templates for the filter row
@@ -434,6 +459,27 @@ export default function PlanLibraryPage() {
                             style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--card-alt)', color: 'var(--text-muted)', cursor: 'pointer', border: activeTag === tag ? `1px solid ${TEAL}` : '1px solid transparent' }}
                           >
                             {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Assigned patients */}
+                    {(planAssignments[t.name] ?? []).length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {(planAssignments[t.name] ?? []).map(a => (
+                          <span
+                            key={a.planId}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'rgba(95,207,191,0.10)', color: TEAL, border: '1px solid rgba(95,207,191,0.25)' }}
+                          >
+                            {a.patientName}
+                            <button
+                              onClick={e => { e.stopPropagation(); handleUnassign(a.planId, t.name); }}
+                              disabled={unassigning === a.planId}
+                              style={{ background: 'none', border: 'none', color: 'inherit', cursor: unassigning === a.planId ? 'not-allowed' : 'pointer', padding: '0 0 0 2px', fontSize: 14, lineHeight: 1, opacity: unassigning === a.planId ? 0.4 : 0.7 }}
+                              title="Un-assign this patient"
+                            >
+                              ×
+                            </button>
                           </span>
                         ))}
                       </div>

@@ -102,6 +102,17 @@ body {
   100% { background-position:  600px 0; }
 }
 
+/* Hide number input spinners — users type values directly */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 ::selection {
   background: #5fcfbf44;
 }
