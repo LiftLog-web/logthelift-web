@@ -465,11 +465,12 @@ export default function PlanLibraryPage() {
                     )}
                     {/* Assigned patients */}
                     {(planAssignments[t.name] ?? []).length > 0 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Assigned to</span>
                         {(planAssignments[t.name] ?? []).map(a => (
                           <span
                             key={a.planId}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'rgba(95,207,191,0.10)', color: TEAL, border: '1px solid rgba(95,207,191,0.25)' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--btn-teal-border)' }}
                           >
                             {a.patientName}
                             <button
