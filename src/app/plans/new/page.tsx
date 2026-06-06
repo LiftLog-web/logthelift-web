@@ -631,7 +631,7 @@ function NewPlanInner() {
         <select
           value={patientId}
           onChange={e => setPatientId(e.target.value)}
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: patientId ? 'var(--text-muted)' : 'var(--text-dim)', fontSize: 16, width: '100%', padding: 0, marginBottom: 8, cursor: 'pointer' }}
+          style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, outline: 'none', color: 'var(--badge-purple-text)', fontSize: 14, fontWeight: 600, padding: '7px 12px', marginBottom: 12, cursor: 'pointer', width: '100%' }}
         >
           <option value="">Select patient…</option>
           {patients.map(p => (
