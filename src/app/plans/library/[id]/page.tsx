@@ -848,7 +848,7 @@ export default function TemplateEditorPage() {
               </div>
 
               <button onClick={handleAddCustomExercise} disabled={!customName.trim()} style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}>
-                Add "{customName.trim() || 'exercise'}" to plan
+                Add {customName.trim() || 'exercise'} to plan
               </button>
             </div>
           )}
@@ -901,26 +901,6 @@ export default function TemplateEditorPage() {
 
           {/* Scrollable content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px 80px', minWidth: 0 }}>
-
-            {/* Tag picker */}
-            <div style={{ marginBottom: 24 }}>
-              {[
-                { label: 'Body Part', tags: ['Chest','Back','Shoulders','Arms','Upper Body','Core','Legs','Calves','Hip','Knee','Lower Back','Lower Body','Full Body'] },
-                { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
-              ].map(group => (
-                <div key={group.label} style={{ marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>{group.label}</span>
-                  <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    {group.tags.map(t => {
-                      const on = tags.includes(t);
-                      return (
-                        <button key={t} onClick={() => setTags(prev => on ? prev.filter(x => x !== t) : [...prev, t])} style={{ padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${on ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, background: on ? 'var(--badge-teal-bg)' : 'transparent', color: on ? 'var(--badge-teal-text)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s' }}>{t}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
 
             {activeWeek > 1 && (
               <div style={{ marginBottom: 16 }}>

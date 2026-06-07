@@ -108,6 +108,10 @@ function NewPlanInner() {
   const [videoSaved,       setVideoSaved]       = useState(false);
   const [sidebarOpen,      setSidebarOpen]      = useState(true);
   const [muscleDropdownOpen, setMuscleDropdownOpen] = useState(false);
+  const [showNewCustom,    setShowNewCustom]    = useState(false);
+  const [newCustomName,    setNewCustomName]    = useState('');
+  const [newCustomMuscle,  setNewCustomMuscle]  = useState('');
+  const [newCustomType,    setNewCustomType]    = useState<'weighted' | 'duration' | 'cardio'>('weighted');
   const muscleDropdownRef = useRef<HTMLDivElement>(null);
   const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
@@ -617,7 +621,7 @@ function NewPlanInner() {
         </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {saveError && <span style={{ color: '#EF4444', fontSize: 13 }}>{saveError}</span>}
-          <button onClick={() => router.push('/plans')} style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
+          <button onClick={() => router.push('/plans')} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -775,6 +779,14 @@ function NewPlanInner() {
             {filteredExercises.length === 0 && (
               <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
             )}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, padding: '8px 4px' }}>
+              <button
+                onClick={() => setShowNewCustom(true)}
+                style={{ width: '100%', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+              >
+                + Create custom exercise
+              </button>
+            </div>
           </div>}
         </div>
 
@@ -1324,6 +1336,65 @@ function NewPlanInner() {
                 </a>
               </div>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Create custom exercise modal */}
+      {showNewCustom && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--card)', borderRadius: 16, padding: 28, width: 360, maxWidth: '90vw' }}>
+            <h3 style={{ color: 'var(--text)', fontWeight: 700, fontSize: 18, margin: '0 0 20px 0' }}>Create Custom Exercise</h3>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+            <input
+              autoFocus
+              value={newCustomName}
+              onChange={e => setNewCustomName(e.target.value)}
+              placeholder="e.g. Bulgarian Split Squat"
+              style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+            />
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+            <select
+              value={newCustomMuscle}
+              onChange={e => setNewCustomMuscle(e.target.value)}
+              style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
+            >
+              <option value="">Select muscle group</option>
+              {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg}>{mg}</option>)}
+            </select>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+              {([['weighted', 'Weight + Reps'], ['duration', 'Duration'], ['cardio', 'Cardio']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setNewCustomType(val)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: newCustomType === val ? TEAL : 'var(--input-bg)', color: newCustomType === val ? '#0f1117' : 'var(--text-muted)' }}>{label}</button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { setShowNewCustom(false); setNewCustomName(''); setNewCustomMuscle(''); setNewCustomType('weighted'); }}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!newCustomName.trim()) return;
+                  const ex: Exercise = { id: `custom-${Date.now()}`, name: newCustomName.trim(), muscleGroup: newCustomMuscle || 'Other', equipment: 'Custom', type: newCustomType };
+                  addExercise(ex);
+                  setShowNewCustom(false);
+                  setNewCustomName('');
+                  setNewCustomMuscle('');
+                  setNewCustomType('weighted');
+                }}
+                disabled={!newCustomName.trim()}
+                style={{ flex: 1, background: newCustomName.trim() ? TEAL : 'var(--border)', color: newCustomName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14, cursor: newCustomName.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                Add to plan
+              </button>
+            </div>
           </div>
         </div>
       )}

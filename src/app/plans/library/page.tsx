@@ -36,6 +36,15 @@ function flatExercises(raw: any): any[] {
   return [];
 }
 
+function derivedMuscleGroups(exercises: any[]): string[] {
+  const groups = new Set<string>();
+  for (const ex of exercises) {
+    const mg = ex?.exercise?.muscleGroup ?? ex?.muscleGroup;
+    if (mg) groups.add(mg);
+  }
+  return Array.from(groups).sort();
+}
+
 function numWeeks(exercises: any[]): number {
   let max = 1;
   for (const ex of exercises) {
@@ -133,11 +142,8 @@ export default function PlanLibraryPage() {
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTag && !tags.includes(activeTag)) return false;
     if (bodyFilter) {
-      const inTags = tags.includes(bodyFilter);
-      const inExercises = t.exercises.some((ex: any) =>
-        ex?.exercise?.muscleGroup === bodyFilter || ex?.muscleGroup === bodyFilter
-      );
-      if (!inTags && !inExercises) return false;
+      const muscleGroups = derivedMuscleGroups(t.exercises);
+      if (!muscleGroups.includes(bodyFilter) && !tags.includes(bodyFilter)) return false;
     }
     return true;
   });
@@ -443,20 +449,23 @@ export default function PlanLibraryPage() {
                     {t.description && (
                       <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0 0' }}>{t.description}</p>
                     )}
-                    {/* Tags */}
-                    {((t as any).tags ?? []).length > 0 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        {((t as any).tags as string[]).map((tag: string) => (
-                          <span
-                            key={tag}
-                            onClick={e => { e.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
-                            style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--card-alt)', color: 'var(--text-muted)', cursor: 'pointer', border: activeTag === tag ? `1px solid ${TEAL}` : '1px solid transparent' }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Derived muscle group chips */}
+                    {(() => {
+                      const muscleGroups = derivedMuscleGroups(t.exercises);
+                      return muscleGroups.length > 0 ? (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                          {muscleGroups.map((mg: string) => (
+                            <span
+                              key={mg}
+                              onClick={e => { e.stopPropagation(); setBodyFilter(bodyFilter === mg ? '' : mg); }}
+                              style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--card-alt)', color: 'var(--text-muted)', cursor: 'pointer', border: bodyFilter === mg ? `1px solid ${TEAL}` : '1px solid transparent' }}
+                            >
+                              {mg}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     {/* Assigned patients */}
                     {(planAssignments[t.name] ?? []).length > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
