@@ -62,8 +62,6 @@ export default function PlanLibraryPage() {
   const [bodyFilter,     setBodyFilter]     = useState('');
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
   const [bodySearch,     setBodySearch]     = useState('');
-  const [nameModal,      setNameModal]      = useState(false);
-  const [newName,        setNewName]        = useState('');
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
 
@@ -97,18 +95,14 @@ export default function PlanLibraryPage() {
   }, [router]);
 
   const handleCreate = async () => {
-    const name = newName.trim();
-    if (!name) return;
     setCreating(true);
-    setNameModal(false);
     const { data, error } = await getSupabase()
       .from('plan_templates')
-      .insert({ practitioner_id: userId, name, description: null, exercises: [] })
+      .insert({ practitioner_id: userId, name: '', description: null, exercises: [] })
       .select()
       .single();
     if (!error && data) router.push(`/plans/library/${data.id}`);
     else setCreating(false);
-    setNewName('');
   };
 
   const handleDelete = async (t: Template) => {
@@ -306,11 +300,11 @@ export default function PlanLibraryPage() {
               </div>
             )}
             <button
-              onClick={() => { setNewName(''); setNameModal(true); }}
+              onClick={handleCreate}
               disabled={creating}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}
             >
-              {creating ? 'Creating…' : '+ New Template'}
+              {creating ? 'Creating…' : '+ Create Plan'}
             </button>
           </div>
         </div>
@@ -356,11 +350,11 @@ export default function PlanLibraryPage() {
               No templates yet. Create your first reusable plan template.
             </p>
             <button
-              onClick={() => { setNewName(''); setNameModal(true); }}
+              onClick={handleCreate}
               disabled={creating}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
             >
-              Create First Template
+              {creating ? 'Creating…' : 'Create First Plan'}
             </button>
           </div>
         ) : filtered.length === 0 ? (
@@ -534,30 +528,6 @@ export default function PlanLibraryPage() {
           </div>
         )}
       </main>
-
-      {/* Name modal for new template */}
-      {nameModal && (
-        <div onClick={() => setNameModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440 }}>
-            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 6px' }}>Name your template</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>Give it a descriptive name so it's easy to find later.</p>
-            <input
-              autoFocus
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) handleCreate(); if (e.key === 'Escape') setNameModal(false); }}
-              placeholder="e.g. Knee Rehab Phase 1"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 14px', color: 'var(--text)', fontSize: 15, outline: 'none', marginBottom: 16 }}
-            />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setNameModal(false)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreate} disabled={!newName.trim() || creating} style={{ flex: 2, background: newName.trim() ? TEAL : 'var(--input-bg)', color: newName.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: newName.trim() ? 'pointer' : 'not-allowed' }}>
-                {creating ? 'Creating…' : 'Create Template'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Template preview modal */}
       {previewTpl && (

@@ -688,7 +688,7 @@ export default function TemplateEditorPage() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
             onClick={() => router.push('/plans/library')}
-            style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}
+            style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -797,7 +797,7 @@ export default function TemplateEditorPage() {
               <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                 <button
                   onClick={() => { setShowCustomForm(true); setCustomName(search); }}
-                  style={{ width: '100%', padding: '10px 14px', background: 'var(--card)', border: '1px dashed var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  style={{ width: '100%', padding: '10px 14px', background: 'rgba(95,207,191,0.08)', border: `1px dashed ${TEAL}`, borderRadius: 10, color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
                   + Create custom exercise{search ? ` "${search}"` : ''}
                 </button>
@@ -811,12 +811,25 @@ export default function TemplateEditorPage() {
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Add an exercise that isn't in the standard library.</p>
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
-              <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Bulgarian Split Squat" autoFocus style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }} />
+              <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Bulgarian Split Squat" autoFocus style={{ width: '100%', background: 'var(--card-alt)', border: `1px solid ${TEAL}`, borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }} />
 
               <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                {MUSCLE_GROUPS.map(mg => (
-                  <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
+              <div style={{ marginBottom: 14 }}>
+                {[
+                  { label: 'Upper', members: ['Chest','Shoulders','Back','Biceps','Triceps','Forearms'] },
+                  { label: 'Lower', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors'] },
+                  { label: 'Core', members: ['Core'] },
+                  { label: 'Activity', members: ['Cardio','Plyometrics','Balance','Isometrics','Pilates','Yoga'] },
+                  { label: 'Physio', members: ['Hip Flexors','Rotator Cuff','Lumbar','Cervical','Ankle & Foot'] },
+                ].map(sec => (
+                  <div key={sec.label} style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {sec.members.map(mg => (
+                        <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -835,7 +848,7 @@ export default function TemplateEditorPage() {
               </div>
 
               <button onClick={handleAddCustomExercise} disabled={!customName.trim()} style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}>
-                Add "{customName.trim() || 'exercise'}" to template
+                Add "{customName.trim() || 'exercise'}" to plan
               </button>
             </div>
           )}
@@ -892,11 +905,11 @@ export default function TemplateEditorPage() {
             {/* Tag picker */}
             <div style={{ marginBottom: 24 }}>
               {[
-                { label: 'Body Part', tags: ['Shoulder','Knee','Hip','Lower Back','Core','Full Body','Upper Body','Lower Body','Chest','Back','Arms','Legs','Calves'] },
+                { label: 'Body Part', tags: ['Chest','Back','Shoulders','Arms','Upper Body','Core','Legs','Calves','Hip','Knee','Lower Back','Lower Body','Full Body'] },
                 { label: 'Goal / Type', tags: ['Strength','Hypertrophy','Rehab','Mobility','Cardio','HIIT','Power','Endurance','Flexibility'] },
               ].map(group => (
                 <div key={group.label} style={{ marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>{group.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 10 }}>{group.label}</span>
                   <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {group.tags.map(t => {
                       const on = tags.includes(t);

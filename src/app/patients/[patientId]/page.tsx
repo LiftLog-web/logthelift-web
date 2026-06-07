@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { MUSCLE_GROUPS } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
@@ -161,6 +162,14 @@ export default function PatientProgressPage() {
   const [sending,      setSending]      = useState(false);
   const [sendResult,   setSendResult]   = useState<'ok' | 'error' | null>(null);
 
+  const [practId,          setPractId]          = useState('');
+  const [showCustomEx,     setShowCustomEx]     = useState(false);
+  const [customExName,     setCustomExName]     = useState('');
+  const [customExMuscle,   setCustomExMuscle]   = useState('');
+  const [customExEquip,    setCustomExEquip]    = useState('Bodyweight');
+  const [customExType,     setCustomExType]     = useState<'weighted' | 'duration' | 'cardio'>('weighted');
+  const [creatingCustomEx, setCreatingCustomEx] = useState(false);
+
   useEffect(() => {
     if (!patientId) return;
     const sb = getSupabase();
@@ -172,6 +181,7 @@ export default function PatientProgressPage() {
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, display_name').eq('id', uid).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setPractName(prof?.display_name ?? 'Your Practitioner');
+      setPractId(uid);
 
       // Verify this patient is linked to the practitioner
       const { data: link } = await sb
@@ -273,6 +283,37 @@ export default function PatientProgressPage() {
       setSendResult('error');
     }
     setSending(false);
+  };
+
+  const handleCreateCustomExercise = async () => {
+    if (!customExName.trim()) return;
+    setCreatingCustomEx(true);
+    const exId = `custom_${Date.now()}`;
+    const exercises = {
+      days: [{ id: 'day-1', label: 'Day 1', exercises: [{
+        id: exId,
+        exercise: { id: exId, name: customExName.trim(), muscleGroup: customExMuscle, equipment: customExEquip || 'Bodyweight', type: customExType },
+        sets: [{ reps: 10 }, { reps: 10 }, { reps: 10 }],
+        weeks: [],
+        unit: 'kg',
+        rest: 60,
+      }] }],
+      frequencyPerWeek: 3,
+    };
+    const { data, error } = await getSupabase()
+      .from('plan_templates')
+      .insert({ practitioner_id: practId, name: customExName.trim(), description: null, exercises })
+      .select()
+      .single();
+    setCreatingCustomEx(false);
+    if (!error && data) {
+      setShowCustomEx(false);
+      setCustomExName('');
+      setCustomExMuscle('');
+      setCustomExEquip('Bodyweight');
+      setCustomExType('weighted');
+      router.push(`/plans/library/${data.id}`);
+    }
   };
 
   const toggleWorkout = (id: string) =>
@@ -479,6 +520,12 @@ export default function PatientProgressPage() {
               ✉ Email Patient
             </button>
           )}
+          <button
+            onClick={() => setShowCustomEx(true)}
+            style={{ background: 'rgba(95,207,191,0.1)', border: `1px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          >
+            + Create Custom Exercise
+          </button>
           <button
             onClick={() => router.push('/plans')}
             style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}
@@ -874,6 +921,71 @@ export default function PatientProgressPage() {
           </div>
         )}
       </main>
+
+      {/* Create Custom Exercise modal */}
+      {showCustomEx && (
+        <div onClick={() => setShowCustomEx(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 480, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Create Custom Exercise</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>Creates a new plan with this exercise pre-added. You can edit details after.</p>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+            <input
+              autoFocus
+              value={customExName}
+              onChange={e => setCustomExName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreateCustomExercise(); if (e.key === 'Escape') setShowCustomEx(false); }}
+              placeholder="e.g. Bulgarian Split Squat"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: `1px solid ${TEAL}`, borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 16 }}
+            />
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+            <div style={{ marginBottom: 16 }}>
+              {[
+                { label: 'Upper', members: ['Chest','Shoulders','Back','Biceps','Triceps','Forearms'] },
+                { label: 'Lower', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors'] },
+                { label: 'Core', members: ['Core'] },
+                { label: 'Activity', members: ['Cardio','Plyometrics','Balance','Isometrics','Pilates','Yoga'] },
+                { label: 'Physio', members: ['Hip Flexors','Rotator Cuff','Lumbar','Cervical','Ankle & Foot'] },
+              ].map(sec => (
+                <div key={sec.label} style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {sec.members.map(mg => (
+                      <button key={mg} onClick={() => setCustomExMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customExMuscle === mg ? TEAL : 'var(--input-bg)', color: customExMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
+                <button key={eq} onClick={() => setCustomExEquip(eq)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customExEquip === eq ? TEAL : 'var(--input-bg)', color: customExEquip === eq ? '#0f1117' : 'var(--text-muted)' }}>{eq}</button>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+              {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setCustomExType(val)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customExType === val ? TEAL : 'var(--input-bg)', color: customExType === val ? '#0f1117' : 'var(--text-muted)' }}>{label}</button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowCustomEx(false)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={handleCreateCustomExercise}
+                disabled={!customExName.trim() || creatingCustomEx}
+                style={{ flex: 2, background: customExName.trim() ? TEAL : 'var(--input-bg)', color: customExName.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: customExName.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                {creatingCustomEx ? 'Creating…' : `Create "${customExName.trim() || 'exercise'}"`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Demo viewer */}
       {viewDemo && (
