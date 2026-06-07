@@ -18,12 +18,46 @@ interface Plan {
   patientName: string;
   created_at: string;
   exerciseCount: number;
+  weeks: number[];
+  exercisesRaw: any;
 }
 
 interface PatientGroup {
   patient_id: string;
   patientName: string;
   plans: Plan[];
+}
+
+function flatExList(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw?.days) return (raw.days as any[]).flatMap((d: any) => d.exercises ?? []);
+  return [];
+}
+
+function deriveWeeks(raw: any): number[] {
+  const list = flatExList(raw);
+  if (list.length === 0) return [];
+  const s = new Set<number>();
+  for (const ex of list) {
+    if (ex.weeks?.length > 0) {
+      for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); }
+    } else {
+      s.add(1);
+    }
+  }
+  return Array.from(s).sort((a, b) => a - b);
+}
+
+function filterByWeeks(raw: any, sel: number[]): any {
+  const ws = new Set(sel);
+  const keep = (ex: any) => {
+    if (!ex.weeks?.length) return ws.has(1) ? ex : null;
+    const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
+    return filtered.length ? { ...ex, weeks: filtered } : null;
+  };
+  if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
+  if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
+  return raw;
 }
 
 export default function PlansPage() {
@@ -34,6 +68,9 @@ export default function PlansPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
+  const [editingPlan, setEditingPlan]   = useState<Plan | null>(null);
+  const [editingWeeks, setEditingWeeks] = useState<number[]>([]);
+  const [savingWeeks, setSavingWeeks]   = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -52,6 +89,7 @@ export default function PlansPage() {
 
       const mapped: Plan[] = (rawPlans ?? []).map((p: any) => {
         const patient = Array.isArray(p.patient) ? p.patient[0] : p.patient;
+        const list = flatExList(p.exercises);
         return {
           id: p.id,
           name: p.name,
@@ -59,11 +97,9 @@ export default function PlansPage() {
           patient_id: p.patient_id,
           patientName: patient?.display_name ?? 'Unknown',
           created_at: p.created_at,
-          exerciseCount: (() => {
-            if (Array.isArray(p.exercises)) return p.exercises.length;
-            if (p.exercises?.days) return (p.exercises.days as any[]).reduce((n: number, d: any) => n + (d.exercises?.length ?? 0), 0);
-            return 0;
-          })(),
+          exerciseCount: list.length,
+          weeks: deriveWeeks(p.exercises),
+          exercisesRaw: p.exercises,
         };
       });
 
@@ -71,6 +107,26 @@ export default function PlansPage() {
       setLoading(false);
     });
   }, [router]);
+
+  const handleSaveWeeks = async () => {
+    if (!editingPlan) return;
+    setSavingWeeks(true);
+    const newExercisesRaw = filterByWeeks(editingPlan.exercisesRaw, editingWeeks);
+    const { error } = await getSupabase()
+      .from('workout_plans')
+      .update({ exercises: newExercisesRaw })
+      .eq('id', editingPlan.id);
+    if (!error) {
+      const newWeeks = deriveWeeks(newExercisesRaw);
+      const newList = flatExList(newExercisesRaw);
+      setPlans(prev => prev.map(p => p.id === editingPlan.id
+        ? { ...p, exercisesRaw: newExercisesRaw, weeks: newWeeks, exerciseCount: newList.length }
+        : p
+      ));
+      setEditingPlan(null);
+    }
+    setSavingWeeks(false);
+  };
 
   const handleDelete = async (planId: string) => {
     if (!confirm('Delete this plan? This cannot be undone.')) return;
@@ -229,12 +285,21 @@ export default function PlansPage() {
                     <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                       {group.plans.map(plan => (
                         <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
                             <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {plan.exerciseCount} ex
                             </span>
                           </div>
+                          {plan.weeks.length > 0 && (
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {plan.weeks.map(w => (
+                                <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+                                  W{w}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {plan.description && (
                             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
                           )}
@@ -248,6 +313,14 @@ export default function PlansPage() {
                             >
                               Edit
                             </button>
+                            {plan.weeks.length > 1 && (
+                              <button
+                                onClick={() => { setEditingPlan(plan); setEditingWeeks([...plan.weeks]); }}
+                                style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                              >
+                                Weeks
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(plan.id)}
                               disabled={deleting === plan.id}
@@ -266,6 +339,60 @@ export default function PlansPage() {
           </div>
         )}
       </main>
+
+      {/* Edit Weeks modal */}
+      {editingPlan && (
+        <div
+          onClick={() => { if (!savingWeeks) setEditingPlan(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 420, padding: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Edit Shared Weeks</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>{editingPlan.name} — {editingPlan.patientName}</p>
+              </div>
+              <button onClick={() => setEditingPlan(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>Select which weeks to share with this patient. Unselected weeks will be removed from the plan.</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {editingPlan.weeks.map(w => {
+                const checked = editingWeeks.includes(w);
+                return (
+                  <button
+                    key={w}
+                    onClick={() => setEditingWeeks(prev => checked ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b))}
+                    style={{
+                      padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                      background: checked ? `${PURPLE}30` : 'var(--card-alt)',
+                      color: checked ? PURPLE : 'var(--text-muted)',
+                      border: `1px solid ${checked ? PURPLE + '60' : 'var(--border-strong)'}`,
+                    }}
+                  >
+                    Week {w}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setEditingPlan(null)}
+                disabled={savingWeeks}
+                style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveWeeks}
+                disabled={savingWeeks || editingWeeks.length === 0}
+                style={{ flex: 2, background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: (savingWeeks || editingWeeks.length === 0) ? 0.6 : 1 }}
+              >
+                {savingWeeks ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

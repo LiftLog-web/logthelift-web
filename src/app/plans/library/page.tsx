@@ -55,6 +55,30 @@ function numWeeks(exercises: any[]): number {
   return max;
 }
 
+function deriveWeekList(raw: any): number[] {
+  const list: any[] = Array.isArray(raw) ? raw :
+    (raw?.days ? (raw.days as any[]).flatMap((d: any) => d.exercises ?? []) : []);
+  if (list.length === 0) return [];
+  const s = new Set<number>();
+  for (const ex of list) {
+    if (ex.weeks?.length > 0) { for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); } }
+    else s.add(1);
+  }
+  return Array.from(s).sort((a, b) => a - b);
+}
+
+function filterByWeeks(raw: any, sel: number[]): any {
+  const ws = new Set(sel);
+  const keep = (ex: any) => {
+    if (!ex.weeks?.length) return ws.has(1) ? ex : null;
+    const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
+    return filtered.length ? { ...ex, weeks: filtered } : null;
+  };
+  if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
+  if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
+  return raw;
+}
+
 export default function PlanLibraryPage() {
   const router = useRouter();
   const [authed,     setAuthed]     = useState(false);
@@ -71,8 +95,11 @@ export default function PlanLibraryPage() {
   const [bodyFilter,     setBodyFilter]     = useState('');
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
   const [bodySearch,     setBodySearch]     = useState('');
-  const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string }>>>({});
+  const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any } | null>(null);
+  const [editingAssWeeks,   setEditingAssWeeks]   = useState<number[]>([]);
+  const [savingAssWeeks,    setSavingAssWeeks]     = useState(false);
 
   // Patients
   const [patients, setPatients] = useState<Array<{ id: string; display_name: string }>>([]);
@@ -109,13 +136,19 @@ export default function PlanLibraryPage() {
       setTemplates((rows ?? []).map((t: any) => ({ ...t, exercises: flatExercises(t.exercises) })));
       const { data: plans } = await sb
         .from('workout_plans')
-        .select('id, name, patient_id, patient:patient_id(display_name)')
+        .select('id, name, patient_id, exercises, patient:patient_id(display_name)')
         .eq('practitioner_id', data.session.user.id);
-      const assignMap: Record<string, Array<{ planId: string; patientId: string; patientName: string }>> = {};
+      const assignMap: Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>> = {};
       for (const p of plans ?? []) {
         const key = (p as any).name ?? '';
         if (!assignMap[key]) assignMap[key] = [];
-        assignMap[key].push({ planId: (p as any).id, patientId: (p as any).patient_id, patientName: ((p as any).patient as any)?.display_name ?? 'Unknown' });
+        assignMap[key].push({
+          planId: (p as any).id,
+          patientId: (p as any).patient_id,
+          patientName: ((p as any).patient as any)?.display_name ?? 'Unknown',
+          weeks: deriveWeekList((p as any).exercises),
+          exercisesRaw: (p as any).exercises,
+        });
       }
       setPlanAssignments(assignMap);
 
@@ -181,6 +214,31 @@ export default function PlanLibraryPage() {
       return updated;
     });
     setUnassigning(null);
+  };
+
+  const handleSaveAssWeeks = async () => {
+    if (!editingAssignment) return;
+    setSavingAssWeeks(true);
+    const newRaw = filterByWeeks(editingAssignment.exercisesRaw, editingAssWeeks);
+    const { error } = await getSupabase()
+      .from('workout_plans')
+      .update({ exercises: newRaw })
+      .eq('id', editingAssignment.planId);
+    if (!error) {
+      const newWeeks = deriveWeekList(newRaw);
+      setPlanAssignments(prev => {
+        const updated = { ...prev };
+        const key = editingAssignment.planName;
+        if (updated[key]) {
+          updated[key] = updated[key].map(a =>
+            a.planId === editingAssignment.planId ? { ...a, weeks: newWeeks, exercisesRaw: newRaw } : a
+          );
+        }
+        return updated;
+      });
+      setEditingAssignment(null);
+    }
+    setSavingAssWeeks(false);
   };
 
   function openAssign(tpl: Template) {
@@ -265,7 +323,13 @@ export default function PlanLibraryPage() {
       if (newPlan) {
         setPlanAssignments(prev => ({
           ...prev,
-          [key]: [...(prev[key] ?? []), { planId: newPlan.id, patientId: assignPatientId, patientName: patient?.display_name ?? 'Unknown' }],
+          [key]: [...(prev[key] ?? []), {
+            planId: newPlan.id,
+            patientId: assignPatientId,
+            patientName: patient?.display_name ?? 'Unknown',
+            weeks: deriveWeekList(exercisesPayload),
+            exercisesRaw: exercisesPayload,
+          }],
         }));
       }
       setAssignSuccess(true);
@@ -653,9 +717,21 @@ export default function PlanLibraryPage() {
                         {(planAssignments[t.name] ?? []).map(a => (
                           <span
                             key={a.planId}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--btn-teal-border)' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: '1px solid var(--btn-teal-border)', flexWrap: 'wrap' }}
                           >
                             {a.patientName}
+                            {a.weeks.map(w => (
+                              <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>W{w}</span>
+                            ))}
+                            {a.weeks.length > 1 && (
+                              <button
+                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw }); setEditingAssWeeks([...a.weeks]); }}
+                                style={{ background: `${PURPLE}30`, border: `1px solid ${PURPLE}60`, color: PURPLE, borderRadius: 6, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                title="Edit weeks shared with this patient"
+                              >
+                                Edit
+                              </button>
+                            )}
                             <button
                               onClick={e => { e.stopPropagation(); handleUnassign(a.planId, t.name); }}
                               disabled={unassigning === a.planId}
@@ -948,6 +1024,62 @@ export default function PlanLibraryPage() {
                 style={{ flex: 2, background: assignSuccess ? TEAL : PURPLE, color: assignSuccess ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: assigning || assignWeeks.length === 0 ? 'not-allowed' : 'pointer', opacity: assigning || assignWeeks.length === 0 ? 0.6 : 1 }}
               >
                 {assignSuccess ? '✓ Assigned!' : assigning ? 'Assigning…' : 'Assign Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Assignment Weeks modal */}
+      {editingAssignment && (
+        <div
+          onClick={() => { if (!savingAssWeeks) setEditingAssignment(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: 18, margin: '0 0 4px' }}>Edit Weeks</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{editingAssignment.patientName}</p>
+              </div>
+              <button onClick={() => setEditingAssignment(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+            <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Select which weeks to share with this patient. Removing a week permanently deletes that week&apos;s exercises from their plan.</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {editingAssignment.weeks.map(w => {
+                  const on = editingAssWeeks.includes(w);
+                  return (
+                    <button
+                      key={w}
+                      onClick={() => setEditingAssWeeks(prev => on ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b))}
+                      style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', border: `2px solid ${on ? PURPLE : 'var(--border-strong)'}`, background: on ? `${PURPLE}25` : 'transparent', color: on ? PURPLE : 'var(--text-muted)', transition: 'all 0.15s' }}
+                    >
+                      Week {w}
+                    </button>
+                  );
+                })}
+              </div>
+              {editingAssWeeks.length < editingAssignment.weeks.length && (
+                <p style={{ margin: 0, fontSize: 12, color: '#f87171', fontWeight: 600 }}>
+                  Warning: removing weeks cannot be undone from this view.
+                </p>
+              )}
+            </div>
+            <div style={{ padding: '16px 28px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setEditingAssignment(null)}
+                disabled={savingAssWeeks}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: savingAssWeeks ? 0.5 : 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAssWeeks}
+                disabled={savingAssWeeks || editingAssWeeks.length === 0}
+                style={{ flex: 2, background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: savingAssWeeks || editingAssWeeks.length === 0 ? 'not-allowed' : 'pointer', opacity: savingAssWeeks || editingAssWeeks.length === 0 ? 0.6 : 1 }}
+              >
+                {savingAssWeeks ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
