@@ -74,6 +74,25 @@ export default function PlanLibraryPage() {
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
 
+  // Patients
+  const [patients, setPatients] = useState<Array<{ id: string; display_name: string }>>([]);
+
+  // Reminders
+  const [reminders, setReminders] = useState<Array<{ id: string; plan_name: string; remind_at: string; note: string | null; patient_name: string }>>([]);
+
+  // Assign modal
+  const [assignTpl,        setAssignTpl]        = useState<Template | null>(null);
+  const [assignPatientId,  setAssignPatientId]  = useState('');
+  const [assignWeeks,      setAssignWeeks]      = useState<number[]>([]);
+  const [assignPlanName,   setAssignPlanName]   = useState('');
+  const [assignReminder,   setAssignReminder]   = useState(false);
+  const [assignRemindDate, setAssignRemindDate] = useState('');
+  const [assignRemindTime, setAssignRemindTime] = useState('09:00');
+  const [assignRemindNote, setAssignRemindNote] = useState('');
+  const [assigning,        setAssigning]        = useState(false);
+  const [assignError,      setAssignError]      = useState('');
+  const [assignSuccess,    setAssignSuccess]    = useState(false);
+
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
@@ -99,6 +118,36 @@ export default function PlanLibraryPage() {
         assignMap[key].push({ planId: (p as any).id, patientId: (p as any).patient_id, patientName: ((p as any).patient as any)?.display_name ?? 'Unknown' });
       }
       setPlanAssignments(assignMap);
+
+      // Load patients for assign modal
+      const { data: links } = await sb
+        .from('patient_links')
+        .select('profiles:patient_id(id, display_name, email)')
+        .eq('practitioner_id', data.session.user.id);
+      setPatients((links ?? []).map((l: any) => ({
+        id: l.profiles?.id,
+        display_name: l.profiles?.display_name ?? l.profiles?.email ?? 'Unknown',
+      })).filter((p: any) => p.id));
+
+      // Load upcoming reminders (graceful if table doesn't exist)
+      const { data: remRows, error: remErr } = await sb
+        .from('pt_reminders')
+        .select('id, plan_name, remind_at, note, patient:patient_id(display_name)')
+        .eq('practitioner_id', data.session.user.id)
+        .eq('completed', false)
+        .gte('remind_at', new Date().toISOString())
+        .order('remind_at', { ascending: true })
+        .limit(10);
+      if (!remErr) {
+        setReminders((remRows ?? []).map((r: any) => ({
+          id: r.id,
+          plan_name: r.plan_name,
+          remind_at: r.remind_at,
+          note: r.note,
+          patient_name: (r.patient as any)?.display_name ?? 'Unknown',
+        })));
+      }
+
       setLoading(false);
     });
   }, [router]);
@@ -133,6 +182,105 @@ export default function PlanLibraryPage() {
     });
     setUnassigning(null);
   };
+
+  function openAssign(tpl: Template) {
+    const total = numWeeks(tpl.exercises);
+    setAssignTpl(tpl);
+    setAssignWeeks(Array.from({ length: total }, (_, i) => i + 1));
+    setAssignPlanName(tpl.name || '');
+    setAssignPatientId('');
+    setAssignReminder(false);
+    setAssignRemindDate('');
+    setAssignRemindTime('09:00');
+    setAssignRemindNote('');
+    setAssignError('');
+    setAssignSuccess(false);
+  }
+
+  async function handleAssign() {
+    if (!assignPatientId) { setAssignError('Please select a patient.'); return; }
+    if (assignReminder && !assignRemindDate) { setAssignError('Please choose a reminder date.'); return; }
+    setAssigning(true);
+    setAssignError('');
+    try {
+      const sb = getSupabase();
+      // Fetch raw template to get original days format
+      const { data: rawTpl } = await sb
+        .from('plan_templates')
+        .select('exercises, description')
+        .eq('id', assignTpl!.id)
+        .single();
+      const rawEx = (rawTpl as any)?.exercises;
+      const selectedWeekSet = new Set(assignWeeks);
+      let exercisesPayload: any;
+      if (rawEx && typeof rawEx === 'object' && Array.isArray(rawEx.days)) {
+        exercisesPayload = rawEx.days.map((day: any) => ({
+          ...day,
+          exercises: day.exercises.map((ex: any) => ({
+            ...ex,
+            weeks: (ex.weeks ?? []).filter((w: any) => selectedWeekSet.has(w.week)),
+            sets: assignWeeks.includes(1)
+              ? ex.sets
+              : ((ex.weeks ?? []).find((w: any) => selectedWeekSet.has(w.week))?.sets ?? ex.sets),
+          })),
+        }));
+      } else {
+        exercisesPayload = Array.isArray(rawEx) ? rawEx : [];
+      }
+      const planName = assignPlanName.trim() || assignTpl!.name || 'Untitled Plan';
+      const { data: newPlan, error: planErr } = await sb
+        .from('workout_plans')
+        .insert({
+          practitioner_id: userId,
+          patient_id: assignPatientId,
+          name: planName,
+          description: (rawTpl as any)?.description ?? null,
+          exercises: exercisesPayload,
+        })
+        .select('id')
+        .single();
+      if (planErr) throw new Error(planErr.message);
+      if (assignReminder && assignRemindDate && newPlan) {
+        const remindAt = new Date(`${assignRemindDate}T${assignRemindTime}`).toISOString();
+        const { data: newRem } = await sb.from('pt_reminders').insert({
+          practitioner_id: userId,
+          patient_id: assignPatientId,
+          plan_id: newPlan.id,
+          plan_name: planName,
+          remind_at: remindAt,
+          note: assignRemindNote.trim() || null,
+        }).select('id, plan_name, remind_at, note, patient:patient_id(display_name)').single();
+        if (newRem) {
+          setReminders(prev => [...prev, {
+            id: (newRem as any).id,
+            plan_name: (newRem as any).plan_name,
+            remind_at: (newRem as any).remind_at,
+            note: (newRem as any).note,
+            patient_name: ((newRem as any).patient as any)?.display_name ?? 'Unknown',
+          }].sort((a, b) => a.remind_at.localeCompare(b.remind_at)));
+        }
+      }
+      const patient = patients.find(p => p.id === assignPatientId);
+      const key = assignTpl!.name || '';
+      if (newPlan) {
+        setPlanAssignments(prev => ({
+          ...prev,
+          [key]: [...(prev[key] ?? []), { planId: newPlan.id, patientId: assignPatientId, patientName: patient?.display_name ?? 'Unknown' }],
+        }));
+      }
+      setAssignSuccess(true);
+      setTimeout(() => { setAssignTpl(null); setAssignSuccess(false); }, 1800);
+    } catch (e: any) {
+      setAssignError(e.message || 'Failed to assign plan.');
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function dismissReminder(id: string) {
+    await getSupabase().from('pt_reminders').update({ completed: true }).eq('id', id);
+    setReminders(prev => prev.filter(r => r.id !== id));
+  }
 
   // Collect all unique tags across templates for the filter row
   const allTags = Array.from(new Set(templates.flatMap(t => (t as any).tags ?? []))).sort() as string[];
@@ -314,6 +462,38 @@ export default function PlanLibraryPage() {
             </button>
           </div>
         </div>
+
+        {/* Upcoming reminders */}
+        {reminders.length > 0 && (
+          <div style={{ marginTop: 20, marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+              Upcoming Reminders
+            </p>
+            {reminders.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
+                <span style={{ fontSize: 18 }}>🔔</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                    {r.plan_name}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}> · {r.patient_name}</span>
+                  {r.note && <span style={{ color: 'var(--text-dim)', fontSize: 12, marginLeft: 8 }}>{r.note}</span>}
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                  {new Date(r.remind_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+                  {new Date(r.remind_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <button
+                  onClick={() => dismissReminder(r.id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}
+                  title="Dismiss reminder"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Tag filter chips — only shown when at least one template has tags */}
         {allTags.length > 0 && (
@@ -504,7 +684,7 @@ export default function PlanLibraryPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => router.push(`/plans/new?template=${t.id}`)}
+                      onClick={() => openAssign(t)}
                       style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Assign to Patient
@@ -613,10 +793,161 @@ export default function PlanLibraryPage() {
                 View / Edit
               </button>
               <button
-                onClick={() => router.push(`/plans/new?template=${previewTpl.id}`)}
+                onClick={() => { setPreviewTpl(null); openAssign(previewTpl); }}
                 style={{ flex: 1, background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
                 Assign to Patient
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign to Patient modal */}
+      {assignTpl && (
+        <div
+          onClick={() => { if (!assigning) setAssignTpl(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: 18, margin: '0 0 4px' }}>Assign to Patient</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{assignTpl.name || 'Untitled template'}</p>
+              </div>
+              <button onClick={() => setAssignTpl(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Plan name */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Plan Name</label>
+                <input
+                  value={assignPlanName}
+                  onChange={e => setAssignPlanName(e.target.value)}
+                  placeholder="Plan name…"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
+                />
+              </div>
+
+              {/* Patient */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Patient</label>
+                <select
+                  value={assignPatientId}
+                  onChange={e => setAssignPatientId(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: assignPatientId ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="">Select a patient…</option>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.display_name}</option>
+                  ))}
+                </select>
+                {patients.length === 0 && (
+                  <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '6px 0 0' }}>No linked patients found.</p>
+                )}
+              </div>
+
+              {/* Week selection — only if multi-week */}
+              {numWeeks(assignTpl.exercises) > 1 && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Weeks to Assign
+                    <span style={{ fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>— select one or more</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Array.from({ length: numWeeks(assignTpl.exercises) }, (_, i) => i + 1).map(w => {
+                      const active = assignWeeks.includes(w);
+                      return (
+                        <button
+                          key={w}
+                          onClick={() => setAssignWeeks(prev => active ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b))}
+                          style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: `1px solid ${active ? 'var(--btn-purple-border)' : 'var(--border-strong)'}`, background: active ? 'var(--badge-purple-bg)' : 'transparent', color: active ? 'var(--badge-purple-text)' : 'var(--text-muted)', cursor: 'pointer' }}
+                        >
+                          Week {w}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {assignWeeks.length === 0 && (
+                    <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '6px 0 0' }}>Select at least one week.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Reminder */}
+              <div style={{ background: 'var(--card-alt)', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Set a Reminder</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Get reminded to update this patient's plan</p>
+                  </div>
+                  <button
+                    onClick={() => setAssignReminder(v => !v)}
+                    style={{ width: 42, height: 24, borderRadius: 999, border: 'none', cursor: 'pointer', background: assignReminder ? TEAL : 'var(--border-strong)', transition: 'background 0.2s', position: 'relative', flexShrink: 0 }}
+                  >
+                    <span style={{ position: 'absolute', top: 3, left: assignReminder ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', transition: 'left 0.2s' }} />
+                  </button>
+                </div>
+                {assignReminder && (
+                  <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</label>
+                        <input
+                          type="date"
+                          value={assignRemindDate}
+                          onChange={e => setAssignRemindDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Time</label>
+                        <input
+                          type="time"
+                          value={assignRemindTime}
+                          onChange={e => setAssignRemindTime(e.target.value)}
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Note (optional)</label>
+                      <input
+                        value={assignRemindNote}
+                        onChange={e => setAssignRemindNote(e.target.value)}
+                        placeholder="e.g. Advance to Week 3"
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {assignError && (
+                <p style={{ margin: 0, color: '#f87171', fontSize: 13, fontWeight: 600 }}>{assignError}</p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 28px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setAssignTpl(null)}
+                disabled={assigning}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: assigning ? 0.5 : 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssign}
+                disabled={assigning || assignSuccess || assignWeeks.length === 0}
+                style={{ flex: 2, background: assignSuccess ? TEAL : PURPLE, color: assignSuccess ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: assigning || assignWeeks.length === 0 ? 'not-allowed' : 'pointer', opacity: assigning || assignWeeks.length === 0 ? 0.6 : 1 }}
+              >
+                {assignSuccess ? '✓ Assigned!' : assigning ? 'Assigning…' : 'Assign Plan'}
               </button>
             </div>
           </div>
