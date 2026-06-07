@@ -217,10 +217,11 @@ export default function DashboardPage() {
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
-            // Avg satisfaction (all-time)
-            const ratings = workouts
-              .map((w: any) => w.data?.satisfactionRating)
-              .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
+            // Avg ratings (all-time) — combine effectiveness + enjoyment, fall back to legacy satisfactionRating
+            const ratings = workouts.flatMap((w: any) => [
+              w.data?.effectivenessRating ?? w.data?.satisfactionRating,
+              w.data?.enjoymentRating,
+            ]).filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
             if (ratings.length > 0) {
               base.avgSatisfaction   = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
               base.satisfactionCount = ratings.length;

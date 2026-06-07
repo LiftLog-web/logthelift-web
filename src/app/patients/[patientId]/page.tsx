@@ -40,7 +40,9 @@ interface WorkoutLog {
   notes: string;
   duration: number;
   planId?: string;
-  satisfactionRating?: 1 | 2 | 3 | 4 | 5;
+  satisfactionRating?: number; // legacy
+  effectivenessRating?: number;
+  enjoymentRating?: number;
 }
 
 type ExStatus = 'completed' | 'partial' | 'none';
@@ -756,7 +758,7 @@ export default function PatientProgressPage() {
               const weekWithTargets = weekExercises.filter(e => (e.targetSets ?? []).length > 0);
               const weekDone        = weekWithTargets.filter(e => exStatus(e) === 'completed').length;
               const weekRate        = weekWithTargets.length > 0 ? Math.round((weekDone / weekWithTargets.length) * 100) : null;
-              const weekRatings     = weekWorkouts.map(w => w.satisfactionRating).filter((r): r is 1|2|3|4|5 => !!r);
+              const weekRatings     = weekWorkouts.flatMap(w => [w.effectivenessRating ?? w.satisfactionRating, w.enjoymentRating].filter((r): r is number => typeof r === 'number' && r > 0));
               const weekAvgRating   = weekRatings.length ? (weekRatings.reduce((a, b) => a + b, 0) / weekRatings.length).toFixed(1) : null;
               const weekAllStatuses = weekExercises.map(exStatus);
               const weekOverall: ExStatus =
@@ -815,8 +817,15 @@ export default function PatientProgressPage() {
                               {w.duration > 0 && (
                                 <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{w.duration} min</span>
                               )}
-                              {w.satisfactionRating && (
-                                <span style={{ fontSize: 12, color: YELLOW, fontWeight: 600 }}>{renderStars(w.satisfactionRating)} {w.satisfactionRating}/5</span>
+                              {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                                  {(w.effectivenessRating ?? w.satisfactionRating) && (
+                                    <span title="Effectiveness"><span style={{ color: YELLOW }}>★</span> {(w.effectivenessRating ?? w.satisfactionRating)!.toFixed(1)}</span>
+                                  )}
+                                  {w.enjoymentRating && (
+                                    <span title="Enjoyment"><span style={{ color: TEAL }}>★</span> {w.enjoymentRating.toFixed(1)}</span>
+                                  )}
+                                </span>
                               )}
                               {total > 0 && (
                                 <div style={{ display: 'flex', gap: 4 }}>

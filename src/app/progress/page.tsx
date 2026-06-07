@@ -30,7 +30,9 @@ interface WorkoutLog {
   id: string; date: string;
   exercises: LoggedExercise[];
   notes?: string; duration?: number;
-  satisfactionRating?: 1 | 2 | 3 | 4 | 5;
+  satisfactionRating?: number; // legacy
+  effectivenessRating?: number;
+  enjoymentRating?: number;
   planId?: string;
 }
 type ExStatus = 'completed' | 'partial' | 'none';
@@ -390,7 +392,7 @@ export default function ProgressPage() {
   const withTargets    = allExercises.filter(e => (e.targetSets ?? []).length > 0);
   const completedCount = withTargets.filter(e => exStatus(e) === 'completed').length;
   const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
-  const ratings        = workouts.map(w => w.satisfactionRating).filter((r): r is 1|2|3|4|5 => !!r);
+  const ratings        = workouts.flatMap(w => [w.effectivenessRating ?? w.satisfactionRating, w.enjoymentRating]).filter((r): r is number => typeof r === 'number' && r > 0);
   const avgRating      = ratings.length ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1) : null;
 
   /* ── Exercise chart derived ── */
@@ -779,8 +781,11 @@ export default function ProgressPage() {
                                 {(w.duration ?? 0) > 0 && (
                                   <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{w.duration} min</span>
                                 )}
-                                {w.satisfactionRating && (
-                                  <span style={{ fontSize: 12, color: YELLOW, fontWeight: 600 }}>{renderStars(w.satisfactionRating)} {w.satisfactionRating}/5</span>
+                                {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
+                                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 6 }}>
+                                    {(w.effectivenessRating ?? w.satisfactionRating) && <span title="Effectiveness"><span style={{ color: YELLOW }}>★</span> {(w.effectivenessRating ?? w.satisfactionRating)!.toFixed(1)}</span>}
+                                    {w.enjoymentRating && <span title="Enjoyment"><span style={{ color: TEAL }}>★</span> {w.enjoymentRating.toFixed(1)}</span>}
+                                  </span>
                                 )}
                                 {total > 0 && (
                                   <div style={{ display: 'flex', gap: 4 }}>

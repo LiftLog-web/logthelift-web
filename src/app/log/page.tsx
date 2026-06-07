@@ -55,7 +55,7 @@ interface Plan {
   exercises: any;
 }
 
-function renderStars(rating: number, onClick: (v: number) => void) {
+function renderStars(rating: number, onClick: (v: number) => void, activeColor = YELLOW) {
   return (
     <div style={{ display: 'flex', gap: 4 }}>
       {[1, 2, 3, 4, 5].map(star => {
@@ -63,7 +63,7 @@ function renderStars(rating: number, onClick: (v: number) => void) {
         const half = !full && rating >= star - 0.5;
         return (
           <div key={star} style={{ position: 'relative', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 28, color: full ? YELLOW : half ? YELLOW : 'var(--border-strong)' }}>
+            <span style={{ fontSize: 28, color: full || half ? activeColor : 'var(--border-strong)' }}>
               {full ? '★' : half ? '⯨' : '☆'}
             </span>
             <button onClick={() => onClick(star - 0.5)} style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', background: 'transparent', border: 'none', cursor: 'pointer' }} />
@@ -103,7 +103,8 @@ function LogWorkoutInner() {
   const [pendingMultiDay, setPendingMultiDay] = useState<Plan | null>(null);
   const [loggedExs,       setLoggedExs]       = useState<LoggedExercise[]>([]);
   const [notes,           setNotes]           = useState('');
-  const [rating,          setRating]          = useState<number | null>(null);
+  const [effectivenessRating, setEffectivenessRating] = useState<number | null>(null);
+  const [enjoymentRating,     setEnjoymentRating]     = useState<number | null>(null);
   const [startTime]                           = useState(Date.now());
   const [saving,          setSaving]          = useState(false);
   const [saveError,       setSaveError]       = useState('');
@@ -208,7 +209,8 @@ function LogWorkoutInner() {
       notes: notes.trim(),
       duration,
       planId: selectedPlan?.id,
-      satisfactionRating: rating ?? undefined,
+      ...(effectivenessRating ? { effectivenessRating } : {}),
+      ...(enjoymentRating ? { enjoymentRating } : {}),
     };
 
     const { error } = await sb.from('synced_workouts').insert({
@@ -258,7 +260,7 @@ function LogWorkoutInner() {
         <h2 style={{ fontWeight: 800, fontSize: 24, margin: 0 }}>Workout saved!</h2>
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Great work. Your progress has been recorded.</p>
         <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-          <button onClick={() => { setSaved(false); setSelectedPlan(null); setLoggedExs([]); setNotes(''); setRating(null); }}
+          <button onClick={() => { setSaved(false); setSelectedPlan(null); setLoggedExs([]); setNotes(''); setEffectivenessRating(null); setEnjoymentRating(null); }}
             style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
             Log Another
           </button>
@@ -552,11 +554,19 @@ function LogWorkoutInner() {
               />
             </div>
 
-            {/* Satisfaction rating */}
-            <div style={{ marginBottom: 32 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>How was your workout?</label>
-              {renderStars(rating ?? 0, (v) => setRating(rating === v ? null : v))}
-              {rating !== null && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 8 }}>{rating}/5 stars</p>}
+            {/* Workout ratings */}
+            <div style={{ marginBottom: 32, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>How effective was this workout?</label>
+                {renderStars(effectivenessRating ?? 0, (v) => setEffectivenessRating(effectivenessRating === v ? null : v), YELLOW)}
+                {effectivenessRating !== null && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 6 }}>{effectivenessRating}/5</p>}
+              </div>
+              <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>How much did you enjoy this workout?</label>
+                {renderStars(enjoymentRating ?? 0, (v) => setEnjoymentRating(enjoymentRating === v ? null : v), TEAL)}
+                {enjoymentRating !== null && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 6 }}>{enjoymentRating}/5</p>}
+              </div>
             </div>
 
             {/* Save */}
