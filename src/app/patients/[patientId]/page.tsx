@@ -12,16 +12,25 @@ const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const YELLOW = '#F9F295';
 
-function deriveWeekList(raw: any): number[] {
+function deriveExerciseWeeks(raw: any): number[] {
   const list: any[] = Array.isArray(raw) ? raw :
     (raw?.days ? (raw.days as any[]).flatMap((d: any) => d.exercises ?? []) : []);
   if (list.length === 0) return [];
   const s = new Set<number>();
   for (const ex of list) {
-    if (ex.weeks?.length > 0) { for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); } }
-    else s.add(1);
+    if (ex.weeks?.length > 0) {
+      for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); }
+      if (!s.has(1) && Array.isArray(ex.sets) && ex.sets.length > 0) s.add(1);
+    } else { s.add(1); }
   }
   return Array.from(s).sort((a, b) => a - b);
+}
+
+function deriveWeekList(raw: any): number[] {
+  if (Array.isArray(raw?.selectedWeeks) && raw.selectedWeeks.length > 0) {
+    return [...raw.selectedWeeks].sort((a: number, b: number) => a - b);
+  }
+  return deriveExerciseWeeks(raw);
 }
 
 function filterByWeeks(raw: any, sel: number[]): any {
