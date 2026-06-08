@@ -946,7 +946,10 @@ export default function PatientProgressPage() {
                                 {w.notes?.trim() && (
                                   <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     <span style={{ fontSize: 14 }}>💬</span>
-                                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: TEAL }}>{patientName}</span>
+                                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
+                                    </div>
                                   </div>
                                 )}
                                 {(w.exercises ?? []).length === 0 ? (
@@ -1007,7 +1010,10 @@ export default function PatientProgressPage() {
                                               {hasNote && (
                                                 <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
                                                   <span style={{ fontSize: 13 }}>💬</span>
-                                                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
+                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                    <span style={{ fontSize: 11, fontWeight: 700, color: TEAL }}>{patientName}</span>
+                                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
+                                                  </div>
                                                 </div>
                                               )}
                                             </div>
