@@ -313,7 +313,7 @@ export default function PlansPage() {
                             >
                               Edit
                             </button>
-                            {plan.weeks.length > 1 && (
+                            {plan.weeks.length > 0 && (
                               <button
                                 onClick={() => { setEditingPlan(plan); setEditingWeeks([...plan.weeks]); }}
                                 style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}

@@ -99,7 +99,7 @@ export default function PlanLibraryPage() {
   const [bodySearch,     setBodySearch]     = useState('');
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
-  const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any } | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any; templateId: string; totalWeeks: number } | null>(null);
   const [editingAssWeeks,   setEditingAssWeeks]   = useState<number[]>([]);
   const [savingAssWeeks,    setSavingAssWeeks]     = useState(false);
 
@@ -221,8 +221,11 @@ export default function PlanLibraryPage() {
   const handleSaveAssWeeks = async () => {
     if (!editingAssignment) return;
     setSavingAssWeeks(true);
-    const newRaw = filterByWeeks(editingAssignment.exercisesRaw, editingAssWeeks);
-    const { error } = await getSupabase()
+    const sb = getSupabase();
+    const { data: rawTpl } = await sb.from('plan_templates').select('exercises').eq('id', editingAssignment.templateId).single();
+    const sourceRaw = (rawTpl as any)?.exercises ?? editingAssignment.exercisesRaw;
+    const newRaw = filterByWeeks(sourceRaw, editingAssWeeks);
+    const { error } = await sb
       .from('workout_plans')
       .update({ exercises: newRaw })
       .eq('id', editingAssignment.planId);
@@ -246,7 +249,7 @@ export default function PlanLibraryPage() {
   function openAssign(tpl: Template) {
     const total = numWeeks(tpl.exercises);
     setAssignTpl(tpl);
-    setAssignWeeks(Array.from({ length: total }, (_, i) => i + 1));
+    setAssignWeeks([]);
     setAssignPlanName(tpl.name || '');
     setAssignPatientId('');
     setAssignReminder(false);
@@ -710,9 +713,9 @@ export default function PlanLibraryPage() {
                             {a.weeks.map(w => (
                               <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>W{w}</span>
                             ))}
-                            {a.weeks.length > 1 && (
+                            {numWeeks(t.exercises) > 1 && (
                               <button
-                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw }); setEditingAssWeeks([...a.weeks]); }}
+                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, totalWeeks: numWeeks(t.exercises) }); setEditingAssWeeks([...a.weeks]); }}
                                 style={{ background: `${PURPLE}30`, border: `1px solid ${PURPLE}60`, color: PURPLE, borderRadius: 6, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
                                 title="Edit weeks shared with this patient"
                               >
@@ -1032,9 +1035,9 @@ export default function PlanLibraryPage() {
               <button onClick={() => setEditingAssignment(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Select which weeks to share with this patient. Removing a week permanently deletes that week&apos;s exercises from their plan.</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Select which weeks to share with this patient. You can add or remove weeks at any time.</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {editingAssignment.weeks.map(w => {
+                {Array.from({ length: editingAssignment.totalWeeks }, (_, i) => i + 1).map(w => {
                   const on = editingAssWeeks.includes(w);
                   return (
                     <button
@@ -1047,9 +1050,9 @@ export default function PlanLibraryPage() {
                   );
                 })}
               </div>
-              {editingAssWeeks.length < editingAssignment.weeks.length && (
+              {editingAssWeeks.length === 0 && (
                 <p style={{ margin: 0, fontSize: 12, color: '#f87171', fontWeight: 600 }}>
-                  Warning: removing weeks cannot be undone from this view.
+                  Select at least one week.
                 </p>
               )}
             </div>
