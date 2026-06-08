@@ -12,6 +12,30 @@ const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const YELLOW = '#F9F295';
 
+function deriveWeekList(raw: any): number[] {
+  const list: any[] = Array.isArray(raw) ? raw :
+    (raw?.days ? (raw.days as any[]).flatMap((d: any) => d.exercises ?? []) : []);
+  if (list.length === 0) return [];
+  const s = new Set<number>();
+  for (const ex of list) {
+    if (ex.weeks?.length > 0) { for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); } }
+    else s.add(1);
+  }
+  return Array.from(s).sort((a, b) => a - b);
+}
+
+function filterByWeeks(raw: any, sel: number[]): any {
+  const ws = new Set(sel);
+  const keep = (ex: any) => {
+    if (!ex.weeks?.length) return ws.has(1) ? ex : null;
+    const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
+    return filtered.length ? { ...ex, weeks: filtered } : null;
+  };
+  if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
+  if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
+  return raw;
+}
+
 /* ── Types matching GymTracker's WorkoutLog ─────────────────────── */
 interface WorkoutSet {
   id?: string;
@@ -165,6 +189,13 @@ export default function PatientProgressPage() {
   const [sendResult,   setSendResult]   = useState<'ok' | 'error' | null>(null);
 
   const [practId,          setPractId]          = useState('');
+
+  // Assigned plans + week editing
+  const [assignedPlans,    setAssignedPlans]    = useState<Array<{ id: string; name: string; weeks: number[]; exercisesRaw: any }>>([]);
+  const [editingPlan,      setEditingPlan]      = useState<{ id: string; name: string; weeks: number[]; exercisesRaw: any } | null>(null);
+  const [editingPlanWeeks, setEditingPlanWeeks] = useState<number[]>([]);
+  const [savingPlanWeeks,  setSavingPlanWeeks]  = useState(false);
+
   const [showCustomEx,     setShowCustomEx]     = useState(false);
   const [customExName,     setCustomExName]     = useState('');
   const [customExMuscle,   setCustomExMuscle]   = useState('');
@@ -221,17 +252,26 @@ export default function PatientProgressPage() {
       // Load exercise demos for this patient's plans
       const { data: plans } = await sb
         .from('workout_plans')
-        .select('exercises')
+        .select('id, name, exercises')
         .eq('patient_id', patientId)
         .eq('practitioner_id', uid);
 
+      // Store assigned plans for week editing
+      setAssignedPlans((plans ?? []).map((p: any) => ({
+        id: p.id,
+        name: p.name ?? 'Untitled Plan',
+        weeks: deriveWeekList(p.exercises),
+        exercisesRaw: p.exercises,
+      })));
+
       const exerciseNames = new Set<string>();
       for (const plan of (plans ?? [])) {
-        if (Array.isArray(plan.exercises)) {
-          for (const ex of plan.exercises as Record<string, unknown>[]) {
-            const name = (ex?.exercise as Record<string, unknown> | undefined)?.name ?? ex?.name;
-            if (typeof name === 'string') exerciseNames.add(name);
-          }
+        const exList: any[] = Array.isArray(plan.exercises)
+          ? plan.exercises
+          : (plan.exercises?.days ?? []).flatMap((d: any) => d.exercises ?? []);
+        for (const ex of exList) {
+          const name = (ex?.exercise as Record<string, unknown> | undefined)?.name ?? ex?.name;
+          if (typeof name === 'string') exerciseNames.add(name);
         }
       }
 
@@ -261,6 +301,24 @@ export default function PatientProgressPage() {
       setLoading(false);
     });
   }, [patientId, router]);
+
+  const handleSavePlanWeeks = async () => {
+    if (!editingPlan || editingPlanWeeks.length === 0) return;
+    setSavingPlanWeeks(true);
+    const newRaw = filterByWeeks(editingPlan.exercisesRaw, editingPlanWeeks);
+    const { error } = await getSupabase()
+      .from('workout_plans')
+      .update({ exercises: newRaw })
+      .eq('id', editingPlan.id);
+    if (!error) {
+      const newWeeks = deriveWeekList(newRaw);
+      setAssignedPlans(prev => prev.map(p =>
+        p.id === editingPlan.id ? { ...p, weeks: newWeeks, exercisesRaw: newRaw } : p
+      ));
+      setEditingPlan(null);
+    }
+    setSavingPlanWeeks(false);
+  };
 
   const handleSendEmail = async () => {
     if (!emailSubject.trim() || !emailBody.trim()) return;
@@ -564,6 +622,35 @@ export default function PatientProgressPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Assigned Plans ── */}
+        {assignedPlans.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
+              Assigned Plans · {assignedPlans.length}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {assignedPlans.map(plan => (
+                <div key={plan.id} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', flex: 1, minWidth: 0 }}>{plan.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {plan.weeks.map(w => (
+                      <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>W{w}</span>
+                    ))}
+                    {plan.weeks.length > 1 && (
+                      <button
+                        onClick={() => { setEditingPlan(plan); setEditingPlanWeeks([...plan.weeks]); }}
+                        style={{ background: `${PURPLE}20`, border: `1px solid ${PURPLE}50`, color: PURPLE, borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Edit Weeks
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Progress section ── */}
         {weekTrends.length >= 2 && (
@@ -990,6 +1077,47 @@ export default function PatientProgressPage() {
                 style={{ flex: 2, background: customExName.trim() ? TEAL : 'var(--input-bg)', color: customExName.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: customExName.trim() ? 'pointer' : 'not-allowed' }}
               >
                 {creatingCustomEx ? 'Creating…' : `Create "${customExName.trim() || 'exercise'}"`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Plan Weeks modal */}
+      {editingPlan && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 420 }}>
+            <h2 style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 18 }}>Edit Weeks</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 22px' }}>{editingPlan.name}</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {editingPlan.weeks.map(w => {
+                const on = editingPlanWeeks.includes(w);
+                return (
+                  <button
+                    key={w}
+                    onClick={() => setEditingPlanWeeks(prev => on ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b))}
+                    style={{ padding: '8px 18px', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', border: `1.5px solid ${on ? PURPLE : 'var(--border-strong)'}`, background: on ? `${PURPLE}25` : 'var(--card-alt)', color: on ? PURPLE : 'var(--text-muted)' }}
+                  >
+                    Week {w}
+                  </button>
+                );
+              })}
+            </div>
+            {editingPlanWeeks.length < editingPlan.weeks.length && (
+              <p style={{ color: YELLOW, fontSize: 12, margin: '0 0 18px' }}>
+                Deselected weeks will be removed from this patient's plan.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditingPlan(null)} style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px 20px', fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePlanWeeks}
+                disabled={savingPlanWeeks || editingPlanWeeks.length === 0}
+                style={{ background: editingPlanWeeks.length > 0 ? PURPLE : 'var(--input-bg)', color: editingPlanWeeks.length > 0 ? '#fff' : 'var(--text-dim)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: savingPlanWeeks || editingPlanWeeks.length === 0 ? 'not-allowed' : 'pointer', opacity: savingPlanWeeks ? 0.7 : 1 }}
+              >
+                {savingPlanWeeks ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

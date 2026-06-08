@@ -269,22 +269,7 @@ export default function PlanLibraryPage() {
         .eq('id', assignTpl!.id)
         .single();
       const rawEx = (rawTpl as any)?.exercises;
-      const selectedWeekSet = new Set(assignWeeks);
-      let exercisesPayload: any;
-      if (rawEx && typeof rawEx === 'object' && Array.isArray(rawEx.days)) {
-        exercisesPayload = rawEx.days.map((day: any) => ({
-          ...day,
-          exercises: day.exercises.map((ex: any) => ({
-            ...ex,
-            weeks: (ex.weeks ?? []).filter((w: any) => selectedWeekSet.has(w.week)),
-            sets: assignWeeks.includes(1)
-              ? ex.sets
-              : ((ex.weeks ?? []).find((w: any) => selectedWeekSet.has(w.week))?.sets ?? ex.sets),
-          })),
-        }));
-      } else {
-        exercisesPayload = Array.isArray(rawEx) ? rawEx : [];
-      }
+      const exercisesPayload = filterByWeeks(rawEx, assignWeeks);
       const planName = assignPlanName.trim() || assignTpl!.name || 'Untitled Plan';
       const { data: newPlan, error: planErr } = await sb
         .from('workout_plans')
