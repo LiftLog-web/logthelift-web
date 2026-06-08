@@ -45,7 +45,9 @@ function derivedMuscleGroups(exercises: any[]): string[] {
   return Array.from(groups).sort();
 }
 
-function numWeeks(exercises: any[]): number {
+function numWeeks(raw: any): number {
+  const exercises: any[] = Array.isArray(raw) ? raw :
+    (raw?.days ? (raw.days as any[]).flatMap((d: any) => d.exercises ?? []) : []);
   let max = 1;
   for (const ex of exercises) {
     for (const w of ex.weeks ?? []) {
