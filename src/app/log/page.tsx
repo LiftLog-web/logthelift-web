@@ -61,10 +61,14 @@ function renderStars(rating: number, onClick: (v: number) => void, activeColor =
       {[1, 2, 3, 4, 5].map(star => {
         const full = rating >= star;
         const half = !full && rating >= star - 0.5;
+        const fillWidth = full ? '100%' : half ? '50%' : '0%';
         return (
           <div key={star} style={{ position: 'relative', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 28, color: full || half ? activeColor : 'var(--border-strong)' }}>
-              {full ? '★' : half ? '⯨' : '☆'}
+            {/* base empty star */}
+            <span style={{ fontSize: 28, color: 'var(--border-strong)', userSelect: 'none' }}>★</span>
+            {/* colored fill clipped to left portion */}
+            <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, bottom: 0, display: 'flex', alignItems: 'center', overflow: 'hidden', width: fillWidth, pointerEvents: 'none' }}>
+              <span style={{ fontSize: 28, color: activeColor, userSelect: 'none', flexShrink: 0 }}>★</span>
             </span>
             <button onClick={() => onClick(star - 0.5)} style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', background: 'transparent', border: 'none', cursor: 'pointer' }} />
             <button onClick={() => onClick(star)} style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', background: 'transparent', border: 'none', cursor: 'pointer' }} />

@@ -63,8 +63,10 @@ function deriveWeekList(raw: any): number[] {
   if (list.length === 0) return [];
   const s = new Set<number>();
   for (const ex of list) {
-    if (ex.weeks?.length > 0) { for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); } }
-    else s.add(1);
+    if (ex.weeks?.length > 0) {
+      for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); }
+      if (ex.sets?.length > 0) s.add(1); // base sets = implicit week 1
+    } else s.add(1);
   }
   return Array.from(s).sort((a, b) => a - b);
 }
@@ -74,7 +76,10 @@ function filterByWeeks(raw: any, sel: number[]): any {
   const keep = (ex: any) => {
     if (!ex.weeks?.length) return ws.has(1) ? ex : null;
     const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
-    return filtered.length ? { ...ex, weeks: filtered } : null;
+    if (filtered.length) return { ...ex, weeks: filtered };
+    // No explicit weeks match — keep as implicit W1 if week 1 selected and base sets exist
+    if (ws.has(1) && ex.sets?.length > 0) { const { weeks: _, ...rest } = ex; return rest; }
+    return null;
   };
   if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
   if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
@@ -99,7 +104,7 @@ export default function PlanLibraryPage() {
   const [bodySearch,     setBodySearch]     = useState('');
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
-  const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any; templateId: string; totalWeeks: number } | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any; templateId: string; availableWeeks: number[] } | null>(null);
   const [editingAssWeeks,   setEditingAssWeeks]   = useState<number[]>([]);
   const [savingAssWeeks,    setSavingAssWeeks]     = useState(false);
 
@@ -713,9 +718,9 @@ export default function PlanLibraryPage() {
                             {a.weeks.map(w => (
                               <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>W{w}</span>
                             ))}
-                            {numWeeks(t.exercises) > 1 && (
+                            {deriveWeekList(t.exercises).length > 1 && (
                               <button
-                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, totalWeeks: numWeeks(t.exercises) }); setEditingAssWeeks([]); }}
+                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, availableWeeks: deriveWeekList(t.exercises) }); setEditingAssWeeks([...a.weeks]); }}
                                 style={{ background: `${PURPLE}30`, border: `1px solid ${PURPLE}60`, color: PURPLE, borderRadius: 6, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
                                 title="Edit weeks shared with this patient"
                               >
@@ -1039,7 +1044,7 @@ export default function PlanLibraryPage() {
                 Select which weeks to share with this patient. Currently assigned: {editingAssignment.weeks.map(w => `W${w}`).join(', ')}.
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {Array.from({ length: editingAssignment.totalWeeks }, (_, i) => i + 1).map(w => {
+                {editingAssignment.availableWeeks.map(w => {
                   const on = editingAssWeeks.includes(w);
                   return (
                     <button

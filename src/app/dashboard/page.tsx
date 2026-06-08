@@ -41,8 +41,10 @@ interface PTRow {
   ptName: string;
   ptEmail: string;
   patientCount: number;
-  avgSatisfaction: number | null;
-  satisfactionCount: number;
+  avgEffectiveness: number | null;
+  effectivenessCount: number;
+  avgEnjoyment: number | null;
+  enjoymentCount: number;
   plansCreated: number;
   adherencePct: number | null;
   weeklyTarget: number | null;
@@ -185,8 +187,10 @@ export default function DashboardPage() {
           ptName: pt?.display_name ?? 'Unknown',
           ptEmail: pt?.email ?? '',
           patientCount: 0,
-          avgSatisfaction: null,
-          satisfactionCount: 0,
+          avgEffectiveness: null,
+          effectivenessCount: 0,
+          avgEnjoyment: null,
+          enjoymentCount: 0,
           plansCreated: 0,
           adherencePct: null,
           weeklyTarget: link.weekly_workout_target ?? null,
@@ -217,14 +221,20 @@ export default function DashboardPage() {
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
-            // Avg ratings (all-time) — combine effectiveness + enjoyment, fall back to legacy satisfactionRating
-            const ratings = workouts.flatMap((w: any) => [
-              w.data?.effectivenessRating ?? w.data?.satisfactionRating,
-              w.data?.enjoymentRating,
-            ]).filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
-            if (ratings.length > 0) {
-              base.avgSatisfaction   = ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length;
-              base.satisfactionCount = ratings.length;
+            // Avg ratings (all-time) — effectiveness and enjoyment tracked separately
+            const effectivenessRatings = workouts
+              .map((w: any) => w.data?.effectivenessRating ?? w.data?.satisfactionRating)
+              .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
+            const enjoymentRatings = workouts
+              .map((w: any) => w.data?.enjoymentRating)
+              .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
+            if (effectivenessRatings.length > 0) {
+              base.avgEffectiveness   = effectivenessRatings.reduce((a: number, b: number) => a + b, 0) / effectivenessRatings.length;
+              base.effectivenessCount = effectivenessRatings.length;
+            }
+            if (enjoymentRatings.length > 0) {
+              base.avgEnjoyment   = enjoymentRatings.reduce((a: number, b: number) => a + b, 0) / enjoymentRatings.length;
+              base.enjoymentCount = enjoymentRatings.length;
             }
 
             // Adherence: all complete weeks, current week excluded
@@ -571,19 +581,27 @@ export default function DashboardPage() {
                       )}
                     </td>
 
-                    {/* Avg Satisfaction + sample size */}
+                    {/* PT Ratings: effectiveness + enjoyment */}
                     <td style={{ padding: '14px 14px', textAlign: 'center' }}>
-                      {pt.status === 'accepted' && pt.avgSatisfaction !== null ? (
-                        <>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                            <span style={{ color: YELLOW, fontSize: 13 }}>{renderStars(pt.avgSatisfaction)}</span>
-                            <span style={{ color: TEAL, fontWeight: 700 }}>{pt.avgSatisfaction.toFixed(1)}</span>
-                            <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>/5</span>
-                          </div>
-                          <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>
-                            {pt.satisfactionCount} rating{pt.satisfactionCount !== 1 ? 's' : ''}
-                          </div>
-                        </>
+                      {pt.status === 'accepted' && (pt.avgEffectiveness !== null || pt.avgEnjoyment !== null) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                          {pt.avgEffectiveness !== null && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: YELLOW, fontSize: 12 }}>★</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Effective</span>
+                              <span style={{ color: YELLOW, fontWeight: 700, fontSize: 13 }}>{pt.avgEffectiveness.toFixed(1)}</span>
+                              <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>({pt.effectivenessCount})</span>
+                            </div>
+                          )}
+                          {pt.avgEnjoyment !== null && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: TEAL, fontSize: 12 }}>★</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Enjoyable</span>
+                              <span style={{ color: TEAL, fontWeight: 700, fontSize: 13 }}>{pt.avgEnjoyment.toFixed(1)}</span>
+                              <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>({pt.enjoymentCount})</span>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ color: 'var(--text-dim)' }}>—</span>
                       )}

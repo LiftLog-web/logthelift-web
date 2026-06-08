@@ -41,6 +41,7 @@ function deriveWeeks(raw: any): number[] {
   for (const ex of list) {
     if (ex.weeks?.length > 0) {
       for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); }
+      if (ex.sets?.length > 0) s.add(1); // base sets = implicit week 1
     } else {
       s.add(1);
     }
@@ -53,7 +54,10 @@ function filterByWeeks(raw: any, sel: number[]): any {
   const keep = (ex: any) => {
     if (!ex.weeks?.length) return ws.has(1) ? ex : null;
     const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
-    return filtered.length ? { ...ex, weeks: filtered } : null;
+    if (filtered.length) return { ...ex, weeks: filtered };
+    // No explicit weeks match — keep as implicit W1 if week 1 selected and base sets exist
+    if (ws.has(1) && ex.sets?.length > 0) { const { weeks: _, ...rest } = ex; return rest; }
+    return null;
   };
   if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
   if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
