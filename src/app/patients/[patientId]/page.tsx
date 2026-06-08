@@ -200,8 +200,8 @@ export default function PatientProgressPage() {
   const [practId,          setPractId]          = useState('');
 
   // Assigned plans + week editing
-  const [assignedPlans,    setAssignedPlans]    = useState<Array<{ id: string; name: string; weeks: number[]; exercisesRaw: any }>>([]);
-  const [editingPlan,      setEditingPlan]      = useState<{ id: string; name: string; weeks: number[]; exercisesRaw: any } | null>(null);
+  const [assignedPlans,    setAssignedPlans]    = useState<Array<{ id: string; name: string; weeks: number[]; allWeeks: number[]; exercisesRaw: any }>>([]);
+  const [editingPlan,      setEditingPlan]      = useState<{ id: string; name: string; weeks: number[]; allWeeks: number[]; exercisesRaw: any } | null>(null);
   const [editingPlanWeeks, setEditingPlanWeeks] = useState<number[]>([]);
   const [savingPlanWeeks,  setSavingPlanWeeks]  = useState(false);
 
@@ -270,6 +270,7 @@ export default function PatientProgressPage() {
         id: p.id,
         name: p.name ?? 'Untitled Plan',
         weeks: deriveWeekList(p.exercises),
+        allWeeks: deriveExerciseWeeks(p.exercises),
         exercisesRaw: p.exercises,
       })));
 
@@ -314,15 +315,15 @@ export default function PatientProgressPage() {
   const handleSavePlanWeeks = async () => {
     if (!editingPlan || editingPlanWeeks.length === 0) return;
     setSavingPlanWeeks(true);
-    const newRaw = filterByWeeks(editingPlan.exercisesRaw, editingPlanWeeks);
+    const raw = editingPlan.exercisesRaw;
+    const newRaw = Array.isArray(raw) ? raw : { ...raw, selectedWeeks: editingPlanWeeks };
     const { error } = await getSupabase()
       .from('workout_plans')
       .update({ exercises: newRaw })
       .eq('id', editingPlan.id);
     if (!error) {
-      const newWeeks = deriveWeekList(newRaw);
       setAssignedPlans(prev => prev.map(p =>
-        p.id === editingPlan.id ? { ...p, weeks: newWeeks, exercisesRaw: newRaw } : p
+        p.id === editingPlan.id ? { ...p, weeks: editingPlanWeeks, exercisesRaw: newRaw } : p
       ));
       setEditingPlan(null);
     }
@@ -471,8 +472,10 @@ export default function PatientProgressPage() {
   const withTargets    = allExercises.filter(e => (e.targetSets ?? []).length > 0);
   const completedCount = withTargets.filter(e => exStatus(e) === 'completed').length;
   const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
-  const ratings        = workouts.map(w => w.satisfactionRating).filter((r): r is 1|2|3|4|5 => !!r);
-  const avgRating      = ratings.length ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1) : null;
+  const effectivenessRatings = workouts.map(w => w.effectivenessRating ?? w.satisfactionRating).filter((r): r is number => typeof r === 'number' && r > 0);
+  const enjoymentRatings     = workouts.map(w => w.enjoymentRating).filter((r): r is number => typeof r === 'number' && r > 0);
+  const avgEffectiveness     = effectivenessRatings.length ? (effectivenessRatings.reduce((a, b) => a + b, 0) / effectivenessRatings.length).toFixed(1) : null;
+  const avgEnjoyment         = enjoymentRatings.length ? (enjoymentRatings.reduce((a, b) => a + b, 0) / enjoymentRatings.length).toFixed(1) : null;
 
   /* ── Loading / error ── */
   if (loading || !authed) {
@@ -486,7 +489,7 @@ export default function PatientProgressPage() {
         <SkSubHeader />
         <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 28 }}>
-            {[0,1,2,3].map(i => (
+            {[0,1,2,3,4].map(i => (
               <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
                 <Sk width={90} height={11} radius={3} style={{ marginBottom: 12 }} />
                 <Sk width={60} height={26} radius={6} />
@@ -620,10 +623,11 @@ export default function PatientProgressPage() {
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 36 }}>
           {[
-            { label: 'Total Workouts',   value: String(totalWorkouts),                    color: TEAL   },
-            { label: 'Plan Workouts',    value: String(withPlan.length),                  color: PURPLE },
-            { label: 'Completion Rate',  value: completionRate !== null ? `${completionRate}%` : '—', color: YELLOW },
-            { label: 'Avg Satisfaction', value: avgRating ? `${renderStars(Number(avgRating))} ${avgRating}/5` : '—', color: TEAL },
+            { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
+            { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
+            { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: YELLOW },
+            { label: 'Avg Effectiveness', value: avgEffectiveness ? `${renderStars(Number(avgEffectiveness))} ${avgEffectiveness}/5` : '—', color: YELLOW },
+            { label: 'Avg Enjoyment',     value: avgEnjoyment ? `${renderStars(Number(avgEnjoyment))} ${avgEnjoyment}/5` : '—',             color: TEAL  },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
@@ -646,7 +650,7 @@ export default function PatientProgressPage() {
                     {plan.weeks.map(w => (
                       <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>W{w}</span>
                     ))}
-                    {plan.weeks.length > 1 && (
+                    {plan.allWeeks.length > 1 && (
                       <button
                         onClick={() => { setEditingPlan(plan); setEditingPlanWeeks([...plan.weeks]); }}
                         style={{ background: `${PURPLE}20`, border: `1px solid ${PURPLE}50`, color: PURPLE, borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
@@ -1099,7 +1103,7 @@ export default function PatientProgressPage() {
             <h2 style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 18 }}>Edit Weeks</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 22px' }}>{editingPlan.name}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {editingPlan.weeks.map(w => {
+              {editingPlan.allWeeks.map(w => {
                 const on = editingPlanWeeks.includes(w);
                 return (
                   <button
@@ -1112,7 +1116,7 @@ export default function PatientProgressPage() {
                 );
               })}
             </div>
-            {editingPlanWeeks.length < editingPlan.weeks.length && (
+            {editingPlanWeeks.length < editingPlan.allWeeks.length && (
               <p style={{ color: YELLOW, fontSize: 12, margin: '0 0 18px' }}>
                 Deselected weeks will be removed from this patient's plan.
               </p>
