@@ -68,8 +68,10 @@ export default function PlansPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
+  const [userId, setUserId]             = useState<string>('');
   const [editingPlan, setEditingPlan]   = useState<Plan | null>(null);
   const [editingWeeks, setEditingWeeks] = useState<number[]>([]);
+  const [editingTemplateFull, setEditingTemplateFull] = useState<any>(null);
   const [savingWeeks, setSavingWeeks]   = useState(false);
 
   useEffect(() => {
@@ -79,6 +81,7 @@ export default function PlansPage() {
 
       const { data: prof } = await sb.from('profiles').select('role, approved, is_gym_owner').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      setUserId(data.session.user.id);
       setAuthed(true);
 
       const { data: rawPlans } = await sb
@@ -111,7 +114,8 @@ export default function PlansPage() {
   const handleSaveWeeks = async () => {
     if (!editingPlan) return;
     setSavingWeeks(true);
-    const newExercisesRaw = filterByWeeks(editingPlan.exercisesRaw, editingWeeks);
+    const sourceRaw = editingTemplateFull ?? editingPlan.exercisesRaw;
+    const newExercisesRaw = filterByWeeks(sourceRaw, editingWeeks);
     const { error } = await getSupabase()
       .from('workout_plans')
       .update({ exercises: newExercisesRaw })
@@ -124,6 +128,7 @@ export default function PlansPage() {
         : p
       ));
       setEditingPlan(null);
+      setEditingTemplateFull(null);
     }
     setSavingWeeks(false);
   };
@@ -315,7 +320,19 @@ export default function PlansPage() {
                             </button>
                             {plan.weeks.length > 0 && (
                               <button
-                                onClick={() => { setEditingPlan(plan); setEditingWeeks([...plan.weeks]); }}
+                                onClick={async () => {
+                                  setEditingPlan(plan);
+                                  setEditingWeeks([...plan.weeks]);
+                                  setEditingTemplateFull(null);
+                                  const sb = getSupabase();
+                                  const { data: tpl } = await sb
+                                    .from('plan_templates')
+                                    .select('exercises')
+                                    .eq('practitioner_id', userId)
+                                    .eq('name', plan.name)
+                                    .maybeSingle();
+                                  if (tpl) setEditingTemplateFull((tpl as any).exercises);
+                                }}
                                 style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
                               >
                                 Weeks
@@ -343,7 +360,7 @@ export default function PlansPage() {
       {/* Edit Weeks modal */}
       {editingPlan && (
         <div
-          onClick={() => { if (!savingWeeks) setEditingPlan(null); }}
+          onClick={() => { if (!savingWeeks) { setEditingPlan(null); setEditingTemplateFull(null); } }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
         >
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 420, padding: 28 }}>
@@ -352,11 +369,13 @@ export default function PlansPage() {
                 <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Edit Shared Weeks</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>{editingPlan.name} — {editingPlan.patientName}</p>
               </div>
-              <button onClick={() => setEditingPlan(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+              <button onClick={() => { setEditingPlan(null); setEditingTemplateFull(null); }} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>Select which weeks to share with this patient. Unselected weeks will be removed from the plan.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
+              Select which weeks to share with this patient.{editingTemplateFull ? ' You can add or remove weeks.' : ' Unselected weeks will be removed.'}
+            </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {editingPlan.weeks.map(w => {
+              {(editingTemplateFull ? deriveWeeks(editingTemplateFull) : editingPlan.weeks).map(w => {
                 const checked = editingWeeks.includes(w);
                 return (
                   <button
@@ -376,7 +395,7 @@ export default function PlansPage() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => setEditingPlan(null)}
+                onClick={() => { setEditingPlan(null); setEditingTemplateFull(null); }}
                 disabled={savingWeeks}
                 style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >

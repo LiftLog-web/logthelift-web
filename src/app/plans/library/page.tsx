@@ -249,7 +249,7 @@ export default function PlanLibraryPage() {
   function openAssign(tpl: Template) {
     const total = numWeeks(tpl.exercises);
     setAssignTpl(tpl);
-    setAssignWeeks([]);
+    setAssignWeeks(total > 1 ? [] : [1]);
     setAssignPlanName(tpl.name || '');
     setAssignPatientId('');
     setAssignReminder(false);
@@ -715,7 +715,7 @@ export default function PlanLibraryPage() {
                             ))}
                             {numWeeks(t.exercises) > 1 && (
                               <button
-                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, totalWeeks: numWeeks(t.exercises) }); setEditingAssWeeks([...a.weeks]); }}
+                                onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, totalWeeks: numWeeks(t.exercises) }); setEditingAssWeeks([]); }}
                                 style={{ background: `${PURPLE}30`, border: `1px solid ${PURPLE}60`, color: PURPLE, borderRadius: 6, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
                                 title="Edit weeks shared with this patient"
                               >
@@ -1035,7 +1035,9 @@ export default function PlanLibraryPage() {
               <button onClick={() => setEditingAssignment(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Select which weeks to share with this patient. You can add or remove weeks at any time.</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+                Select which weeks to share with this patient. Currently assigned: {editingAssignment.weeks.map(w => `W${w}`).join(', ')}.
+              </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {Array.from({ length: editingAssignment.totalWeeks }, (_, i) => i + 1).map(w => {
                   const on = editingAssWeeks.includes(w);
