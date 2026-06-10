@@ -12,6 +12,10 @@ const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const YELLOW = '#F9F295';
 
+function fmtRating(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(2)));
+}
+
 function deriveExerciseWeeks(raw: any): number[] {
   const list: any[] = Array.isArray(raw) ? raw :
     (raw?.days ? (raw.days as any[]).flatMap((d: any) => d.exercises ?? []) : []);
@@ -474,8 +478,8 @@ export default function PatientProgressPage() {
   const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
   const effectivenessRatings = workouts.map(w => w.effectivenessRating ?? w.satisfactionRating).filter((r): r is number => typeof r === 'number' && r > 0);
   const enjoymentRatings     = workouts.map(w => w.enjoymentRating).filter((r): r is number => typeof r === 'number' && r > 0);
-  const avgEffectiveness     = effectivenessRatings.length ? (effectivenessRatings.reduce((a, b) => a + b, 0) / effectivenessRatings.length).toFixed(1) : null;
-  const avgEnjoyment         = enjoymentRatings.length ? (enjoymentRatings.reduce((a, b) => a + b, 0) / enjoymentRatings.length).toFixed(1) : null;
+  const avgEffectiveness     = effectivenessRatings.length ? effectivenessRatings.reduce((a, b) => a + b, 0) / effectivenessRatings.length : null;
+  const avgEnjoyment         = enjoymentRatings.length ? enjoymentRatings.reduce((a, b) => a + b, 0) / enjoymentRatings.length : null;
 
   /* ── Loading / error ── */
   if (loading || !authed) {
@@ -626,8 +630,8 @@ export default function PatientProgressPage() {
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
             { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
             { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: YELLOW },
-            { label: 'Avg Effectiveness', value: avgEffectiveness ? `${renderStars(Number(avgEffectiveness))} ${avgEffectiveness}/5` : '—', color: YELLOW },
-            { label: 'Avg Enjoyment',     value: avgEnjoyment ? `${renderStars(Number(avgEnjoyment))} ${avgEnjoyment}/5` : '—',             color: TEAL  },
+            { label: 'Avg Effectiveness', value: avgEffectiveness !== null ? `${renderStars(avgEffectiveness)} ${fmtRating(avgEffectiveness)} / 5` : '—', color: YELLOW },
+            { label: 'Avg Enjoyment',     value: avgEnjoyment !== null ? `${renderStars(avgEnjoyment)} ${fmtRating(avgEnjoyment)} / 5` : '—',             color: TEAL  },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
@@ -859,7 +863,7 @@ export default function PatientProgressPage() {
               const weekDone        = weekWithTargets.filter(e => exStatus(e) === 'completed').length;
               const weekRate        = weekWithTargets.length > 0 ? Math.round((weekDone / weekWithTargets.length) * 100) : null;
               const weekRatings     = weekWorkouts.flatMap(w => [w.effectivenessRating ?? w.satisfactionRating, w.enjoymentRating].filter((r): r is number => typeof r === 'number' && r > 0));
-              const weekAvgRating   = weekRatings.length ? (weekRatings.reduce((a, b) => a + b, 0) / weekRatings.length).toFixed(1) : null;
+              const weekAvgRating   = weekRatings.length ? weekRatings.reduce((a, b) => a + b, 0) / weekRatings.length : null;
               const weekAllStatuses = weekExercises.map(exStatus);
               const weekOverall: ExStatus =
                 weekAllStatuses.length === 0 ? 'none'
@@ -882,7 +886,7 @@ export default function PatientProgressPage() {
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
                       {weekRate !== null ? ` · ${weekRate}% completion` : ''}
-                      {weekAvgRating ? ` · ★ ${weekAvgRating}` : ''}
+                      {weekAvgRating !== null ? ` · ★ ${fmtRating(weekAvgRating)}` : ''}
                     </span>
                     <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
                   </button>
@@ -920,10 +924,10 @@ export default function PatientProgressPage() {
                               {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
                                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 8, alignItems: 'center' }}>
                                   {(w.effectivenessRating ?? w.satisfactionRating) && (
-                                    <span title="Effectiveness"><span style={{ color: YELLOW }}>★</span> {(w.effectivenessRating ?? w.satisfactionRating)!.toFixed(1)}</span>
+                                    <span title="Effectiveness"><span style={{ color: YELLOW }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
                                   )}
                                   {w.enjoymentRating && (
-                                    <span title="Enjoyment"><span style={{ color: TEAL }}>★</span> {w.enjoymentRating.toFixed(1)}</span>
+                                    <span title="Enjoyment"><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
                                   )}
                                 </span>
                               )}
