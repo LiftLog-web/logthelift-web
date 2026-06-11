@@ -7,8 +7,9 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
-const TEAL   = '#5fcfbf';
-const PURPLE = '#C471ED';
+const TEAL    = '#5fcfbf';
+const PURPLE  = '#C471ED';
+const AMBER   = '#F59E0B';
 
 interface Plan {
   id: string;
@@ -41,7 +42,7 @@ function deriveWeeks(raw: any): number[] {
   for (const ex of list) {
     if (ex.weeks?.length > 0) {
       for (const w of ex.weeks) { if (typeof w.week === 'number') s.add(w.week); }
-      if (ex.sets?.length > 0) s.add(1); // base sets = implicit week 1
+      if (ex.sets?.length > 0) s.add(1);
     } else {
       s.add(1);
     }
@@ -55,13 +56,18 @@ function filterByWeeks(raw: any, sel: number[]): any {
     if (!ex.weeks?.length) return ws.has(1) ? ex : null;
     const filtered = ex.weeks.filter((w: any) => ws.has(w.week));
     if (filtered.length) return { ...ex, weeks: filtered };
-    // No explicit weeks match — keep as implicit W1 if week 1 selected and base sets exist
     if (ws.has(1) && ex.sets?.length > 0) { const { weeks: _, ...rest } = ex; return rest; }
     return null;
   };
   if (Array.isArray(raw)) return (raw.map(keep).filter(Boolean) as any[]);
   if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(keep).filter(Boolean) })) };
   return raw;
+}
+
+function daysSince(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
 export default function PlansPage() {
@@ -78,13 +84,28 @@ export default function PlansPage() {
   const [editingTemplateFull, setEditingTemplateFull] = useState<any>(null);
   const [savingWeeks, setSavingWeeks]   = useState(false);
 
+  // Needs attention
+  const [threshold, setThreshold]           = useState(7);
+  const [thresholdInput, setThresholdInput] = useState('7');
+  const [savingThreshold, setSavingThreshold] = useState(false);
+  const [lastWorkoutMap, setLastWorkoutMap] = useState<Map<string, string | null>>(new Map());
+  const [loadingActivity, setLoadingActivity] = useState(false);
+
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
 
-      const { data: prof } = await sb.from('profiles').select('role, approved, is_gym_owner').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb
+        .from('profiles')
+        .select('role, approved, is_gym_owner, inactivity_threshold_days')
+        .eq('id', data.session.user.id)
+        .single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+
+      const t = (prof as any)?.inactivity_threshold_days ?? 7;
+      setThreshold(t);
+      setThresholdInput(String(t));
       setUserId(data.session.user.id);
       setAuthed(true);
 
@@ -112,8 +133,36 @@ export default function PlansPage() {
 
       setPlans(mapped);
       setLoading(false);
+
+      // Fetch last workout date per patient
+      const patientIds = [...new Set((rawPlans ?? []).map((p: any) => p.patient_id as string))];
+      if (patientIds.length > 0) {
+        setLoadingActivity(true);
+        const { data: workouts } = await sb
+          .from('synced_workouts')
+          .select('user_id, date')
+          .in('user_id', patientIds)
+          .order('date', { ascending: false });
+
+        const map = new Map<string, string | null>();
+        for (const id of patientIds) map.set(id, null);
+        for (const w of (workouts ?? [])) {
+          if (!map.get(w.user_id)) map.set(w.user_id, w.date);
+        }
+        setLastWorkoutMap(map);
+        setLoadingActivity(false);
+      }
     });
   }, [router]);
+
+  const handleSaveThreshold = async () => {
+    const val = parseInt(thresholdInput, 10);
+    if (isNaN(val) || val < 1) return;
+    setSavingThreshold(true);
+    await getSupabase().from('profiles').update({ inactivity_threshold_days: val }).eq('id', userId);
+    setThreshold(val);
+    setSavingThreshold(false);
+  };
 
   const handleSaveWeeks = async () => {
     if (!editingPlan) return;
@@ -168,6 +217,12 @@ export default function PlansPage() {
   const filtered = grouped.filter(g =>
     g.patientName.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Patients who haven't worked out within the threshold (unfiltered by search)
+  const needsAttention = grouped.filter(g => {
+    const days = daysSince(lastWorkoutMap.get(g.patient_id));
+    return days === null || days >= threshold;
+  });
 
   if (!authed || loading) {
     return (
@@ -239,125 +294,225 @@ export default function PlansPage() {
               Create First Plan
             </button>
           </div>
-        ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28 }}>
-            {filtered.map(group => {
-              const isOpen = expanded.has(group.patient_id);
-              return (
-                <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-
-                  {/* Patient header row — clickable */}
-                  <button
-                    onClick={() => toggleExpanded(group.patient_id)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
-                      border: 'none', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                        🏋️
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
-                          {group.patientName}
-                        </p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
-                        style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        View Progress
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
-                        style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        + Add Plan
-                      </button>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
-                        ▾
+          <>
+            {/* ── Needs Attention ── */}
+            {!loadingActivity && (
+              <div style={{ marginBottom: 28, marginTop: 24, border: `1px solid ${AMBER}40`, borderRadius: 16, overflow: 'hidden' }}>
+                {/* Header */}
+                <div style={{ background: `${AMBER}12`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 15 }}>⚠️</span>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: AMBER }}>Needs Attention</span>
+                    {needsAttention.length > 0 && (
+                      <span style={{ background: AMBER, color: '#0f1117', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
+                        {needsAttention.length}
                       </span>
-                    </div>
-                  </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                    <span>Flag after</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={thresholdInput}
+                      onChange={e => setThresholdInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveThreshold()}
+                      style={{
+                        width: 52, background: 'var(--card-alt)', border: '1px solid var(--border-strong)',
+                        borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 13,
+                        textAlign: 'center', outline: 'none',
+                      }}
+                    />
+                    <span>days without a workout</span>
+                    {thresholdInput !== String(threshold) && (
+                      <button
+                        onClick={handleSaveThreshold}
+                        disabled={savingThreshold}
+                        style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: savingThreshold ? 0.6 : 1 }}
+                      >
+                        {savingThreshold ? 'Saving…' : 'Save'}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                  {/* Plans for this patient */}
-                  {isOpen && (
-                    <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-                      {group.plans.map(plan => (
-                        <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
-                            <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {plan.exerciseCount} ex
-                            </span>
-                          </div>
-                          {plan.weeks.length > 0 && (
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {plan.weeks.map(w => (
-                                <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
-                                  W{w}
-                                </span>
-                              ))}
+                {/* Patient rows */}
+                {needsAttention.length === 0 ? (
+                  <div style={{ background: 'var(--card)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>All patients are on track</span>
+                  </div>
+                ) : (
+                  <div style={{ background: 'var(--card)' }}>
+                    {needsAttention.map((g, i) => {
+                      const days = daysSince(lastWorkoutMap.get(g.patient_id));
+                      return (
+                        <div
+                          key={g.patient_id}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 20px', borderTop: '1px solid var(--border-subtle)',
+                            gap: 12, flexWrap: 'wrap',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${AMBER}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                              🏋️
                             </div>
-                          )}
-                          {plan.description && (
-                            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
-                          )}
-                          <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
-                            {new Date(plan.created_at).toLocaleDateString('en-CA')}
-                          </p>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{g.patientName}</p>
+                              <p style={{ margin: 0, fontSize: 12, color: AMBER, marginTop: 2 }}>
+                                {days === null
+                                  ? 'No workouts logged yet'
+                                  : `Last workout ${days} day${days !== 1 ? 's' : ''} ago`}
+                              </p>
+                            </div>
+                          </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                              onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
-                              style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-teal-border)', cursor: 'pointer' }}
+                              onClick={() => router.push(`/patients/${g.patient_id}`)}
+                              style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
-                              Edit
+                              View Progress
                             </button>
-                            {plan.weeks.length > 0 && (
-                              <button
-                                onClick={async () => {
-                                  setEditingPlan(plan);
-                                  setEditingWeeks([...plan.weeks]);
-                                  setEditingTemplateFull(null);
-                                  const sb = getSupabase();
-                                  const { data: tpl } = await sb
-                                    .from('plan_templates')
-                                    .select('exercises')
-                                    .eq('practitioner_id', userId)
-                                    .eq('name', plan.name)
-                                    .maybeSingle();
-                                  if (tpl) setEditingTemplateFull((tpl as any).exercises);
-                                }}
-                                style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
-                              >
-                                Weeks
-                              </button>
-                            )}
                             <button
-                              onClick={() => handleDelete(plan.id)}
-                              disabled={deleting === plan.id}
-                              style={{ flex: 1, background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
+                              onClick={() => router.push(`/plans/new?patient=${g.patient_id}`)}
+                              style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
-                              Delete
+                              + Add Plan
                             </button>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Patient plan list ── */}
+            {filtered.length === 0 ? (
+              <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {filtered.map(group => {
+                  const isOpen = expanded.has(group.patient_id);
+                  return (
+                    <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+
+                      {/* Patient header row */}
+                      <button
+                        onClick={() => toggleExpanded(group.patient_id)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
+                          border: 'none', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                            🏋️
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+                              {group.patientName}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                              {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
+                            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            View Progress
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
+                            style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            + Add Plan
+                          </button>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                            ▾
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Plans for this patient */}
+                      {isOpen && (
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                          {group.plans.map(plan => (
+                            <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{plan.name}</h3>
+                                <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  {plan.exerciseCount} ex
+                                </span>
+                              </div>
+                              {plan.weeks.length > 0 && (
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                  {plan.weeks.map(w => (
+                                    <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+                                      W{w}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {plan.description && (
+                                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
+                              )}
+                              <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
+                                {new Date(plan.created_at).toLocaleDateString('en-CA')}
+                              </p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
+                                  style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-teal-border)', cursor: 'pointer' }}
+                                >
+                                  Edit
+                                </button>
+                                {plan.weeks.length > 0 && (
+                                  <button
+                                    onClick={async () => {
+                                      setEditingPlan(plan);
+                                      setEditingWeeks([...plan.weeks]);
+                                      setEditingTemplateFull(null);
+                                      const sb = getSupabase();
+                                      const { data: tpl } = await sb
+                                        .from('plan_templates')
+                                        .select('exercises')
+                                        .eq('practitioner_id', userId)
+                                        .eq('name', plan.name)
+                                        .maybeSingle();
+                                      if (tpl) setEditingTemplateFull((tpl as any).exercises);
+                                    }}
+                                    style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
+                                  >
+                                    Weeks
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDelete(plan.id)}
+                                  disabled={deleting === plan.id}
+                                  style={{ flex: 1, background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </main>
 
