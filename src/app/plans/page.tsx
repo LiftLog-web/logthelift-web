@@ -10,6 +10,12 @@ import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 const TEAL    = '#5fcfbf';
 const PURPLE  = '#C471ED';
 const AMBER   = '#F59E0B';
+const BLUE    = '#3B82F6';
+
+type AttentionItem =
+  | { type: 'inactive';        patient_id: string; patientName: string; days: number | null }
+  | { type: 'no_plan';         patient_id: string; patientName: string }
+  | { type: 'multiple_plans';  patient_id: string; patientName: string; planCount: number };
 
 interface Plan {
   id: string;
@@ -89,6 +95,7 @@ export default function PlansPage() {
   const [thresholdInput, setThresholdInput] = useState('7');
   const [savingThreshold, setSavingThreshold] = useState(false);
   const [lastWorkoutMap, setLastWorkoutMap] = useState<Map<string, string | null>>(new Map());
+  const [noPlanPatients, setNoPlanPatients] = useState<{ patient_id: string; patientName: string }[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
 
   useEffect(() => {
@@ -134,24 +141,34 @@ export default function PlansPage() {
       setPlans(mapped);
       setLoading(false);
 
-      // Fetch last workout date per patient
+      // Fetch attention data in parallel
       const patientIds = [...new Set((rawPlans ?? []).map((p: any) => p.patient_id as string))];
-      if (patientIds.length > 0) {
-        setLoadingActivity(true);
-        const { data: workouts } = await sb
-          .from('synced_workouts')
-          .select('user_id, date')
-          .in('user_id', patientIds)
-          .order('date', { ascending: false });
+      setLoadingActivity(true);
+      const [workoutsResult, linkedResult] = await Promise.all([
+        patientIds.length > 0
+          ? sb.from('synced_workouts').select('user_id, date').in('user_id', patientIds).order('date', { ascending: false })
+          : Promise.resolve({ data: [] }),
+        sb.from('patient_links').select('patient_id, patient:patient_id(display_name)').eq('practitioner_id', data.session.user.id),
+      ]);
 
-        const map = new Map<string, string | null>();
-        for (const id of patientIds) map.set(id, null);
-        for (const w of (workouts ?? [])) {
-          if (!map.get(w.user_id)) map.set(w.user_id, w.date);
-        }
-        setLastWorkoutMap(map);
-        setLoadingActivity(false);
+      // Last workout map
+      const map = new Map<string, string | null>();
+      for (const id of patientIds) map.set(id, null);
+      for (const w of (workoutsResult.data ?? [])) {
+        if (!map.get(w.user_id)) map.set(w.user_id, w.date);
       }
+      setLastWorkoutMap(map);
+
+      // Patients with no plan assigned
+      const planPatientIds = new Set(mapped.map(p => p.patient_id));
+      const noPlan = (linkedResult.data ?? [])
+        .filter((l: any) => !planPatientIds.has(l.patient_id))
+        .map((l: any) => {
+          const patient = Array.isArray(l.patient) ? l.patient[0] : l.patient;
+          return { patient_id: l.patient_id, patientName: patient?.display_name ?? 'Unknown' };
+        });
+      setNoPlanPatients(noPlan);
+      setLoadingActivity(false);
     });
   }, [router]);
 
@@ -218,11 +235,16 @@ export default function PlansPage() {
     g.patientName.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Patients who haven't worked out within the threshold (unfiltered by search)
-  const needsAttention = grouped.filter(g => {
-    const days = daysSince(lastWorkoutMap.get(g.patient_id));
-    return days === null || days >= threshold;
-  });
+  // All attention flags combined (unfiltered by search)
+  const attentionItems: AttentionItem[] = [
+    ...noPlanPatients.map(p => ({ type: 'no_plan' as const, ...p })),
+    ...grouped
+      .filter(g => g.plans.length > 1)
+      .map(g => ({ type: 'multiple_plans' as const, patient_id: g.patient_id, patientName: g.patientName, planCount: g.plans.length })),
+    ...grouped
+      .filter(g => { const d = daysSince(lastWorkoutMap.get(g.patient_id)); return d === null || d >= threshold; })
+      .map(g => ({ type: 'inactive' as const, patient_id: g.patient_id, patientName: g.patientName, days: daysSince(lastWorkoutMap.get(g.patient_id)) })),
+  ];
 
   if (!authed || loading) {
     return (
@@ -304,9 +326,9 @@ export default function PlansPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 15 }}>⚠️</span>
                     <span style={{ fontWeight: 700, fontSize: 15, color: AMBER }}>Needs Attention</span>
-                    {needsAttention.length > 0 && (
+                    {attentionItems.length > 0 && (
                       <span style={{ background: AMBER, color: '#0f1117', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
-                        {needsAttention.length}
+                        {attentionItems.length}
                       </span>
                     )}
                   </div>
@@ -338,18 +360,23 @@ export default function PlansPage() {
                 </div>
 
                 {/* Patient rows */}
-                {needsAttention.length === 0 ? (
+                {attentionItems.length === 0 ? (
                   <div style={{ background: 'var(--card)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>
                     <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>All patients are on track</span>
                   </div>
                 ) : (
                   <div style={{ background: 'var(--card)' }}>
-                    {needsAttention.map((g, i) => {
-                      const days = daysSince(lastWorkoutMap.get(g.patient_id));
+                    {attentionItems.map((item, i) => {
+                      const flagColor = item.type === 'no_plan' ? BLUE : item.type === 'multiple_plans' ? PURPLE : AMBER;
+                      const subtitle =
+                        item.type === 'no_plan'        ? 'No plan assigned' :
+                        item.type === 'multiple_plans' ? `${item.planCount} active plans — review if intentional` :
+                        item.days === null              ? 'No workouts logged yet' :
+                                                         `Last workout ${item.days} day${item.days !== 1 ? 's' : ''} ago`;
                       return (
                         <div
-                          key={g.patient_id}
+                          key={`${item.type}-${item.patient_id}`}
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '12px 20px', borderTop: '1px solid var(--border-subtle)',
@@ -357,27 +384,23 @@ export default function PlansPage() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${AMBER}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${flagColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                               🏋️
                             </div>
                             <div>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{g.patientName}</p>
-                              <p style={{ margin: 0, fontSize: 12, color: AMBER, marginTop: 2 }}>
-                                {days === null
-                                  ? 'No workouts logged yet'
-                                  : `Last workout ${days} day${days !== 1 ? 's' : ''} ago`}
-                              </p>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{item.patientName}</p>
+                              <p style={{ margin: 0, fontSize: 12, color: flagColor, marginTop: 2 }}>{subtitle}</p>
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                              onClick={() => router.push(`/patients/${g.patient_id}`)}
+                              onClick={() => router.push(`/patients/${item.patient_id}`)}
                               style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
                               View Progress
                             </button>
                             <button
-                              onClick={() => router.push(`/plans/new?patient=${g.patient_id}`)}
+                              onClick={() => router.push(`/plans/new?patient=${item.patient_id}`)}
                               style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
                               + Add Plan
