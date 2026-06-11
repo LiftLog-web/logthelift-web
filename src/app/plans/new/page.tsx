@@ -246,6 +246,20 @@ function NewPlanInner() {
             setActiveDayId(loadedDays[0]?.id ?? 'day-1');
             const firstUnit = loadedDays[0]?.exercises[0]?.unit;
             if (firstUnit) setPreferredUnit(firstUnit);
+            // Derive weeks for breadcrumb chips (raw days exercises may carry weeks arrays)
+            const wkSet = new Set<number>();
+            for (const day of (raw.days as any[])) {
+              for (const e of (day.exercises ?? [])) {
+                if (e.weeks?.length > 0) {
+                  for (const w of e.weeks) { if (typeof w.week === 'number') wkSet.add(w.week); }
+                  if (e.sets?.length > 0) wkSet.add(1);
+                } else {
+                  wkSet.add(1);
+                }
+              }
+            }
+            const derivedWeeks = Array.from(wkSet).sort((a, b) => a - b);
+            if (derivedWeeks.length > 1) setPlanWeeks(derivedWeeks);
           } else {
             // Old flat format
             const flatRaw: any[] = Array.isArray(raw) ? raw : [];
