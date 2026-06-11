@@ -47,6 +47,7 @@ interface PlanExercise {
   supersetWithId?: string;
   unit?: WeightUnit;   // per-exercise unit preference
   rest?: number;       // rest between sets in seconds
+  allWeeks?: { week: number; sets: WorkoutSet[] }[];  // multi-week set data (week 1 mirrors sets)
 }
 
 interface PlanDay {
@@ -123,6 +124,7 @@ function NewPlanInner() {
   });
   const preferredUnitRef = useRef<WeightUnit>('lbs');
   const [planWeeks, setPlanWeeks] = useState<number[]>([]);
+  const [activeWeek, setActiveWeek] = useState(1);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -231,16 +233,23 @@ function NewPlanInner() {
             const loadedDays: PlanDay[] = (raw.days as any[]).map((day: any) => ({
               id: day.id ?? String(Math.random()),
               label: day.label ?? 'Day',
-              exercises: (day.exercises ?? []).map((e: any) => ({
-                id: e.id ?? String(Math.random()),
-                exercise: e.exercise,
-                sets: e.sets ?? [],
-                targetSets: e.targetSets ?? e.sets?.length ?? 3,
-                notes: e.notes ?? '',
-                supersetWithId: e.supersetWithId,
-                unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
-                rest: e.rest ?? undefined,
-              })),
+              exercises: (day.exercises ?? []).map((e: any) => {
+                const allWeeks: { week: number; sets: WorkoutSet[] }[] | undefined =
+                  e.weeks?.length > 0
+                    ? [{ week: 1, sets: e.sets ?? [] }, ...(e.weeks as any[]).map((w: any) => ({ week: w.week as number, sets: w.sets ?? [] }))]
+                    : undefined;
+                return {
+                  id: e.id ?? String(Math.random()),
+                  exercise: e.exercise,
+                  sets: e.sets ?? [],
+                  targetSets: e.targetSets ?? e.sets?.length ?? 3,
+                  notes: e.notes ?? '',
+                  supersetWithId: e.supersetWithId,
+                  unit: e.unit ?? e.sets?.[0]?.unit ?? undefined,
+                  rest: e.rest ?? undefined,
+                  allWeeks,
+                };
+              }),
             }));
             setDays(loadedDays);
             setActiveDayId(loadedDays[0]?.id ?? 'day-1');
@@ -301,6 +310,22 @@ function NewPlanInner() {
   const updateActiveDay = useCallback((fn: (exs: PlanExercise[]) => PlanExercise[]) => {
     setDays(prev => prev.map(d => d.id === activeDayId ? { ...d, exercises: fn(d.exercises) } : d));
   }, [activeDayId]);
+
+  const switchWeek = useCallback((newWeek: number) => {
+    if (newWeek === activeWeek) return;
+    setDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.map(pe => {
+        if (!pe.allWeeks) return pe;
+        const updatedAllWeeks = pe.allWeeks.map(w =>
+          w.week === activeWeek ? { ...w, sets: pe.sets } : w
+        );
+        const newSets = updatedAllWeeks.find(w => w.week === newWeek)?.sets ?? pe.sets;
+        return { ...pe, sets: newSets, allWeeks: updatedAllWeeks };
+      })
+    })));
+    setActiveWeek(newWeek);
+  }, [activeWeek]);
 
   const addDay = () => {
     const newId = `day-${Date.now()}`;
@@ -564,7 +589,36 @@ function NewPlanInner() {
     setSaveError('');
     const sb = getSupabase();
 
-    const exercisesPayload = { frequencyPerWeek, days };
+    const exercisesPayload = {
+      frequencyPerWeek,
+      days: days.map(d => ({
+        ...d,
+        exercises: d.exercises.map(pe => {
+          if (!pe.allWeeks) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { allWeeks: _, ...rest } = pe as any;
+            return rest;
+          }
+          // Commit current active week edits into allWeeks before saving
+          const committed = pe.allWeeks.map(w =>
+            w.week === activeWeek ? { ...w, sets: pe.sets } : w
+          );
+          const w1 = committed.find(w => w.week === 1);
+          const others = committed.filter(w => w.week !== 1);
+          return {
+            id: pe.id,
+            exercise: pe.exercise,
+            sets: w1?.sets ?? pe.sets,
+            targetSets: pe.targetSets,
+            notes: pe.notes,
+            supersetWithId: pe.supersetWithId,
+            unit: pe.unit,
+            rest: pe.rest,
+            ...(others.length > 0 ? { weeks: others } : {}),
+          };
+        }),
+      })),
+    };
 
     const payload = {
       practitioner_id: practId,
@@ -828,6 +882,29 @@ function NewPlanInner() {
 
         {/* Right: Plan builder */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Week selector (only for multi-week plans) */}
+          {planWeeks.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 6px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, background: 'var(--bg)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Week</span>
+              {planWeeks.map(w => (
+                <button
+                  key={w}
+                  onClick={() => switchWeek(w)}
+                  style={{
+                    background: activeWeek === w ? `${PURPLE}25` : 'var(--card-alt)',
+                    color: activeWeek === w ? PURPLE : 'var(--text-muted)',
+                    border: `1px solid ${activeWeek === w ? PURPLE : 'var(--border-strong)'}`,
+                    borderRadius: 8, padding: '5px 14px', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >W{w}</button>
+              ))}
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 8 }}>
+                Editing Week {activeWeek} sets — switch weeks to adjust per-week progressions
+              </span>
+            </div>
+          )}
 
           {/* Day tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 0', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
