@@ -3,6 +3,7 @@
 /* ── Theme variables ──────────────────────────────────── */
 :root {
   --bg:            #0f1117;
+  --modal-bg:      #1a1d26;
   --card:          rgba(255,255,255,0.04);
   --card-alt:      rgba(255,255,255,0.02);
   --border:        rgba(255,255,255,0.10);
@@ -41,6 +42,7 @@
 
 [data-theme="light"] {
   --bg:            #f0f3f8;
+  --modal-bg:      #ffffff;
   --card:          #ffffff;
   --card-alt:      #f7f9fc;
   --border:        rgba(0,0,0,0.10);

@@ -545,7 +545,7 @@ export default function PlansPage() {
           onClick={() => { if (!savingWeeks) { setEditingPlan(null); setEditingTemplateFull(null); } }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
         >
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 420, padding: 28 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 420, padding: 28 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Edit Shared Weeks</h2>

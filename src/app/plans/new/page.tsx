@@ -122,6 +122,7 @@ function NewPlanInner() {
     return 'lbs';
   });
   const preferredUnitRef = useRef<WeightUnit>('lbs');
+  const [planWeeks, setPlanWeeks] = useState<number[]>([]);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -247,7 +248,20 @@ function NewPlanInner() {
             if (firstUnit) setPreferredUnit(firstUnit);
           } else {
             // Old flat format
-            const loaded: PlanExercise[] = (Array.isArray(raw) ? raw : []).map((e: any) => ({
+            const flatRaw: any[] = Array.isArray(raw) ? raw : [];
+            // Derive weeks for breadcrumb display
+            const wkSet = new Set<number>();
+            for (const e of flatRaw) {
+              if (e.weeks?.length > 0) {
+                for (const w of e.weeks) { if (typeof w.week === 'number') wkSet.add(w.week); }
+                if (e.sets?.length > 0) wkSet.add(1);
+              } else {
+                wkSet.add(1);
+              }
+            }
+            const derivedWeeks = Array.from(wkSet).sort((a, b) => a - b);
+            if (derivedWeeks.length > 1) setPlanWeeks(derivedWeeks);
+            const loaded: PlanExercise[] = flatRaw.map((e: any) => ({
               id: e.id ?? String(Math.random()),
               exercise: e.exercise,
               sets: e.sets ?? [],
@@ -615,9 +629,17 @@ function NewPlanInner() {
 
       {/* Sub-header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: 'var(--text)', fontSize: 13 }}>
+        <span style={{ color: 'var(--text)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <a href="/plans" style={{ color: 'var(--text)', textDecoration: 'none' }}>Plans</a>
           {' / '}{editId ? 'Edit' : 'New'}
+          {editId && planName && (
+            <span style={{ color: 'var(--text-muted)' }}>— {planName}</span>
+          )}
+          {editId && planWeeks.map(w => (
+            <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+              W{w}
+            </span>
+          ))}
         </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {saveError && <span style={{ color: '#EF4444', fontSize: 13 }}>{saveError}</span>}
