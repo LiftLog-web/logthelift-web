@@ -310,6 +310,13 @@ export default function TemplateEditorPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
+  // Escape closes the nav guard modal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavGuardHref(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const totalWeeks = numWeeks(days);
 
   // ── Day management ────────────────────────────────────────────────────────
@@ -1179,7 +1186,7 @@ export default function TemplateEditorPage() {
 
       {/* Unsaved changes guard */}
       {navGuardHref !== null && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div onClick={() => setNavGuardHref(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 32px', maxWidth: 420, width: '90%' }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Unsaved changes</h3>
             <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: 14, lineHeight: '1.5' }}>
