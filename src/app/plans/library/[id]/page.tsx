@@ -279,12 +279,12 @@ export default function TemplateEditorPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [muscleDropdownOpen]);
 
-  // Enable dirty tracking after initial data has loaded
+  // Enable dirty tracking only after all data has loaded
   useEffect(() => {
-    if (!authed) return;
-    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 300);
+    if (loading) return;
+    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 50);
     return () => clearTimeout(id);
-  }, [authed]);
+  }, [loading]);
 
   // Mark dirty when template data changes
   useEffect(() => {
@@ -1162,12 +1162,12 @@ export default function TemplateEditorPage() {
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
             <div style={{ marginBottom: 16 }}>
               {[
-                { label: 'Upper Body', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
-                { label: 'Lower Body', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
-                { label: 'Activities', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
+                { label: 'Upper Body', color: '#60A5FA', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
+                { label: 'Lower Body', color: '#4ADE80', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
+                { label: 'Activities', color: '#FB923C', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
               ].map(sec => (
-                <div key={sec.label} style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                <div key={sec.label} style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: sec.color, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5, borderLeft: `3px solid ${sec.color}`, paddingLeft: 7 }}>{sec.label}</span>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                     {sec.members.map(mg => (
                       <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>

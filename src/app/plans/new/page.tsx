@@ -130,6 +130,7 @@ function NewPlanInner() {
 
   const isDirtyRef       = useRef(false);
   const dirtyEnabledRef  = useRef(false);
+  const [loadDone,     setLoadDone]     = useState(false);
   const [navGuardHref, setNavGuardHref] = useState<string | null>(null);
   const { register: registerGuard, unregister: unregisterGuard } = useNavGuard();
 
@@ -311,6 +312,7 @@ function NewPlanInner() {
           }
         }
       }
+      setLoadDone(true);
     });
   }, [router, editId]);
 
@@ -405,12 +407,12 @@ function NewPlanInner() {
   // Keep ref in sync so addExercise (memoised) always reads the latest unit
   useEffect(() => { preferredUnitRef.current = preferredUnit; }, [preferredUnit]);
 
-  // Enable dirty tracking after initial data has loaded
+  // Enable dirty tracking only after all data has loaded
   useEffect(() => {
-    if (!authed) return;
-    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 300);
+    if (!loadDone) return;
+    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 50);
     return () => clearTimeout(id);
-  }, [authed]);
+  }, [loadDone]);
 
   // Mark dirty when plan data changes
   useEffect(() => {
@@ -1547,12 +1549,12 @@ function NewPlanInner() {
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
             <div style={{ marginBottom: 16 }}>
               {[
-                { label: 'Upper Body', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
-                { label: 'Lower Body', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
-                { label: 'Activities', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
+                { label: 'Upper Body', color: '#60A5FA', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
+                { label: 'Lower Body', color: '#4ADE80', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
+                { label: 'Activities', color: '#FB923C', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
               ].map(sec => (
-                <div key={sec.label} style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                <div key={sec.label} style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: sec.color, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5, borderLeft: `3px solid ${sec.color}`, paddingLeft: 7 }}>{sec.label}</span>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                     {sec.members.map(mg => (
                       <button key={mg} onClick={() => setNewCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: newCustomMuscle === mg ? TEAL : 'var(--input-bg)', color: newCustomMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
