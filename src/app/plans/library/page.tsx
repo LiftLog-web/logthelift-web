@@ -199,7 +199,7 @@ export default function PlanLibraryPage() {
       .insert({ practitioner_id: userId, name: '', description: null, exercises: [] })
       .select()
       .single();
-    if (!error && data) router.push(`/plans/library/${data.id}`);
+    if (!error && data) router.push(`/plans/library/${data.id}?new=1`);
     else setCreating(false);
   };
 

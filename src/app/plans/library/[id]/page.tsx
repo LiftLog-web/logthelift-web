@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
@@ -133,7 +133,10 @@ function parseExercise(e: any): TemplateExercise {
 export default function TemplateEditorPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const templateId = params.id as string;
+  // Tracks whether this template was just created (never saved by the user)
+  const isNewRef = useRef(searchParams.get('new') === '1');
 
   const [authed,      setAuthed]      = useState(false);
   const [loading,     setLoading]     = useState(true);
@@ -293,13 +296,16 @@ export default function TemplateEditorPage() {
   }, [name, description, days, frequencyPerWeek]);
 
   // Register/unregister the nav guard callback
-  const guardedNavigate = useCallback((href: string) => {
-    if (isDirtyRef.current) {
+  const guardedNavigate = useCallback(async (href: string) => {
+    if (isDirtyRef.current && !isNewRef.current) {
       setNavGuardHref(href);
     } else {
+      if (isNewRef.current) {
+        await getSupabase().from('plan_templates').delete().eq('id', templateId);
+      }
       router.push(href);
     }
-  }, [router]);
+  }, [router, templateId]);
 
   useEffect(() => {
     registerGuard(guardedNavigate);
@@ -596,6 +602,7 @@ export default function TemplateEditorPage() {
     setSaving(false);
     if (error) { alert('Could not save: ' + error.message); return; }
     isDirtyRef.current = false;
+    isNewRef.current = false;
     router.push('/plans/library');
   };
 
