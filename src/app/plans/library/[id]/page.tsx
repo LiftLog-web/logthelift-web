@@ -799,7 +799,7 @@ export default function TemplateEditorPage() {
             {sidebarOpen && <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: 'var(--text)', whiteSpace: 'nowrap' }}>Exercise Library</p>}
           </div>
 
-          {sidebarOpen && !showCustomForm && (
+          {sidebarOpen && (
             <>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                 <input
@@ -855,15 +855,14 @@ export default function TemplateEditorPage() {
                 {filteredExercises.length === 0 && (
                   <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
                 )}
-              </div>
-
-              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-                <button
-                  onClick={() => { setShowCustomForm(true); setCustomName(search); }}
-                  style={{ width: '100%', padding: '10px 14px', background: 'rgba(95,207,191,0.08)', border: `1px dashed ${TEAL}`, borderRadius: 10, color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
-                >
-                  + Create custom exercise{search ? ` "${search}"` : ''}
-                </button>
+                <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, padding: '8px 4px' }}>
+                  <button
+                    onClick={() => { setShowCustomForm(true); setCustomName(search); }}
+                    style={{ width: '100%', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + Create custom exercise{search ? ` "${search}"` : ''}
+                  </button>
+                </div>
               </div>
             </>
           )}
