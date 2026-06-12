@@ -868,53 +868,6 @@ export default function TemplateEditorPage() {
             </>
           )}
 
-          {sidebarOpen && showCustomForm && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-              <button onClick={() => setShowCustomForm(false)} style={{ background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 0 12px 0', display: 'block' }}>‹ Back to search</button>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>Add an exercise that isn't in the standard library.</p>
-
-              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
-              <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Bulgarian Split Squat" autoFocus style={{ width: '100%', background: 'var(--card-alt)', border: `1px solid ${TEAL}`, borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }} />
-
-              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
-              <div style={{ marginBottom: 14 }}>
-                {[
-                  { label: 'Upper', members: ['Chest','Shoulders','Back','Biceps','Triceps','Forearms'] },
-                  { label: 'Lower', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors'] },
-                  { label: 'Core', members: ['Core'] },
-                  { label: 'Activity', members: ['Cardio','Plyometrics','Balance','Isometrics','Pilates','Yoga'] },
-                  { label: 'Physio', members: ['Hip Flexors','Rotator Cuff','Lumbar','Cervical','Ankle & Foot'] },
-                ].map(sec => (
-                  <div key={sec.label} style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                      {sec.members.map(mg => (
-                        <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
-                  <button key={eq} onClick={() => setCustomEquip(eq)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}>{eq}</button>
-                ))}
-              </div>
-
-              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-                {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
-                  <button key={val} onClick={() => setCustomType(val)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}>{label}</button>
-                ))}
-              </div>
-
-              <button onClick={handleAddCustomExercise} disabled={!customName.trim()} style={{ width: '100%', background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}>
-                Add {customName.trim() || 'exercise'} to plan
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Right: Plan builder */}
@@ -1192,6 +1145,59 @@ export default function TemplateEditorPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
               <button onClick={() => handleSaveVideo(addVideoTarget, videoUrl)} disabled={!videoUrl.trim() || savingVideo} style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>{savingVideo ? 'Saving…' : 'Save Video Link'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create custom exercise modal */}
+      {showCustomForm && (
+        <div onClick={() => setShowCustomForm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 400, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ color: 'var(--text)', fontWeight: 700, fontSize: 18, margin: '0 0 20px 0' }}>Create Custom Exercise</h3>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
+            <input autoFocus value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Bulgarian Split Squat" onKeyDown={e => { if (e.key === 'Enter') handleAddCustomExercise(); }} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }} />
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
+            <div style={{ marginBottom: 16 }}>
+              {[
+                { label: 'Upper Body', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
+                { label: 'Lower Body', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
+                { label: 'Activities', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
+              ].map(sec => (
+                <div key={sec.label} style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {sec.members.map(mg => (
+                      <button key={mg} onClick={() => setCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: customMuscle === mg ? TEAL : 'var(--input-bg)', color: customMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Equipment</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {['Barbell','Dumbbell','Kettlebell','Cable','Machine','Bodyweight','Other'].map(eq => (
+                <button key={eq} onClick={() => setCustomEquip(eq)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customEquip === eq ? TEAL : 'var(--input-bg)', color: customEquip === eq ? '#0f1117' : 'var(--text-muted)' }}>{eq}</button>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+              {([['weighted','Weight + Reps'],['duration','Duration'],['cardio','Cardio']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setCustomType(val)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: customType === val ? TEAL : 'var(--input-bg)', color: customType === val ? '#0f1117' : 'var(--text-muted)' }}>{label}</button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowCustomForm(false); setCustomName(''); }} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleAddCustomExercise} disabled={!customName.trim()} style={{ flex: 1, background: customName.trim() ? TEAL : 'var(--border)', color: customName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14, cursor: customName.trim() ? 'pointer' : 'not-allowed' }}>
+                Add to template
+              </button>
             </div>
           </div>
         </div>

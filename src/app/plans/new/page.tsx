@@ -947,10 +947,10 @@ function NewPlanInner() {
             )}
             <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, padding: '8px 4px' }}>
               <button
-                onClick={() => setShowNewCustom(true)}
+                onClick={() => { setNewCustomName(search); setShowNewCustom(true); }}
                 style={{ width: '100%', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
               >
-                + Create custom exercise
+                + Create custom exercise{search ? ` "${search}"` : ''}
               </button>
             </div>
           </div>}
@@ -1545,14 +1545,22 @@ function NewPlanInner() {
             />
 
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Muscle Group</label>
-            <select
-              value={newCustomMuscle}
-              onChange={e => setNewCustomMuscle(e.target.value)}
-              style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}
-            >
-              <option value="">Select muscle group</option>
-              {MUSCLE_GROUPS.map(mg => <option key={mg} value={mg}>{mg}</option>)}
-            </select>
+            <div style={{ marginBottom: 16 }}>
+              {[
+                { label: 'Upper Body', members: ['Chest','Back','Shoulders','Biceps','Triceps','Forearms'] },
+                { label: 'Lower Body', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors','Hip Flexors','Core'] },
+                { label: 'Activities', members: ['Cardio','Pilates','Yoga','Plyometrics','Balance','Isometrics','Rotator Cuff','Ankle & Foot','Lumbar','Cervical'] },
+              ].map(sec => (
+                <div key={sec.label} style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {sec.members.map(mg => (
+                      <button key={mg} onClick={() => setNewCustomMuscle(mg)} style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: newCustomMuscle === mg ? TEAL : 'var(--input-bg)', color: newCustomMuscle === mg ? '#0f1117' : 'var(--text-muted)' }}>{mg}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Tracking Type</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
