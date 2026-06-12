@@ -533,6 +533,7 @@ export default function TemplateEditorPage() {
       muscle_group: customMuscle,
       equipment: customEquip || 'Bodyweight',
       type: customType,
+      creator_id: userId,
     }).select('id').single();
     const exId = inserted?.id ? `custom_${inserted.id}` : `custom_${uid()}`;
     const ex: Exercise = {

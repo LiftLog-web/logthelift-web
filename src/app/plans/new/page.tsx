@@ -370,6 +370,7 @@ function NewPlanInner() {
       muscle_group: newCustomMuscle || 'Other',
       equipment: 'Custom',
       type: newCustomType,
+      creator_id: practId,
     }).select('id').single();
     const exId = inserted?.id ? `custom_${inserted.id}` : `custom_${Date.now()}`;
     const ex: Exercise = { id: exId, name: newCustomName.trim(), muscleGroup: newCustomMuscle || 'Other', equipment: 'Custom', type: newCustomType };
