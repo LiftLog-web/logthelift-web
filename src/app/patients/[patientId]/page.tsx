@@ -648,7 +648,7 @@ export default function PatientProgressPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {assignedPlans.map(plan => (
-                <div key={plan.id} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div key={plan.id} onClick={() => router.push(`/plans/new?edit=${plan.id}`)} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', cursor: 'pointer' }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', flex: 1, minWidth: 0 }}>{plan.name}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {plan.weeks.map(w => (
@@ -656,7 +656,7 @@ export default function PatientProgressPage() {
                     ))}
                     {plan.allWeeks.length > 1 && (
                       <button
-                        onClick={() => { setEditingPlan(plan); setEditingPlanWeeks([...plan.weeks]); }}
+                        onClick={e => { e.stopPropagation(); setEditingPlan(plan); setEditingPlanWeeks([...plan.weeks]); }}
                         style={{ background: `${PURPLE}20`, border: `1px solid ${PURPLE}50`, color: PURPLE, borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                       >
                         Edit Weeks
