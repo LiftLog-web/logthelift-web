@@ -1533,8 +1533,8 @@ function NewPlanInner() {
 
       {/* Create custom exercise modal */}
       {showNewCustom && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 360, maxWidth: '90vw' }}>
+        <div onClick={() => setShowNewCustom(false)} onKeyDown={e => { if (e.key === 'Escape') setShowNewCustom(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 360, maxWidth: '90vw' }}>
             <h3 style={{ color: 'var(--text)', fontWeight: 700, fontSize: 18, margin: '0 0 20px 0' }}>Create Custom Exercise</h3>
 
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Exercise Name</label>
