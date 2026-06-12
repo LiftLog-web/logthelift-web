@@ -181,6 +181,7 @@ export default function TemplateEditorPage() {
   const [customMuscle,   setCustomMuscle]   = useState(MUSCLE_GROUPS[0]);
   const [customEquip,    setCustomEquip]    = useState('Bodyweight');
   const [customType,     setCustomType]     = useState<'weighted' | 'duration' | 'cardio'>('weighted');
+  const [customExercises, setCustomExercises] = useState<Exercise[]>([]);
 
   // Substitution modal
   const [subTarget, setSubTarget] = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
@@ -258,6 +259,10 @@ export default function TemplateEditorPage() {
 
       setDays(loadedDays);
       setActiveDayId(loadedDays[0]?.id ?? 'day-1');
+
+      const { data: custExs } = await sb.from('custom_exercises').select('id, name, muscle_group, equipment, type').eq('creator_id', data.session.user.id);
+      setCustomExercises((custExs ?? []).map((e: any) => ({ id: `custom_${e.id}`, name: e.name, muscleGroup: e.muscle_group, equipment: e.equipment, type: e.type as 'weighted' | 'duration' | 'cardio' })));
+
       setLoading(false);
     });
   }, [router, templateId]);
@@ -515,15 +520,23 @@ export default function TemplateEditorPage() {
     updateActiveDay(prev => prev.map(ex => ex.id === exId ? { ...ex, notes: value } : ex));
   };
 
-  const handleAddCustomExercise = () => {
+  const handleAddCustomExercise = async () => {
     if (!customName.trim()) return;
+    const { data: inserted } = await getSupabase().from('custom_exercises').insert({
+      name: customName.trim(),
+      muscle_group: customMuscle,
+      equipment: customEquip || 'Bodyweight',
+      type: customType,
+    }).select('id').single();
+    const exId = inserted?.id ? `custom_${inserted.id}` : `custom_${uid()}`;
     const ex: Exercise = {
-      id: `custom_${uid()}`,
+      id: exId,
       name: customName.trim(),
       muscleGroup: customMuscle,
-      equipment: customEquip,
+      equipment: customEquip || 'Bodyweight',
       type: customType,
     };
+    setCustomExercises(prev => [ex, ...prev]);
     handleAddExercise(ex);
     setCustomName('');
     setShowCustomForm(false);
@@ -715,7 +728,7 @@ export default function TemplateEditorPage() {
     (subSearch === '' || e.name.toLowerCase().includes(subSearch.toLowerCase()))
   );
 
-  const filteredExercises = EXERCISES.filter(ex => {
+  const filteredExercises = [...customExercises, ...EXERCISES].filter(ex => {
     const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
     const matchesMuscle = muscleFilter === 'All'
       ? true

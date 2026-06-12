@@ -114,6 +114,7 @@ function NewPlanInner() {
   const [newCustomName,    setNewCustomName]    = useState('');
   const [newCustomMuscle,  setNewCustomMuscle]  = useState('');
   const [newCustomType,    setNewCustomType]    = useState<'weighted' | 'duration' | 'cardio'>('weighted');
+  const [customExercises,  setCustomExercises]  = useState<Exercise[]>([]);
   const muscleDropdownRef = useRef<HTMLDivElement>(null);
   const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(() => {
@@ -168,6 +169,9 @@ function NewPlanInner() {
         .map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles)
         .filter(Boolean);
       setPatients(pats);
+
+      const { data: custExs } = await sb.from('custom_exercises').select('id, name, muscle_group, equipment, type').eq('creator_id', uid);
+      setCustomExercises((custExs ?? []).map((e: any) => ({ id: `custom_${e.id}`, name: e.name, muscleGroup: e.muscle_group, equipment: e.equipment, type: e.type as 'weighted' | 'duration' | 'cardio' })));
 
       if (presetPatient) setPatientId(presetPatient);
 
@@ -357,7 +361,25 @@ function NewPlanInner() {
     setEditingDayId(null);
   };
 
-  const filteredExercises = EXERCISES.filter(ex => {
+  const handleCreateCustomExercise = async () => {
+    if (!newCustomName.trim()) return;
+    const { data: inserted } = await getSupabase().from('custom_exercises').insert({
+      name: newCustomName.trim(),
+      muscle_group: newCustomMuscle || 'Other',
+      equipment: 'Custom',
+      type: newCustomType,
+    }).select('id').single();
+    const exId = inserted?.id ? `custom_${inserted.id}` : `custom_${Date.now()}`;
+    const ex: Exercise = { id: exId, name: newCustomName.trim(), muscleGroup: newCustomMuscle || 'Other', equipment: 'Custom', type: newCustomType };
+    setCustomExercises(prev => [ex, ...prev]);
+    addExercise(ex);
+    setShowNewCustom(false);
+    setNewCustomName('');
+    setNewCustomMuscle('');
+    setNewCustomType('weighted');
+  };
+
+  const filteredExercises = [...customExercises, ...EXERCISES].filter(ex => {
     const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
     const matchesMuscle = muscleFilter === 'All'
       ? true
@@ -1547,15 +1569,7 @@ function NewPlanInner() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  if (!newCustomName.trim()) return;
-                  const ex: Exercise = { id: `custom-${Date.now()}`, name: newCustomName.trim(), muscleGroup: newCustomMuscle || 'Other', equipment: 'Custom', type: newCustomType };
-                  addExercise(ex);
-                  setShowNewCustom(false);
-                  setNewCustomName('');
-                  setNewCustomMuscle('');
-                  setNewCustomType('weighted');
-                }}
+                onClick={handleCreateCustomExercise}
                 disabled={!newCustomName.trim()}
                 style={{ flex: 1, background: newCustomName.trim() ? TEAL : 'var(--border)', color: newCustomName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14, cursor: newCustomName.trim() ? 'pointer' : 'not-allowed' }}
               >
