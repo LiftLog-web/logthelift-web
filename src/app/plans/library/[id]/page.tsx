@@ -858,7 +858,7 @@ export default function TemplateEditorPage() {
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, padding: '8px 4px' }}>
                   <button
                     onClick={() => { setShowCustomForm(true); setCustomName(search); }}
-                    style={{ width: '100%', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    style={{ width: '100%', background: `rgba(95,207,191,0.12)`, border: `2px dashed ${TEAL}`, borderRadius: 8, padding: '9px 12px', color: TEAL, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                   >
                     + Create custom exercise{search ? ` "${search}"` : ''}
                   </button>
