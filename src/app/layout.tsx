@@ -4,6 +4,7 @@ import './globals.css';
 import NavShell from '@/components/NavShell';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NavGuardProvider } from '@/lib/NavGuardContext';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -27,9 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col antialiased">
         <ThemeProvider>
-          <NavShell />
-          <ThemeToggle />
-          {children}
+          <NavGuardProvider>
+            <NavShell />
+            <ThemeToggle />
+            {children}
+          </NavGuardProvider>
         </ThemeProvider>
       </body>
     </html>

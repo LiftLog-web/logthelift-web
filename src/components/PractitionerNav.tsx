@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { useNavGuard } from '@/lib/NavGuardContext';
 
 const TEAL = '#5fcfbf';
 
@@ -12,8 +13,9 @@ const NAV_ITEMS = [
 ];
 
 export default function PractitionerNav({ rightSlot }: { rightSlot?: React.ReactNode }) {
-  const router   = useRouter();
-  const pathname = usePathname();
+  const router    = useRouter();
+  const pathname  = usePathname();
+  const { guardFn } = useNavGuard();
 
   const isActive = (href: string) => {
     if (href === '/plans') return pathname === '/plans' || pathname.startsWith('/plans/new');
@@ -40,7 +42,7 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
         {NAV_ITEMS.map(item => (
           <button
             key={item.href}
-            onClick={() => router.push(item.href)}
+            onClick={() => guardFn ? guardFn(item.href) : router.push(item.href)}
             style={{
               background: 'none',
               border: 'none',

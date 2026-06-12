@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
@@ -185,6 +186,11 @@ export default function TemplateEditorPage() {
   const [subTarget, setSubTarget] = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
   const [subSearch, setSubSearch] = useState('');
 
+  const isDirtyRef       = useRef(false);
+  const dirtyEnabledRef  = useRef(false);
+  const [navGuardHref, setNavGuardHref] = useState<string | null>(null);
+  const { register: registerGuard, unregister: unregisterGuard } = useNavGuard();
+
   // Derived active-day values
   const activeDay      = days.find(d => d.id === activeDayId) ?? days[0];
   const exercises      = activeDay?.exercises ?? [];
@@ -267,6 +273,42 @@ export default function TemplateEditorPage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [muscleDropdownOpen]);
+
+  // Enable dirty tracking after initial data has loaded
+  useEffect(() => {
+    if (!authed) return;
+    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 300);
+    return () => clearTimeout(id);
+  }, [authed]);
+
+  // Mark dirty when template data changes
+  useEffect(() => {
+    if (!dirtyEnabledRef.current) return;
+    isDirtyRef.current = true;
+  }, [name, description, days, frequencyPerWeek]);
+
+  // Register/unregister the nav guard callback
+  const guardedNavigate = useCallback((href: string) => {
+    if (isDirtyRef.current) {
+      setNavGuardHref(href);
+    } else {
+      router.push(href);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    registerGuard(guardedNavigate);
+    return () => unregisterGuard();
+  }, [guardedNavigate, registerGuard, unregisterGuard]);
+
+  // Warn on browser tab close/refresh
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const totalWeeks = numWeeks(days);
 
@@ -533,6 +575,7 @@ export default function TemplateEditorPage() {
       .eq('id', templateId);
     setSaving(false);
     if (error) { alert('Could not save: ' + error.message); return; }
+    isDirtyRef.current = false;
     router.push('/plans/library');
   };
 
@@ -687,13 +730,13 @@ export default function TemplateEditorPage() {
         </span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
-            onClick={() => router.push('/plans/library')}
+            onClick={() => guardedNavigate('/plans/library')}
             style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
             Cancel
           </button>
           <button
-            onClick={() => router.push(`/plans/new?template=${templateId}`)}
+            onClick={() => guardedNavigate(`/plans/new?template=${templateId}`)}
             style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
           >
             Assign to Patient →
@@ -1129,6 +1172,32 @@ export default function TemplateEditorPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setAddVideoTarget(null)} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
               <button onClick={() => handleSaveVideo(addVideoTarget, videoUrl)} disabled={!videoUrl.trim() || savingVideo} style={{ flex: 2, background: videoUrl.trim() ? TEAL : 'var(--input-bg)', color: videoUrl.trim() ? '#0f1117' : 'var(--text-dim)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: videoUrl.trim() ? 'pointer' : 'not-allowed' }}>{savingVideo ? 'Saving…' : 'Save Video Link'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved changes guard */}
+      {navGuardHref !== null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 32px', maxWidth: 420, width: '90%' }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Unsaved changes</h3>
+            <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: 14, lineHeight: '1.5' }}>
+              You have unsaved changes to this template. If you leave now, your changes will be lost.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setNavGuardHref(null)}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 10, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={() => { isDirtyRef.current = false; router.push(navGuardHref); }}
+                style={{ flex: 1, background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Discard Changes
+              </button>
             </div>
           </div>
         </div>

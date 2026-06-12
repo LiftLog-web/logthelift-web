@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, useRef, Suspense, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
@@ -125,6 +126,11 @@ function NewPlanInner() {
   const preferredUnitRef = useRef<WeightUnit>('lbs');
   const [planWeeks, setPlanWeeks] = useState<number[]>([]);
   const [activeWeek, setActiveWeek] = useState(1);
+
+  const isDirtyRef       = useRef(false);
+  const dirtyEnabledRef  = useRef(false);
+  const [navGuardHref, setNavGuardHref] = useState<string | null>(null);
+  const { register: registerGuard, unregister: unregisterGuard } = useNavGuard();
 
   useEffect(() => {
     const sb = getSupabase();
@@ -376,6 +382,42 @@ function NewPlanInner() {
 
   // Keep ref in sync so addExercise (memoised) always reads the latest unit
   useEffect(() => { preferredUnitRef.current = preferredUnit; }, [preferredUnit]);
+
+  // Enable dirty tracking after initial data has loaded
+  useEffect(() => {
+    if (!authed) return;
+    const id = setTimeout(() => { dirtyEnabledRef.current = true; }, 300);
+    return () => clearTimeout(id);
+  }, [authed]);
+
+  // Mark dirty when plan data changes
+  useEffect(() => {
+    if (!dirtyEnabledRef.current) return;
+    isDirtyRef.current = true;
+  }, [planName, description, days, frequencyPerWeek, patientId, planWeeks]);
+
+  // Register/unregister the nav guard callback
+  const guardedNavigate = useCallback((href: string) => {
+    if (isDirtyRef.current) {
+      setNavGuardHref(href);
+    } else {
+      router.push(href);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    registerGuard(guardedNavigate);
+    return () => unregisterGuard();
+  }, [guardedNavigate, registerGuard, unregisterGuard]);
+
+  // Warn on browser tab close/refresh
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const addExercise = useCallback((ex: Exercise) => {
     updateActiveDay(prev => {
@@ -659,6 +701,7 @@ function NewPlanInner() {
       });
     }
 
+    isDirtyRef.current = false;
     router.push('/plans');
   };
 
@@ -715,7 +758,7 @@ function NewPlanInner() {
         </span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {saveError && <span style={{ color: '#EF4444', fontSize: 13 }}>{saveError}</span>}
-          <button onClick={() => router.push('/plans')} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
+          <button onClick={() => guardedNavigate('/plans')} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -1510,6 +1553,32 @@ function NewPlanInner() {
                 style={{ flex: 1, background: newCustomName.trim() ? TEAL : 'var(--border)', color: newCustomName.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 10, padding: '10px', fontWeight: 700, fontSize: 14, cursor: newCustomName.trim() ? 'pointer' : 'not-allowed' }}
               >
                 Add to plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved changes guard */}
+      {navGuardHref !== null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 32px', maxWidth: 420, width: '90%' }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Unsaved changes</h3>
+            <p style={{ margin: '0 0 24px', color: 'var(--text-muted)', fontSize: 14, lineHeight: '1.5' }}>
+              You have unsaved changes to this plan. If you leave now, your changes will be lost.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setNavGuardHref(null)}
+                style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text)', borderRadius: 10, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={() => { isDirtyRef.current = false; router.push(navGuardHref); }}
+                style={{ flex: 1, background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Discard Changes
               </button>
             </div>
           </div>
