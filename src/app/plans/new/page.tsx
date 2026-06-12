@@ -589,6 +589,10 @@ function NewPlanInner() {
     setSaveError('');
     const sb = getSupabase();
 
+    // Stamp the exercise-level unit onto every set so mobile can read it without a fallback
+    const stampUnit = (sets: any[], unit: string | undefined) =>
+      (sets ?? []).map((s: any) => (s.unit != null ? s : { ...s, ...(unit ? { unit } : {}) }));
+
     const exercisesPayload = {
       frequencyPerWeek,
       days: days.map(d => ({
@@ -597,7 +601,7 @@ function NewPlanInner() {
           if (!pe.allWeeks) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { allWeeks: _, ...rest } = pe as any;
-            return rest;
+            return { ...rest, sets: stampUnit(rest.sets, rest.unit) };
           }
           // Commit current active week edits into allWeeks before saving
           const committed = pe.allWeeks.map(w =>
@@ -608,13 +612,13 @@ function NewPlanInner() {
           return {
             id: pe.id,
             exercise: pe.exercise,
-            sets: w1?.sets ?? pe.sets,
+            sets: stampUnit(w1?.sets ?? pe.sets, pe.unit),
             targetSets: pe.targetSets,
             notes: pe.notes,
             supersetWithId: pe.supersetWithId,
             unit: pe.unit,
             rest: pe.rest,
-            ...(others.length > 0 ? { weeks: others } : {}),
+            ...(others.length > 0 ? { weeks: others.map(w => ({ ...w, sets: stampUnit(w.sets, pe.unit) })) } : {}),
           };
         }),
       })),
