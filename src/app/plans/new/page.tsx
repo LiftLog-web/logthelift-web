@@ -97,7 +97,7 @@ function NewPlanInner() {
   const [draggedId,     setDraggedId]     = useState<string | null>(null);
   const [dragOverId,   setDragOverId]   = useState<string | null>(null);
   const [supersetMode, setSupersetMode] = useState<string | null>(null);
-  const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
+  const [mediaMap,       setMediaMap]       = useState<Record<string, { id: string; type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
   const [addVideoTarget,   setAddVideoTarget]   = useState<string | null>(null);
   const [videoUrl,         setVideoUrl]         = useState('');
@@ -149,16 +149,16 @@ function NewPlanInner() {
       // Load media map so exercise cards can show demo badges + previews
       const { data: mediaItems } = await sb
         .from('exercise_media')
-        .select('exercise_name, media_type, file_path, url_link')
+        .select('id, exercise_name, media_type, file_path, url_link')
         .eq('practitioner_id', uid);
-      const map: Record<string, { type: string; signedUrl?: string; urlLink?: string }> = {};
+      const map: Record<string, { id: string; type: string; signedUrl?: string; urlLink?: string }> = {};
       await Promise.all((mediaItems ?? []).map(async m => {
         let signedUrl: string | undefined;
         if (m.media_type !== 'link' && m.file_path) {
           const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(m.file_path, 3600);
           signedUrl = su?.signedUrl ?? undefined;
         }
-        map[m.exercise_name] = { type: m.media_type, signedUrl, urlLink: m.url_link ?? undefined };
+        map[m.exercise_name] = { id: m.id, type: m.media_type, signedUrl, urlLink: m.url_link ?? undefined };
       }));
       setMediaMap(map);
 
@@ -565,7 +565,7 @@ function NewPlanInner() {
   const handleSaveVideo = async (exerciseName: string, url: string) => {
     if (!url.trim()) return;
     setSavingVideo(true);
-    const { error } = await getSupabase()
+    const { data: upserted, error } = await getSupabase()
       .from('exercise_media')
       .upsert(
         {
@@ -578,9 +578,11 @@ function NewPlanInner() {
           notes:           videoNotes.trim()       || null,
         },
         { onConflict: 'practitioner_id,exercise_name' }
-      );
-    if (!error) {
-      setMediaMap(prev => ({ ...prev, [exerciseName]: { type: 'link', urlLink: url.trim() } }));
+      )
+      .select('id')
+      .single();
+    if (!error && upserted) {
+      setMediaMap(prev => ({ ...prev, [exerciseName]: { id: upserted.id, type: 'link', urlLink: url.trim() } }));
       setVideoSaved(true);
       setTimeout(closeVideoModal, 2000);
     }
@@ -738,6 +740,19 @@ function NewPlanInner() {
 
     setSaving(false);
     if (error) { setSaveError(error.message); return; }
+
+    // Auto-share exercise media with the patient for every exercise in this plan that has a demo
+    if (patientId) {
+      const exerciseNames = days.flatMap(d => d.exercises.map(pe => pe.exercise.name));
+      const sharesPayload = [...new Set(exerciseNames)]
+        .map(name => mediaMap[name])
+        .filter((m): m is { id: string; type: string } => !!m?.id)
+        .map(m => ({ media_id: m.id, patient_id: patientId, practitioner_id: practId }));
+      if (sharesPayload.length > 0) {
+        await sb.from('exercise_media_shares')
+          .upsert(sharesPayload, { onConflict: 'media_id,patient_id' });
+      }
+    }
 
     if (saveToLibrary && !editId) {
       const libName = libraryName.trim() || planName.trim();
