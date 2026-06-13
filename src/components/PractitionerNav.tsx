@@ -2,14 +2,18 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useNavGuard } from '@/lib/NavGuardContext';
+import PatientsIcon from './icons/PatientsIcon';
+import PlanLibraryIcon from './icons/PlanLibraryIcon';
+import VideoLibraryIcon from './icons/VideoLibraryIcon';
+import ProfileIcon from './icons/ProfileIcon';
 
 const TEAL = '#5fcfbf';
 
 const NAV_ITEMS = [
-  { href: '/plans',         label: 'Patients',     icon: '📋' },
-  { href: '/plans/library', label: 'Plan Library',  icon: '📚' },
-  { href: '/media-library', label: 'Video Library', icon: '🎬' },
-  { href: '/profile',       label: 'Profile',       icon: '👤' },
+  { href: '/plans',         label: 'Patients',     Icon: PatientsIcon },
+  { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
+  { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
+  { href: '/profile',       label: 'Profile',       Icon: ProfileIcon },
 ];
 
 export default function PractitionerNav({ rightSlot }: { rightSlot?: React.ReactNode }) {
@@ -60,7 +64,7 @@ export default function PractitionerNav({ rightSlot }: { rightSlot?: React.React
               whiteSpace: 'nowrap',
             }}
           >
-            <span style={{ fontSize: 15 }}>{item.icon}</span>
+            <item.Icon size={24} />
             {item.label}
           </button>
         ))}
