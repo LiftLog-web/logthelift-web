@@ -741,14 +741,21 @@ function NewPlanInner() {
     setSaving(false);
     if (error) { setSaveError(error.message); return; }
 
-    // Auto-share exercise media with the patient for every exercise in this plan that has a demo
+    // Auto-share exercise media with the patient — fresh DB query so URLs added via Video Library
+    // are picked up even if they weren't in mediaMap when this page first loaded
     if (patientId) {
-      const exerciseNames = days.flatMap(d => d.exercises.map(pe => pe.exercise.name));
-      const sharesPayload = [...new Set(exerciseNames)]
-        .map(name => mediaMap[name])
-        .filter((m): m is { id: string; type: string } => !!m?.id)
-        .map(m => ({ media_id: m.id, patient_id: patientId, practitioner_id: practId }));
-      if (sharesPayload.length > 0) {
+      const exerciseNames = [...new Set(days.flatMap(d => d.exercises.map(pe => pe.exercise.name)))];
+      const { data: mediaForPlan } = await sb
+        .from('exercise_media')
+        .select('id')
+        .eq('practitioner_id', practId)
+        .in('exercise_name', exerciseNames);
+      if (mediaForPlan && mediaForPlan.length > 0) {
+        const sharesPayload = mediaForPlan.map(m => ({
+          media_id: m.id,
+          patient_id: patientId,
+          practitioner_id: practId,
+        }));
         await sb.from('exercise_media_shares')
           .upsert(sharesPayload, { onConflict: 'media_id,patient_id' });
       }
