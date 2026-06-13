@@ -110,11 +110,33 @@ function exStatus(ex: LoggedExercise): ExStatus {
   return 'partial';
 }
 
-function renderStars(rating: number): string {
-  const full  = Math.floor(rating);
-  const half  = rating - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+function Star({ fill, color, size = 18, uid }: { fill: number; color: string; size?: number; uid: string }) {
+  const clipId = `sc-${uid}`;
+  const pts = '10,1 12.9,7 19.5,7.6 14.75,11.9 16.18,18.4 10,14.9 3.82,18.4 5.25,11.9 0.5,7.6 7.1,7';
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" style={{ flexShrink: 0 }}>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="0" y="0" width={fill * 20} height="20" />
+        </clipPath>
+      </defs>
+      <polygon points={pts} fill="var(--border-strong)" />
+      <polygon points={pts} fill={color} clipPath={`url(#${clipId})`} />
+    </svg>
+  );
+}
+
+function StarRating({ rating, color, ratingKey }: { rating: number; color: string; ratingKey: string }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <Star key={i} fill={Math.min(1, Math.max(0, rating - (i - 1)))} color={color} uid={`${ratingKey}-${i}`} />
+        ))}
+      </div>
+      <p style={{ fontSize: 20, fontWeight: 800, color, margin: 0 }}>{fmtRating(rating)} / 5</p>
+    </div>
+  );
 }
 const STATUS_COLOR: Record<ExStatus, string> = {
   completed: TEAL,
@@ -186,9 +208,10 @@ export default function PatientProgressPage() {
   const [practName,     setPractName]     = useState('');
   const [workouts,      setWorkouts]      = useState<WorkoutLog[]>([]);
   const [loading,       setLoading]       = useState(true);
-  const [expanded,      setExpanded]      = useState<Set<string>>(new Set());
-  const [expandedEx,    setExpandedEx]    = useState<Set<string>>(new Set());
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [expanded,       setExpanded]      = useState<Set<string>>(new Set());
+  const [expandedEx,     setExpandedEx]    = useState<Set<string>>(new Set());
+  const [expandedWeeks,  setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [hoverWorkoutId, setHoverWorkoutId] = useState<string | null>(null);
   const [noAccess,      setNoAccess]      = useState(false);
   const [exerciseDemos, setExerciseDemos] = useState<Array<{ id: string; exercise_name: string; media_type: string; file_path: string; url_link: string | null }>>([]);
   const [demoSignedUrls, setDemoSignedUrls] = useState<Record<string, string>>({});
@@ -630,12 +653,12 @@ export default function PatientProgressPage() {
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
             { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
             { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: YELLOW },
-            { label: 'Avg Effectiveness', value: avgEffectiveness !== null ? `${renderStars(avgEffectiveness)} ${fmtRating(avgEffectiveness)} / 5` : '—', color: YELLOW },
-            { label: 'Avg Enjoyment',     value: avgEnjoyment !== null ? `${renderStars(avgEnjoyment)} ${fmtRating(avgEnjoyment)} / 5` : '—',             color: TEAL  },
+            { label: 'Avg Effectiveness', value: '—', color: YELLOW, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={YELLOW} ratingKey="eff" /> : null },
+            { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+              {'node' in s && s.node != null ? s.node : <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>}
             </div>
           ))}
         </div>
@@ -912,7 +935,9 @@ export default function PatientProgressPage() {
                             {/* Workout row */}
                             <button
                               onClick={() => toggleWorkout(w.id)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', background: isOpen ? `${PURPLE}0d` : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                              onMouseEnter={() => { if (!isOpen) setHoverWorkoutId(w.id); }}
+                              onMouseLeave={() => setHoverWorkoutId(null)}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', background: isOpen ? `${PURPLE}0d` : hoverWorkoutId === w.id ? 'var(--card-alt)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
                             >
                               <div style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[overallStatus], flexShrink: 0 }} />
                               <span style={{ fontWeight: 700, fontSize: 14, minWidth: 110 }}>
@@ -943,6 +968,20 @@ export default function PatientProgressPage() {
                               </span>
                               <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                             </button>
+
+                            {/* Hover preview */}
+                            {!isOpen && hoverWorkoutId === w.id && (w.exercises ?? []).length > 0 && (
+                              <div style={{ padding: '6px 22px 10px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {(w.exercises ?? []).slice(0, 7).map((ex, i) => (
+                                  <span key={i} style={{ fontSize: 11, color: STATUS_COLOR[statuses[i]], background: `${STATUS_COLOR[statuses[i]]}18`, padding: '2px 9px', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                    {ex.exercise.name}
+                                  </span>
+                                ))}
+                                {(w.exercises ?? []).length > 7 && (
+                                  <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 8px' }}>+{(w.exercises ?? []).length - 7} more</span>
+                                )}
+                              </div>
+                            )}
 
                             {/* Workout detail */}
                             {isOpen && (
