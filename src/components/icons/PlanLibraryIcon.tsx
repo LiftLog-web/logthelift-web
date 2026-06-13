@@ -1,7 +1,7 @@
 export default function PlanLibraryIcon({ size = 56, className = '' }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect width="56" height="56" rx="14" fill="#e6faf5" />
+      <rect width="56" height="56" rx="14" className="liftlog-icon-pill" />
       <rect x="5" y="44" width="46" height="4" rx="1.5" fill="#1EDBA8" opacity="0.5" />
       <rect x="8" y="18" width="9" height="26" rx="2" stroke="#1EDBA8" strokeWidth="2" />
       <line x1="12" y1="18" x2="12" y2="44" stroke="#1EDBA8" strokeWidth="1.2" opacity="0.4" />

@@ -126,3 +126,9 @@ input[type="number"] {
 [data-theme="light"] select {
   color-scheme: light;
 }
+
+/* ── Nav icon fills (dark mode default, light mode override) ── */
+.liftlog-icon-pill      { fill: #0d2e24; }
+.liftlog-icon-clipboard { fill: #0d2e24; }
+[data-theme="light"] .liftlog-icon-pill      { fill: #e6faf5; }
+[data-theme="light"] .liftlog-icon-clipboard { fill: #ffffff; }
