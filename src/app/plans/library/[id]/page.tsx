@@ -747,6 +747,22 @@ export default function TemplateEditorPage() {
     return matchesMuscle && matchesSearch;
   });
 
+  const isCustomEx = (ex: Exercise) => String(ex.id).startsWith('custom_');
+  const groupedExercises: { mg: string; exercises: Exercise[] }[] = (() => {
+    const groupMap = new Map<string, Exercise[]>();
+    for (const ex of [...filteredExercises.filter(isCustomEx), ...filteredExercises.filter(e => !isCustomEx(e))]) {
+      const mg = ex.muscleGroup || 'Other';
+      if (!groupMap.has(mg)) groupMap.set(mg, []);
+      groupMap.get(mg)!.push(ex);
+    }
+    const result: { mg: string; exercises: Exercise[] }[] = [];
+    for (const mg of MUSCLE_GROUPS) {
+      if (groupMap.has(mg)) { result.push({ mg, exercises: groupMap.get(mg)! }); groupMap.delete(mg); }
+    }
+    for (const [mg, exercises] of groupMap) result.push({ mg, exercises });
+    return result;
+  })();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif', overflow: 'hidden' }}>
 
@@ -841,28 +857,38 @@ export default function TemplateEditorPage() {
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-                {filteredExercises.map(ex => {
-                  const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
-                  return (
-                    <button
-                      key={ex.id}
-                      onClick={() => handleAddExercise(ex)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent', border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`, borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer', transition: 'background 0.15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(239,68,68,0.1)' : 'var(--card-alt)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent'; }}
-                      title={alreadyAdded ? 'Click to remove from this day' : 'Click to add to this day'}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : 'var(--text)' }}>{ex.name}</span>
-                        {alreadyAdded && <span style={{ fontSize: 11, color: TEAL }}>✓ added</span>}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{ex.muscleGroup} · {ex.equipment}</div>
-                    </button>
-                  );
-                })}
-                {filteredExercises.length === 0 && (
+                {groupedExercises.length === 0 ? (
                   <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 20 }}>No exercises found</p>
-                )}
+                ) : groupedExercises.map(({ mg, exercises: exList }) => (
+                  <div key={mg}>
+                    {groupedExercises.length > 1 && (
+                      <div style={{ padding: '8px 12px 3px', fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{mg}</div>
+                    )}
+                    {exList.map(ex => {
+                      const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
+                      const custom = isCustomEx(ex);
+                      return (
+                        <button
+                          key={ex.id}
+                          onClick={() => handleAddExercise(ex)}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', background: alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent', border: `1px solid ${alreadyAdded ? `${TEAL}40` : 'transparent'}`, borderRadius: 8, padding: '9px 12px', marginBottom: 2, cursor: 'pointer', transition: 'background 0.15s' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(239,68,68,0.1)' : 'var(--card-alt)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = alreadyAdded ? 'rgba(95,207,191,0.08)' : 'transparent'; }}
+                          title={alreadyAdded ? 'Click to remove from this day' : 'Click to add to this day'}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: alreadyAdded ? TEAL : 'var(--text)' }}>{ex.name}</span>
+                              {custom && <span style={{ fontSize: 9, fontWeight: 800, background: `${TEAL}25`, color: TEAL, padding: '1px 5px', borderRadius: 4, letterSpacing: '0.04em', flexShrink: 0 }}>CUSTOM</span>}
+                            </div>
+                            {alreadyAdded && <span style={{ fontSize: 11, color: TEAL, flexShrink: 0 }}>✓ added</span>}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{ex.muscleGroup} · {ex.equipment}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, padding: '8px 4px' }}>
                   <button
                     onClick={() => { setShowCustomForm(true); setCustomName(search); }}
