@@ -477,12 +477,33 @@ export default function PlansPage() {
                                 </span>
                               </div>
                               {plan.weeks.length > 0 && (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                                   {plan.weeks.map(w => (
-                                    <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
+                                    <button
+                                      key={w}
+                                      onClick={async e => {
+                                        e.stopPropagation();
+                                        setEditingPlan(plan);
+                                        setEditingWeeks([...plan.weeks]);
+                                        setEditingTemplateFull(null);
+                                        const sb = getSupabase();
+                                        const { data: tpl } = await sb
+                                          .from('plan_templates')
+                                          .select('exercises')
+                                          .eq('practitioner_id', userId)
+                                          .eq('name', plan.name)
+                                          .maybeSingle();
+                                        if (tpl) setEditingTemplateFull((tpl as any).exercises);
+                                      }}
+                                      title="Click to edit weeks"
+                                      style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, border: `1px solid ${PURPLE}40`, cursor: 'pointer', transition: 'background 0.15s' }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${PURPLE}45`; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${PURPLE}25`; }}
+                                    >
                                       W{w}
-                                    </span>
+                                    </button>
                                   ))}
+                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 2 }}>✎</span>
                                 </div>
                               )}
                               {plan.description && (
@@ -498,26 +519,6 @@ export default function PlansPage() {
                                 >
                                   Edit
                                 </button>
-                                {plan.weeks.length > 0 && (
-                                  <button
-                                    onClick={async () => {
-                                      setEditingPlan(plan);
-                                      setEditingWeeks([...plan.weeks]);
-                                      setEditingTemplateFull(null);
-                                      const sb = getSupabase();
-                                      const { data: tpl } = await sb
-                                        .from('plan_templates')
-                                        .select('exercises')
-                                        .eq('practitioner_id', userId)
-                                        .eq('name', plan.name)
-                                        .maybeSingle();
-                                      if (tpl) setEditingTemplateFull((tpl as any).exercises);
-                                    }}
-                                    style={{ flex: 1, background: `${PURPLE}20`, color: PURPLE, borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: `1px solid ${PURPLE}40`, cursor: 'pointer' }}
-                                  >
-                                    Weeks
-                                  </button>
-                                )}
                                 <button
                                   onClick={() => handleDelete(plan.id)}
                                   disabled={deleting === plan.id}
