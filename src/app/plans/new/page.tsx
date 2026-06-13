@@ -597,7 +597,7 @@ function NewPlanInner() {
     const sb       = getSupabase();
     const { error: upErr } = await sb.storage.from('exercise-media').upload(path, file, { upsert: true });
     if (!upErr) {
-      await sb.from('exercise_media').upsert(
+      const { data: upserted } = await sb.from('exercise_media').upsert(
         {
           practitioner_id: practId,
           exercise_name:   exerciseName,
@@ -608,9 +608,9 @@ function NewPlanInner() {
           notes:           videoNotes.trim()       || null,
         },
         { onConflict: 'practitioner_id,exercise_name' }
-      );
+      ).select('id').single();
       const { data: su } = await sb.storage.from('exercise-media').createSignedUrl(path, 3600);
-      setMediaMap(prev => ({ ...prev, [exerciseName]: { type: 'video', signedUrl: su?.signedUrl ?? undefined } }));
+      setMediaMap(prev => ({ ...prev, [exerciseName]: { id: upserted?.id ?? '', type: 'video', signedUrl: su?.signedUrl ?? undefined } }));
       setVideoSaved(true);
       setTimeout(closeVideoModal, 2000);
     }
