@@ -652,7 +652,7 @@ export default function PatientProgressPage() {
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
             { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
             { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: YELLOW },
-            { label: 'Avg Effectiveness', value: '—', color: YELLOW, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={YELLOW} ratingKey="eff" /> : null },
+            { label: 'Avg Effectiveness', value: '—', color: PURPLE, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={PURPLE} ratingKey="eff" /> : null },
             { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
@@ -946,10 +946,10 @@ export default function PatientProgressPage() {
                               {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
                                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 10, alignItems: 'center' }}>
                                   {(w.effectivenessRating ?? w.satisfactionRating) && (
-                                    <span><span style={{ color: YELLOW, fontSize: 10, fontWeight: 800, marginRight: 2 }}>E</span><span style={{ color: YELLOW }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
+                                    <span><span style={{ color: PURPLE, fontSize: 10, fontWeight: 800, marginRight: 3 }}>Effectiveness</span><span style={{ color: PURPLE }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
                                   )}
                                   {w.enjoymentRating && (
-                                    <span><span style={{ color: TEAL, fontSize: 10, fontWeight: 800, marginRight: 2 }}>J</span><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
+                                    <span><span style={{ color: TEAL, fontSize: 10, fontWeight: 800, marginRight: 3 }}>Enjoyment</span><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
                                   )}
                                 </span>
                               )}
