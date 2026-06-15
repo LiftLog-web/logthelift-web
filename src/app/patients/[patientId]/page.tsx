@@ -837,22 +837,22 @@ export default function PatientProgressPage() {
 
         {/* Exercise Demos */}
         {exerciseDemos.length > 0 && (
-          <div style={{ marginBottom: 36 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, marginBottom: 36, overflow: 'hidden' }}>
             <button
               onClick={() => setShowDemos(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: showDemos ? 14 : 0 }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: '16px 18px', borderBottom: showDemos ? '1px solid var(--border-subtle)' : 'none' }}
             >
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, flex: 1, textAlign: 'left' }}>
                 Exercise Demos · {exerciseDemos.length}
               </p>
               <span style={{ fontSize: 11, color: 'var(--text-dim)', transform: showDemos ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
             </button>
             {showDemos && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12, padding: 16 }}>
               {exerciseDemos.map(demo => {
                 const signedUrl = demoSignedUrls[demo.id];
                 return (
-                  <div key={demo.id} style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div key={demo.id} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-subtle)', borderRadius: 14, overflow: 'hidden' }}>
                     {demo.media_type === 'photo' && signedUrl ? (
                       <img
                         src={signedUrl}
