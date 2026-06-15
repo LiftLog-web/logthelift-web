@@ -125,7 +125,7 @@ function NewPlanInner() {
     return 'lbs';
   });
   const preferredUnitRef = useRef<WeightUnit>('lbs');
-  const [planWeeks, setPlanWeeks] = useState<number[]>([]);
+  const [planWeeks, setPlanWeeks] = useState<number[]>([1]);
   const [activeWeek, setActiveWeek] = useState(1);
 
   const isDirtyRef       = useRef(false);
@@ -279,7 +279,7 @@ function NewPlanInner() {
               }
             }
             const derivedWeeks = Array.from(wkSet).sort((a, b) => a - b);
-            if (derivedWeeks.length > 1) setPlanWeeks(derivedWeeks);
+            setPlanWeeks(derivedWeeks.length > 0 ? derivedWeeks : [1]);
           } else {
             // Old flat format
             const flatRaw: any[] = Array.isArray(raw) ? raw : [];
@@ -294,7 +294,7 @@ function NewPlanInner() {
               }
             }
             const derivedWeeks = Array.from(wkSet).sort((a, b) => a - b);
-            if (derivedWeeks.length > 1) setPlanWeeks(derivedWeeks);
+            setPlanWeeks(derivedWeeks.length > 0 ? derivedWeeks : [1]);
             const loaded: PlanExercise[] = flatRaw.map((e: any) => ({
               id: e.id ?? String(Math.random()),
               exercise: e.exercise,
@@ -338,6 +338,43 @@ function NewPlanInner() {
     })));
     setActiveWeek(newWeek);
   }, [activeWeek]);
+
+  const handleAddWeek = () => {
+    const currentWeek = activeWeek;
+    const maxWeek = Math.max(...planWeeks);
+    const newWeek = maxWeek + 1;
+    setDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.map(pe => {
+        const baseAllWeeks: { week: number; sets: WorkoutSet[] }[] = pe.allWeeks
+          ? pe.allWeeks.map(w => w.week === currentWeek ? { ...w, sets: pe.sets } : w)
+          : [{ week: 1, sets: pe.sets }];
+        const lastSets = baseAllWeeks.find(w => w.week === maxWeek)?.sets ?? pe.sets;
+        return { ...pe, allWeeks: [...baseAllWeeks, { week: newWeek, sets: lastSets.map(s => ({ ...s })) }], sets: lastSets.map(s => ({ ...s })) };
+      }),
+    })));
+    setPlanWeeks(prev => [...prev, newWeek]);
+    setActiveWeek(newWeek);
+  };
+
+  const handleRemoveLastWeek = () => {
+    if (planWeeks.length <= 1) return;
+    const maxWeek = Math.max(...planWeeks);
+    const newActiveWeek = Math.min(activeWeek, maxWeek - 1);
+    setDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.map(pe => {
+        if (!pe.allWeeks) return pe;
+        const filtered = pe.allWeeks.filter(w => w.week !== maxWeek);
+        const newSets = activeWeek === maxWeek
+          ? (filtered.find(w => w.week === newActiveWeek)?.sets ?? pe.sets)
+          : pe.sets;
+        return { ...pe, allWeeks: filtered.length > 1 ? filtered : undefined, sets: newSets };
+      }),
+    })));
+    setPlanWeeks(prev => prev.filter(w => w !== maxWeek));
+    setActiveWeek(newActiveWeek);
+  };
 
   const addDay = () => {
     const newId = `day-${Date.now()}`;
@@ -820,7 +857,7 @@ function NewPlanInner() {
           {editId && planName && (
             <span style={{ color: 'var(--text-muted)' }}>— {planName}</span>
           )}
-          {editId && planWeeks.map(w => (
+          {editId && planWeeks.length > 1 && planWeeks.map(w => (
             <span key={w} style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>
               W{w}
             </span>
@@ -994,28 +1031,16 @@ function NewPlanInner() {
         {/* Right: Plan builder */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Week selector (only for multi-week plans) */}
-          {planWeeks.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 6px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, background: 'var(--bg)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Week</span>
-              {planWeeks.map(w => (
-                <button
-                  key={w}
-                  onClick={() => switchWeek(w)}
-                  style={{
-                    background: activeWeek === w ? `${PURPLE}25` : 'var(--card-alt)',
-                    color: activeWeek === w ? PURPLE : 'var(--text-muted)',
-                    border: `1px solid ${activeWeek === w ? PURPLE : 'var(--border-strong)'}`,
-                    borderRadius: 8, padding: '5px 14px', fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >W{w}</button>
-              ))}
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 8 }}>
-                Editing Week {activeWeek} sets — switch weeks to adjust per-week progressions
-              </span>
-            </div>
-          )}
+          {/* Week tabs — always visible */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
+            {planWeeks.map(w => (
+              <button key={w} onClick={() => switchWeek(w)} style={{ padding: '6px 16px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', background: activeWeek === w ? TEAL : 'var(--input-bg)', color: activeWeek === w ? '#0f1117' : 'var(--text-muted)' }}>Week {w}</button>
+            ))}
+            <button onClick={handleAddWeek} style={{ padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>+ Add Week</button>
+            {planWeeks.length > 1 && (
+              <button onClick={handleRemoveLastWeek} style={{ padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, border: '1px solid var(--btn-red-border)', background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', cursor: 'pointer' }}>Remove Week {Math.max(...planWeeks)}</button>
+            )}
+          </div>
 
           {/* Day tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px 0', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
@@ -1062,6 +1087,11 @@ function NewPlanInner() {
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+          {activeWeek > 1 && (
+            <div style={{ marginBottom: 16 }}>
+              <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13 }}>Week {activeWeek} — Inherited from Week 1 unless edited below</span>
+            </div>
+          )}
           {activeExercises.length === 0 ? (
             <div
               onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
