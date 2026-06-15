@@ -1090,7 +1090,7 @@ function NewPlanInner() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
           {activeWeek > 1 && (
             <div style={{ marginBottom: 16 }}>
-              <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13 }}>Week {activeWeek} — Inherited from Week 1 unless edited below</span>
+              <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 13 }}>Week {activeWeek} — Inherited from Week {planWeeks[planWeeks.indexOf(activeWeek) - 1] ?? activeWeek - 1} unless edited below</span>
             </div>
           )}
           {activeExercises.length === 0 ? (
