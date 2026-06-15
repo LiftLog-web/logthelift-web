@@ -558,7 +558,7 @@ export default function PlansPage() {
               Select which weeks to share with this patient.{editingTemplateFull ? ' You can add or remove weeks.' : ' Unselected weeks will be removed.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {(editingTemplateFull ? deriveWeeks(editingTemplateFull) : editingPlan.weeks).map(w => {
+              {Array.from(new Set([...editingPlan.weeks, ...(editingTemplateFull ? deriveWeeks(editingTemplateFull) : [])])).sort((a, b) => a - b).map(w => {
                 const checked = editingWeeks.includes(w);
                 return (
                   <button
