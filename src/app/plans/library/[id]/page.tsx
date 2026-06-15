@@ -195,6 +195,7 @@ export default function TemplateEditorPage() {
   const [assignSelectedId,   setAssignSelectedId]   = useState<string | null>(null);
   const [assigning,          setAssigning]          = useState(false);
   const [assignDone,         setAssignDone]         = useState(false);
+  const [assignAttempted,    setAssignAttempted]    = useState(false);
 
   // Substitution modal
   const [subTarget, setSubTarget] = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
@@ -659,6 +660,7 @@ export default function TemplateEditorPage() {
     setAssignSelectedId(null);
     setAssignPatientSearch('');
     setAssignDone(false);
+    setAssignAttempted(false);
     if (!assignPatientsLoaded) {
       const { data: links } = await getSupabase()
         .from('patient_links')
@@ -674,7 +676,8 @@ export default function TemplateEditorPage() {
   };
 
   const handleAssign = async () => {
-    if (!assignSelectedId || !name.trim()) return;
+    if (!name.trim()) { setAssignAttempted(true); return; }
+    if (!assignSelectedId) return;
     setAssigning(true);
     const sb = getSupabase();
     // Auto-save template first
@@ -1276,6 +1279,11 @@ export default function TemplateEditorPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
               Select a patient to assign <strong style={{ color: 'var(--text)' }}>{name || 'this template'}</strong>. The template will be auto-saved to your library.
             </p>
+            {assignAttempted && !name.trim() && (
+              <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, margin: '0 0 12px', padding: '8px 12px', background: 'rgba(248,113,113,0.1)', borderRadius: 8, border: '1px solid rgba(248,113,113,0.3)' }}>
+                Add a name to the plan before assigning it.
+              </p>
+            )}
             <input
               autoFocus
               value={assignPatientSearch}
