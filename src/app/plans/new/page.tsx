@@ -1264,8 +1264,8 @@ function NewPlanInner() {
                                 <>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
-                                      type="number" min={1} value={s.reps ?? 10}
-                                      onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value))}
+                                      type="text" inputMode="numeric" value={String(s.reps ?? 10)}
+                                      onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
@@ -1274,8 +1274,8 @@ function NewPlanInner() {
                                   <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>@</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
-                                      type="number" min={0} step={0.5} value={s.weight ?? 0}
-                                      onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value))}
+                                      type="text" inputMode="decimal" value={String(s.weight ?? 0)}
+                                      onChange={e => updateSet(pe.id, si, 'weight', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
@@ -1287,8 +1287,8 @@ function NewPlanInner() {
                               {pe.exercise.type === 'duration' && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <input
-                                    type="number" min={1} value={s.seconds ?? 30}
-                                    onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value))}
+                                    type="text" inputMode="numeric" value={String(s.seconds ?? 30)}
+                                    onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
                                     onFocus={e => e.target.select()}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
@@ -1299,8 +1299,8 @@ function NewPlanInner() {
                               {pe.exercise.type === 'cardio' && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <input
-                                    type="number" min={1} value={s.minutes ?? 20}
-                                    onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value))}
+                                    type="text" inputMode="numeric" value={String(s.minutes ?? 20)}
+                                    onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
                                     onFocus={e => e.target.select()}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
@@ -1314,8 +1314,8 @@ function NewPlanInner() {
                                   <span style={{ width: 20, fontSize: 12, color: TEAL, fontWeight: 700, textAlign: 'center', flexShrink: 0 }}>↓</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
-                                      type="number" min={0} value={drop.reps ?? 0}
-                                      onChange={e => updateDropSet(pe.id, si, di, 'reps', Number(e.target.value))}
+                                      type="text" inputMode="numeric" value={String(drop.reps ?? 0)}
+                                      onChange={e => updateDropSet(pe.id, si, di, 'reps', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
@@ -1324,8 +1324,8 @@ function NewPlanInner() {
                                   <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>@</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
-                                      type="number" min={0} step={0.5} value={drop.weight ?? 0}
-                                      onChange={e => updateDropSet(pe.id, si, di, 'weight', Number(e.target.value))}
+                                      type="text" inputMode="decimal" value={String(drop.weight ?? 0)}
+                                      onChange={e => updateDropSet(pe.id, si, di, 'weight', Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)}
                                       onFocus={e => e.target.select()}
                                       style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
