@@ -70,6 +70,47 @@ function filterByWeeks(raw: any, sel: number[]): any {
   return raw;
 }
 
+// Returns all weeks present in raw, including soft-deleted inactiveWeeks
+function deriveAllWeeks(raw: any): number[] {
+  const list = flatExList(raw);
+  if (list.length === 0) return [];
+  const s = new Set<number>();
+  for (const ex of list) {
+    if (ex.sets?.length > 0) s.add(1);
+    for (const w of (ex.weeks ?? [])) { if (typeof w.week === 'number') s.add(w.week); }
+    for (const w of (ex.inactiveWeeks ?? [])) { if (typeof w.week === 'number') s.add(w.week); }
+  }
+  return Array.from(s).sort((a, b) => a - b);
+}
+
+// Soft-assigns weeks: selected weeks become active, unselected move to inactiveWeeks (preserved for re-enabling)
+function assignWeeks(raw: any, sel: number[]): any {
+  const ws = new Set(sel);
+  const processEx = (ex: any) => {
+    const allData = new Map<number, any[]>();
+    if (ex.sets?.length > 0) allData.set(1, ex.sets);
+    for (const w of (ex.weeks ?? [])) { if (typeof w.week === 'number') allData.set(w.week, w.sets ?? []); }
+    for (const w of (ex.inactiveWeeks ?? [])) { if (typeof w.week === 'number') allData.set(w.week, w.sets ?? []); }
+    const active: { week: number; sets: any[] }[] = [];
+    const inactive: { week: number; sets: any[] }[] = [];
+    for (const [week, sets] of allData) {
+      (ws.has(week) ? active : inactive).push({ week, sets });
+    }
+    active.sort((a, b) => a.week - b.week);
+    inactive.sort((a, b) => a.week - b.week);
+    const w1 = active.find(w => w.week === 1);
+    const others = active.filter(w => w.week !== 1);
+    const { weeks: _w, inactiveWeeks: _iw, ...exBase } = ex as any;
+    const result: any = { ...exBase, sets: w1?.sets ?? ex.sets };
+    if (others.length > 0) result.weeks = others;
+    if (inactive.length > 0) result.inactiveWeeks = inactive;
+    return result;
+  };
+  if (Array.isArray(raw)) return raw.map(processEx);
+  if (raw?.days) return { ...raw, days: raw.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(processEx) })) };
+  return raw;
+}
+
 function daysSince(dateStr: string | null | undefined): number | null {
   if (!dateStr) return null;
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -184,8 +225,13 @@ export default function PlansPage() {
   const handleSaveWeeks = async () => {
     if (!editingPlan) return;
     setSavingWeeks(true);
-    const sourceRaw = editingTemplateFull ?? editingPlan.exercisesRaw;
-    const newExercisesRaw = filterByWeeks(sourceRaw, editingWeeks);
+    // Use patient's own data as source so inactiveWeeks are preserved and can be re-enabled.
+    // Fall back to template only for weeks that don't exist anywhere in the patient's plan.
+    const patientAllWeeks = new Set(deriveAllWeeks(editingPlan.exercisesRaw));
+    const hasTemplateOnlyWeeks = editingTemplateFull && editingWeeks.some(w => !patientAllWeeks.has(w));
+    const newExercisesRaw = hasTemplateOnlyWeeks
+      ? filterByWeeks(editingTemplateFull, editingWeeks)
+      : assignWeeks(editingPlan.exercisesRaw, editingWeeks);
     const { error } = await getSupabase()
       .from('workout_plans')
       .update({ exercises: newExercisesRaw })
@@ -558,7 +604,7 @@ export default function PlansPage() {
               Select which weeks to share with this patient.{editingTemplateFull ? ' You can add or remove weeks.' : ' Unselected weeks will be removed.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {Array.from(new Set([...editingPlan.weeks, ...(editingTemplateFull ? deriveWeeks(editingTemplateFull) : [])])).sort((a, b) => a - b).map(w => {
+              {Array.from(new Set([...deriveAllWeeks(editingPlan.exercisesRaw), ...(editingTemplateFull ? deriveWeeks(editingTemplateFull) : [])])).sort((a, b) => a - b).map(w => {
                 const checked = editingWeeks.includes(w);
                 return (
                   <button
