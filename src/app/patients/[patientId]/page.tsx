@@ -140,7 +140,7 @@ function StarRating({ rating, color, ratingKey }: { rating: number; color: strin
 }
 const STATUS_COLOR: Record<ExStatus, string> = {
   completed: TEAL,
-  partial:   YELLOW,
+  partial:   PURPLE,
   none:      '#EF4444',
 };
 const STATUS_BG_CSS: Record<ExStatus, string> = {
@@ -491,6 +491,9 @@ export default function PatientProgressPage() {
     .sort(([, a], [, b]) => b.length - a.length)
     .slice(0, 8);
 
+  /* ── Plan lookup ── */
+  const planNameById = Object.fromEntries(assignedPlans.map(p => [p.id, p.name]));
+
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
   const withPlan       = workouts.filter(w => w.planId);
@@ -651,7 +654,7 @@ export default function PatientProgressPage() {
           {[
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
             { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
-            { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: YELLOW },
+            { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: PURPLE },
             { label: 'Avg Effectiveness', value: '—', color: PURPLE, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={PURPLE} ratingKey="eff" /> : null },
             { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
           ].map(s => (
@@ -709,7 +712,7 @@ export default function PatientProgressPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
                   {weekTrends.map(wt => {
                     const h = wt.rate !== null ? Math.max(4, (wt.rate / 100) * 64) : 4;
-                    const col = wt.rate === null ? 'var(--input-bg)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? YELLOW : '#EF4444';
+                    const col = wt.rate === null ? 'var(--input-bg)' : wt.rate >= 80 ? TEAL : wt.rate >= 50 ? PURPLE : '#EF4444';
                     return (
                       <div key={wt.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                         {wt.rate !== null && <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3 }}>{wt.rate}%</span>}
@@ -787,7 +790,7 @@ export default function PatientProgressPage() {
                     const fmt       = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
                     const delta     = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
                     const trend     = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
-                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? YELLOW : 'var(--text-dim)';
+                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? PURPLE : 'var(--text-dim)';
                     const maxVal    = Math.max(...entries.map(e => e.best), 1);
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -940,6 +943,11 @@ export default function PatientProgressPage() {
                               <span style={{ fontWeight: 700, fontSize: 14, minWidth: 100, whiteSpace: 'nowrap' }}>
                                 {new Date(w.date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
                               </span>
+                              {w.planId && planNameById[w.planId] && (
+                                <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  {planNameById[w.planId]}
+                                </span>
+                              )}
                               {w.duration > 0 && (
                                 <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{w.duration} min</span>
                               )}
@@ -957,7 +965,7 @@ export default function PatientProgressPage() {
                                 {total > 0 && (() => {
                                   const allDone    = doneCount === total;
                                   const anyProgress = doneCount + partialCount > 0;
-                                  const badgeColor = allDone ? TEAL : anyProgress ? YELLOW : 'var(--text-dim)';
+                                  const badgeColor = allDone ? TEAL : anyProgress ? PURPLE : 'var(--text-dim)';
                                   const label = allDone
                                     ? `${total}/${total} ✓`
                                     : partialCount > 0
@@ -1170,7 +1178,7 @@ export default function PatientProgressPage() {
               })}
             </div>
             {editingPlanWeeks.length < editingPlan.allWeeks.length && (
-              <p style={{ color: YELLOW, fontSize: 12, margin: '0 0 18px' }}>
+              <p style={{ color: PURPLE, fontSize: 12, margin: '0 0 18px' }}>
                 Deselected weeks will be removed from this patient's plan.
               </p>
             )}
