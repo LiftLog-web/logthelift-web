@@ -460,6 +460,19 @@ export default function PatientProgressPage() {
   const trendSummaryText = rateChange === null ? null : rateChange > 5 ? 'Completion trending up ↑' : rateChange < -5 ? 'Completion trending down ↓' : 'Completion stable →';
   const trendSummaryColor = rateChange === null ? 'var(--text-dim)' : rateChange > 5 ? TEAL : rateChange < -5 ? '#EF4444' : 'var(--text-muted)';
 
+  /* ── Plan exercise names (for filtering progression) ── */
+  const planExerciseNames = new Set<string>();
+  for (const plan of assignedPlans) {
+    const raw = plan.exercisesRaw;
+    const exList: any[] = Array.isArray(raw)
+      ? raw
+      : (raw?.days ?? []).flatMap((d: any) => d.exercises ?? []);
+    for (const ex of exList) {
+      const name = (ex?.exercise as any)?.name ?? ex?.name;
+      if (typeof name === 'string') planExerciseNames.add(name);
+    }
+  }
+
   // Best weight / duration per exercise per week
   const exProgressMap: Record<string, { weekKey: string; best: number; unit?: string; type: string }[]> = {};
   for (const key of chronoWeekKeys) {
@@ -494,19 +507,6 @@ export default function PatientProgressPage() {
 
   /* ── Plan lookup ── */
   const planNameById = Object.fromEntries(assignedPlans.map(p => [p.id, p.name]));
-
-  /* ── Plan exercise names (for filtering progression) ── */
-  const planExerciseNames = new Set<string>();
-  for (const plan of assignedPlans) {
-    const raw = plan.exercisesRaw;
-    const exList: any[] = Array.isArray(raw)
-      ? raw
-      : (raw?.days ?? []).flatMap((d: any) => d.exercises ?? []);
-    for (const ex of exList) {
-      const name = (ex?.exercise as any)?.name ?? ex?.name;
-      if (typeof name === 'string') planExerciseNames.add(name);
-    }
-  }
 
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
