@@ -667,7 +667,7 @@ export default function PatientProgressPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 36 }}>
           {[
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
-            { label: 'Plan Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
+            { label: 'Assigned Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
             { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: PURPLE },
             { label: 'Avg Effectiveness', value: '—', color: PURPLE, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={PURPLE} ratingKey="eff" /> : null },
             { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
