@@ -848,7 +848,7 @@ function NewPlanInner() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif', overflow: 'hidden' }}>
 
       {/* Sub-header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -912,7 +912,7 @@ function NewPlanInner() {
       </div>
 
       {/* Two-column builder */}
-      <div style={{ display: 'flex', height: 'calc(100vh - 170px)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {/* Left: Exercise Library — collapsible */}
         <div style={{ width: sidebarOpen ? 280 : 44, flexShrink: 0, borderRight: '1px solid var(--input-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.2s ease', background: 'var(--bg)' }}>
