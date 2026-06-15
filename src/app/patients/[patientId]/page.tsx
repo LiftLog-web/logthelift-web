@@ -232,6 +232,7 @@ export default function PatientProgressPage() {
   const [savingPlanWeeks,  setSavingPlanWeeks]  = useState(false);
 
   const [showCustomEx,     setShowCustomEx]     = useState(false);
+  const [showDemos,        setShowDemos]        = useState(false);
   const [customExName,     setCustomExName]     = useState('');
   const [customExMuscle,   setCustomExMuscle]   = useState('');
   const [customExEquip,    setCustomExEquip]    = useState('Bodyweight');
@@ -487,12 +488,25 @@ export default function PatientProgressPage() {
     }
   }
   const progressExercises = Object.entries(exProgressMap)
-    .filter(([, e]) => e.length >= 2)
+    .filter(([name, e]) => e.length >= 2 && (planExerciseNames.size === 0 || planExerciseNames.has(name)))
     .sort(([, a], [, b]) => b.length - a.length)
     .slice(0, 8);
 
   /* ── Plan lookup ── */
   const planNameById = Object.fromEntries(assignedPlans.map(p => [p.id, p.name]));
+
+  /* ── Plan exercise names (for filtering progression) ── */
+  const planExerciseNames = new Set<string>();
+  for (const plan of assignedPlans) {
+    const raw = plan.exercisesRaw;
+    const exList: any[] = Array.isArray(raw)
+      ? raw
+      : (raw?.days ?? []).flatMap((d: any) => d.exercises ?? []);
+    for (const ex of exList) {
+      const name = (ex?.exercise as any)?.name ?? ex?.name;
+      if (typeof name === 'string') planExerciseNames.add(name);
+    }
+  }
 
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
@@ -824,9 +838,16 @@ export default function PatientProgressPage() {
         {/* Exercise Demos */}
         {exerciseDemos.length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
-              Exercise Demos · {exerciseDemos.length}
-            </p>
+            <button
+              onClick={() => setShowDemos(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: showDemos ? 14 : 0 }}
+            >
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                Exercise Demos · {exerciseDemos.length}
+              </p>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)', transform: showDemos ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+            </button>
+            {showDemos && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
               {exerciseDemos.map(demo => {
                 const signedUrl = demoSignedUrls[demo.id];
@@ -866,6 +887,7 @@ export default function PatientProgressPage() {
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
@@ -1059,6 +1081,15 @@ export default function PatientProgressPage() {
                                                         </div>
                                                       );
                                                     })}
+                                                  </div>
+                                                </div>
+                                              )}
+                                              {ex.practitionerNotes?.trim() && (
+                                                <div style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
+                                                  <span style={{ fontSize: 13 }}>📋</span>
+                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                    <span style={{ fontSize: 11, fontWeight: 700, color: PURPLE }}>PT Notes</span>
+                                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>{ex.practitionerNotes}</p>
                                                   </div>
                                                 </div>
                                               )}
