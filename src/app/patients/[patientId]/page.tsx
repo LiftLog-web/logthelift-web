@@ -208,10 +208,9 @@ export default function PatientProgressPage() {
   const [practName,     setPractName]     = useState('');
   const [workouts,      setWorkouts]      = useState<WorkoutLog[]>([]);
   const [loading,       setLoading]       = useState(true);
-  const [expanded,       setExpanded]      = useState<Set<string>>(new Set());
-  const [expandedEx,     setExpandedEx]    = useState<Set<string>>(new Set());
-  const [expandedWeeks,  setExpandedWeeks] = useState<Set<string>>(new Set());
-  const [hoverWorkoutId, setHoverWorkoutId] = useState<string | null>(null);
+  const [expanded,      setExpanded]      = useState<Set<string>>(new Set());
+  const [expandedEx,    setExpandedEx]    = useState<Set<string>>(new Set());
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [noAccess,      setNoAccess]      = useState(false);
   const [exerciseDemos, setExerciseDemos] = useState<Array<{ id: string; exercise_name: string; media_type: string; file_path: string; url_link: string | null }>>([]);
   const [demoSignedUrls, setDemoSignedUrls] = useState<Record<string, string>>({});
@@ -935,50 +934,55 @@ export default function PatientProgressPage() {
                             {/* Workout row */}
                             <button
                               onClick={() => toggleWorkout(w.id)}
-                              onMouseEnter={() => { if (!isOpen) setHoverWorkoutId(w.id); }}
-                              onMouseLeave={() => setHoverWorkoutId(null)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', background: isOpen ? `${PURPLE}0d` : hoverWorkoutId === w.id ? 'var(--card-alt)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 22px', background: isOpen ? `${PURPLE}0d` : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                             >
                               <div style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[overallStatus], flexShrink: 0 }} />
-                              <span style={{ fontWeight: 700, fontSize: 14, minWidth: 110 }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, minWidth: 100, whiteSpace: 'nowrap' }}>
                                 {new Date(w.date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
                               </span>
                               {w.duration > 0 && (
-                                <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)' }}>{w.duration} min</span>
+                                <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{w.duration} min</span>
                               )}
                               {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
-                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 10, alignItems: 'center' }}>
                                   {(w.effectivenessRating ?? w.satisfactionRating) && (
-                                    <span title="Effectiveness"><span style={{ color: YELLOW }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
+                                    <span><span style={{ color: YELLOW, fontSize: 10, fontWeight: 800, marginRight: 2 }}>E</span><span style={{ color: YELLOW }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
                                   )}
                                   {w.enjoymentRating && (
-                                    <span title="Enjoyment"><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
+                                    <span><span style={{ color: TEAL, fontSize: 10, fontWeight: 800, marginRight: 2 }}>J</span><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
                                   )}
                                 </span>
                               )}
-                              {total > 0 && (
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                  {(w.exercises ?? []).map((ex, i) => (
-                                    <div key={i} title={`${ex.exercise.name}: ${STATUS_LABEL[statuses[i]]}`} style={{ width: 8, height: 8, borderRadius: 2, background: STATUS_COLOR[statuses[i]], flexShrink: 0 }} />
-                                  ))}
-                                </div>
-                              )}
-                              <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
-                                {total > 0 ? `${doneCount}/${total} done${partialCount > 0 ? `, ${partialCount} partial` : ''}` : 'No exercises'}
-                              </span>
-                              <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {total > 0 && (() => {
+                                  const allDone    = doneCount === total;
+                                  const anyProgress = doneCount + partialCount > 0;
+                                  const badgeColor = allDone ? TEAL : anyProgress ? YELLOW : 'var(--text-dim)';
+                                  const label = allDone
+                                    ? `${total}/${total} ✓`
+                                    : partialCount > 0
+                                      ? `${doneCount}/${total} · ${partialCount} partial`
+                                      : `${doneCount}/${total}`;
+                                  return (
+                                    <span style={{ background: `${badgeColor}1a`, color: badgeColor, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                                      {label}
+                                    </span>
+                                  );
+                                })()}
+                                <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+                              </div>
                             </button>
 
-                            {/* Hover preview */}
-                            {!isOpen && hoverWorkoutId === w.id && (w.exercises ?? []).length > 0 && (
-                              <div style={{ padding: '6px 22px 10px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                {(w.exercises ?? []).slice(0, 7).map((ex, i) => (
-                                  <span key={i} style={{ fontSize: 11, color: STATUS_COLOR[statuses[i]], background: `${STATUS_COLOR[statuses[i]]}18`, padding: '2px 9px', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            {/* Exercise strip — always visible when collapsed */}
+                            {!isOpen && (w.exercises ?? []).length > 0 && (
+                              <div style={{ padding: '0 22px 9px 45px', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {(w.exercises ?? []).slice(0, 3).map((ex, i) => (
+                                  <span key={i} style={{ fontSize: 11, color: STATUS_COLOR[statuses[i]], background: `${STATUS_COLOR[statuses[i]]}15`, padding: '2px 9px', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                     {ex.exercise.name}
                                   </span>
                                 ))}
-                                {(w.exercises ?? []).length > 7 && (
-                                  <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 8px' }}>+{(w.exercises ?? []).length - 7} more</span>
+                                {(w.exercises ?? []).length > 3 && (
+                                  <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 4px' }}>+{(w.exercises ?? []).length - 3} more</span>
                                 )}
                               </div>
                             )}
