@@ -682,7 +682,7 @@ export default function PatientProgressPage() {
         {/* ── Assigned Plans ── */}
         {assignedPlans.length > 0 && (
           <div style={{ marginBottom: 36 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
               Assigned Plans · {assignedPlans.length}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -712,8 +712,8 @@ export default function PatientProgressPage() {
         {weekTrends.length >= 2 && (
           <div style={{ marginBottom: 36 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Progress Over Time</p>
-              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{weekTrends.length} week{weekTrends.length !== 1 ? 's' : ''} tracked</span>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Progress Over Time</p>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{weekTrends.length} week{weekTrends.length !== 1 ? 's' : ''} tracked</span>
               {trendSummaryText && <span style={{ fontSize: 12, fontWeight: 700, color: trendSummaryColor, marginLeft: 'auto' }}>{trendSummaryText}</span>}
             </div>
 
@@ -795,7 +795,7 @@ export default function PatientProgressPage() {
             {/* Exercise progression */}
             {progressExercises.length > 0 && (
               <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+                <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {progressExercises.map(([name, entries]) => {
                     const latest    = entries[entries.length - 1];
@@ -842,7 +842,7 @@ export default function PatientProgressPage() {
               onClick={() => setShowDemos(v => !v)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: '16px 18px', borderBottom: showDemos ? '1px solid var(--border-subtle)' : 'none' }}
             >
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, flex: 1, textAlign: 'left' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, flex: 1, textAlign: 'left' }}>
                 Exercise Demos · {exerciseDemos.length}
               </p>
               <span style={{ fontSize: 11, color: 'var(--text-dim)', transform: showDemos ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
