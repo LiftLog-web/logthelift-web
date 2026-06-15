@@ -55,6 +55,7 @@ interface TemplateExercise {
   unit?: WeightUnit;
   rest?: number;
   supersetWithId?: string;
+  skippedWeeks?: number[];
 }
 
 interface TemplateDay {
@@ -206,7 +207,8 @@ export default function TemplateEditorPage() {
 
   // Derived active-day values
   const activeDay      = days.find(d => d.id === activeDayId) ?? days[0];
-  const exercises      = activeDay?.exercises ?? [];
+  const exercises         = activeDay?.exercises ?? [];
+  const visibleExercises  = exercises.filter(ex => !(ex.skippedWeeks ?? []).includes(activeWeek));
 
   const updateActiveDay = useCallback((fn: (exs: TemplateExercise[]) => TemplateExercise[]) => {
     setDays(prev => prev.map(d => d.id === activeDayId ? { ...d, exercises: fn(d.exercises) } : d));
@@ -375,7 +377,14 @@ export default function TemplateEditorPage() {
       ...day,
       exercises: day.exercises.map(ex => {
         const lastSets = getWeekSets(ex, totalWeeks);
-        return { ...ex, weeks: [...(ex.weeks ?? []), { week: newWeek, sets: lastSets.map(s => ({ ...s })) }] };
+        const wasSkipped = (ex.skippedWeeks ?? []).includes(totalWeeks);
+        const newSkipped = wasSkipped ? [...(ex.skippedWeeks ?? []), newWeek] : ex.skippedWeeks;
+        const result: TemplateExercise = {
+          ...ex,
+          weeks: [...(ex.weeks ?? []), { week: newWeek, sets: lastSets.map(s => ({ ...s })) }],
+        };
+        if (newSkipped?.length) result.skippedWeeks = newSkipped;
+        return result;
       }),
     })));
     setActiveWeek(newWeek);
@@ -386,10 +395,15 @@ export default function TemplateEditorPage() {
     const removing = totalWeeks;
     setDays(prev => prev.map(day => ({
       ...day,
-      exercises: day.exercises.map(ex => ({
-        ...ex,
-        weeks: (ex.weeks ?? []).filter(w => w.week !== removing),
-      })),
+      exercises: day.exercises.map(ex => {
+        const newSkipped = (ex.skippedWeeks ?? []).filter(w => w !== removing);
+        const result: TemplateExercise = {
+          ...ex,
+          weeks: (ex.weeks ?? []).filter(w => w.week !== removing),
+        };
+        if (newSkipped.length) result.skippedWeeks = newSkipped;
+        return result;
+      }),
     })));
     setActiveWeek(Math.min(activeWeek, removing - 1));
   };
@@ -425,7 +439,16 @@ export default function TemplateEditorPage() {
   };
 
   const removeExercise = (exId: string) => {
-    updateActiveDay(prev => prev.filter(ex => ex.id !== exId));
+    updateActiveDay(prev => {
+      const allWeeks = Array.from({ length: totalWeeks }, (_, i) => i + 1);
+      return prev.reduce<TemplateExercise[]>((acc, ex) => {
+        if (ex.id !== exId) { acc.push(ex); return acc; }
+        const newSkipped = [...new Set([...(ex.skippedWeeks ?? []), activeWeek])];
+        if (allWeeks.every(w => newSkipped.includes(w))) return acc; // all weeks skipped — fully remove
+        acc.push({ ...ex, skippedWeeks: newSkipped });
+        return acc;
+      }, []);
+    });
   };
 
   const moveExercise = (exId: string, dir: -1 | 1) => {
@@ -494,10 +517,17 @@ export default function TemplateEditorPage() {
   // ── Add / remove exercise ─────────────────────────────────────────────────
 
   const handleAddExercise = (ex: Exercise) => {
-    const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
-    if (alreadyAdded) {
-      const te = exercises.find(e => e.exercise.id === ex.id);
-      if (te) removeExercise(te.id);
+    const te = exercises.find(e => e.exercise.id === ex.id);
+    if (te) {
+      const isSkippedHere = (te.skippedWeeks ?? []).includes(activeWeek);
+      if (isSkippedHere) {
+        // Re-add exercise to this week by removing it from skippedWeeks
+        updateActiveDay(prev => prev.map(e =>
+          e.id !== te.id ? e : { ...e, skippedWeeks: (e.skippedWeeks ?? []).filter(w => w !== activeWeek) }
+        ));
+      } else {
+        removeExercise(te.id);
+      }
       return;
     }
     const baseSet = defaultSet(ex);
@@ -602,6 +632,12 @@ export default function TemplateEditorPage() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
+  const stripSkippedWeeks = (rawDays: TemplateDay[]): TemplateDay[] =>
+    rawDays.map(d => ({
+      ...d,
+      exercises: d.exercises.map(({ skippedWeeks: _skip, ...rest }) => rest as TemplateExercise),
+    }));
+
   const handleSave = async () => {
     if (!name.trim()) { alert('Please give this template a name.'); return; }
     setSaving(true);
@@ -647,13 +683,13 @@ export default function TemplateEditorPage() {
       .eq('id', templateId);
     isDirtyRef.current = false;
     isNewRef.current = false;
-    // Create patient plan from template
+    // Create patient plan from template (strip web-only fields)
     const { error } = await sb.from('workout_plans').insert({
       practitioner_id: userId,
       patient_id: assignSelectedId,
       name: name.trim(),
       description: description.trim() || null,
-      exercises: { frequencyPerWeek, days },
+      exercises: { frequencyPerWeek, days: stripSkippedWeeks(days) },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -926,7 +962,7 @@ export default function TemplateEditorPage() {
                       <div style={{ padding: '8px 12px 3px', fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{mg}</div>
                     )}
                     {exList.map(ex => {
-                      const alreadyAdded = exercises.some(e => e.exercise.id === ex.id);
+                      const alreadyAdded = exercises.some(e => e.exercise.id === ex.id && !(e.skippedWeeks ?? []).includes(activeWeek));
                       const custom = isCustomEx(ex);
                       return (
                         <button
@@ -1035,9 +1071,9 @@ export default function TemplateEditorPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {exercises.map((ex, exIdx) => {
-                  const prevEx        = exIdx > 0 ? exercises[exIdx - 1] : null;
-                  const nextEx        = exIdx < exercises.length - 1 ? exercises[exIdx + 1] : null;
+                {visibleExercises.map((ex, exIdx) => {
+                  const prevEx        = exIdx > 0 ? visibleExercises[exIdx - 1] : null;
+                  const nextEx        = exIdx < visibleExercises.length - 1 ? visibleExercises[exIdx + 1] : null;
                   const weekExercise  = getWeekExercise(ex, activeWeek);
                   const weekSets      = getWeekSets(ex, activeWeek);
                   const isOverridden  = activeWeek > 1 && ex.weeks?.find(w => w.week === activeWeek)?.exerciseOverride;
@@ -1121,7 +1157,7 @@ export default function TemplateEditorPage() {
                                 {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
                               </button>
                             )}
-                            <button onClick={e => { e.stopPropagation(); if (confirm(`Remove ${weekExercise.name}?`)) removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '4px 12px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Remove</button>
+                            <button onClick={e => { e.stopPropagation(); removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '4px 12px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Remove</button>
                           </div>
                         </div>
 
