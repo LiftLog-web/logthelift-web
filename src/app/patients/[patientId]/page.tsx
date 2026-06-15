@@ -997,7 +997,7 @@ export default function PatientProgressPage() {
 
                             {/* Workout detail */}
                             {isOpen && (
-                              <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'rgba(0,0,0,0.15)' }}>
+                              <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'var(--card)' }}>
                                 {w.notes?.trim() && (
                                   <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     <span style={{ fontSize: 14 }}>💬</span>
@@ -1052,7 +1052,7 @@ export default function PatientProgressPage() {
                                                           <span style={{ color: 'var(--text)', minWidth: 100 }}>{actual}</span>
                                                           {tLabel && (
                                                             <>
-                                                              <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>target: {tLabel}</span>
+                                                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>target: {tLabel}</span>
                                                               {setMet !== null && <span style={{ color: setMet ? TEAL : '#EF4444', fontSize: 12 }}>{setMet ? '✓' : '✗'}</span>}
                                                             </>
                                                           )}
