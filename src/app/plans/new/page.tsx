@@ -328,16 +328,17 @@ function NewPlanInner() {
     setDays(prev => prev.map(day => ({
       ...day,
       exercises: day.exercises.map(pe => {
-        if (!pe.allWeeks) return pe;
-        const updatedAllWeeks = pe.allWeeks.map(w =>
+        // If exercise has no per-week data yet, seed all plan weeks from current sets
+        const baseAllWeeks = pe.allWeeks ?? planWeeks.map(w => ({ week: w, sets: pe.sets.map(s => ({ ...s })) }));
+        const updatedAllWeeks = baseAllWeeks.map(w =>
           w.week === activeWeek ? { ...w, sets: pe.sets } : w
         );
-        const newSets = updatedAllWeeks.find(w => w.week === newWeek)?.sets ?? pe.sets;
+        const newSets = updatedAllWeeks.find(w => w.week === newWeek)?.sets ?? pe.sets.map(s => ({ ...s }));
         return { ...pe, sets: newSets, allWeeks: updatedAllWeeks };
       })
     })));
     setActiveWeek(newWeek);
-  }, [activeWeek]);
+  }, [activeWeek, planWeeks]);
 
   const handleAddWeek = () => {
     const currentWeek = activeWeek;
@@ -1265,6 +1266,7 @@ function NewPlanInner() {
                                     <input
                                       type="number" min={1} value={s.reps ?? 10}
                                       onChange={e => updateSet(pe.id, si, 'reps', Number(e.target.value))}
+                                      onFocus={e => e.target.select()}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                     <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>reps</span>
@@ -1287,6 +1289,7 @@ function NewPlanInner() {
                                   <input
                                     type="number" min={1} value={s.seconds ?? 30}
                                     onChange={e => updateSet(pe.id, si, 'seconds', Number(e.target.value))}
+                                    onFocus={e => e.target.select()}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                   <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>sec</span>
@@ -1298,6 +1301,7 @@ function NewPlanInner() {
                                   <input
                                     type="number" min={1} value={s.minutes ?? 20}
                                     onChange={e => updateSet(pe.id, si, 'minutes', Number(e.target.value))}
+                                    onFocus={e => e.target.select()}
                                     style={{ width: 70, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                   />
                                   <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>min</span>
@@ -1312,6 +1316,7 @@ function NewPlanInner() {
                                     <input
                                       type="number" min={0} value={drop.reps ?? 0}
                                       onChange={e => updateDropSet(pe.id, si, di, 'reps', Number(e.target.value))}
+                                      onFocus={e => e.target.select()}
                                       style={{ width: 60, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }}
                                     />
                                     <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>reps</span>
