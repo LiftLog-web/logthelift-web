@@ -186,6 +186,15 @@ export default function TemplateEditorPage() {
   const [customType,     setCustomType]     = useState<'weighted' | 'duration' | 'cardio'>('weighted');
   const [customExercises, setCustomExercises] = useState<Exercise[]>([]);
 
+  // Assign to patient modal
+  const [showAssignModal,    setShowAssignModal]    = useState(false);
+  const [assignPatients,     setAssignPatients]     = useState<{ id: string; name: string }[]>([]);
+  const [assignPatientsLoaded, setAssignPatientsLoaded] = useState(false);
+  const [assignPatientSearch, setAssignPatientSearch] = useState('');
+  const [assignSelectedId,   setAssignSelectedId]   = useState<string | null>(null);
+  const [assigning,          setAssigning]          = useState(false);
+  const [assignDone,         setAssignDone]         = useState(false);
+
   // Substitution modal
   const [subTarget, setSubTarget] = useState<{ exId: string; scope: 'template' | 'week' } | null>(null);
   const [subSearch, setSubSearch] = useState('');
@@ -607,6 +616,58 @@ export default function TemplateEditorPage() {
     router.push('/plans/library');
   };
 
+  // ── Assign to Patient ─────────────────────────────────────────────────────
+
+  const openAssignModal = async () => {
+    setShowAssignModal(true);
+    setAssignSelectedId(null);
+    setAssignPatientSearch('');
+    setAssignDone(false);
+    if (!assignPatientsLoaded) {
+      const { data: links } = await getSupabase()
+        .from('patient_links')
+        .select('profiles:patient_id(id, display_name)')
+        .eq('practitioner_id', userId);
+      const pats = (links ?? [])
+        .map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles)
+        .filter(Boolean)
+        .map((p: any) => ({ id: p.id as string, name: (p.display_name ?? 'Unknown') as string }));
+      setAssignPatients(pats);
+      setAssignPatientsLoaded(true);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!assignSelectedId || !name.trim()) return;
+    setAssigning(true);
+    const sb = getSupabase();
+    // Auto-save template first
+    await sb.from('plan_templates')
+      .update({ name: name.trim(), description: description.trim() || null, exercises: { frequencyPerWeek, days }, tags })
+      .eq('id', templateId);
+    isDirtyRef.current = false;
+    isNewRef.current = false;
+    // Create patient plan from template
+    const { error } = await sb.from('workout_plans').insert({
+      practitioner_id: userId,
+      patient_id: assignSelectedId,
+      name: name.trim(),
+      description: description.trim() || null,
+      exercises: { frequencyPerWeek, days },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      alert('Could not assign plan: ' + error.message);
+      setAssigning(false);
+      return;
+    }
+    sb.functions.invoke('notify-plan-assigned', { body: { patient_id: assignSelectedId, plan_name: name.trim() } });
+    setAssignDone(true);
+    setAssigning(false);
+    setTimeout(() => { setShowAssignModal(false); router.push('/plans'); }, 1200);
+  };
+
   // ── Drop sets ─────────────────────────────────────────────────────────────
 
   const addDropSet = (exId: string, setIdx: number) => {
@@ -780,7 +841,7 @@ export default function TemplateEditorPage() {
             Cancel
           </button>
           <button
-            onClick={() => guardedNavigate(`/plans/new?template=${templateId}`)}
+            onClick={openAssignModal}
             style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
           >
             Assign to Patient →
@@ -1164,6 +1225,63 @@ export default function TemplateEditorPage() {
                 <a href={demoPreview.urlLink} target="_blank" rel="noopener noreferrer" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>Open video ↗</a>
               </div>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Assign to Patient modal */}
+      {showAssignModal && (
+        <div onClick={() => { if (!assigning) { setShowAssignModal(false); setAssignSelectedId(null); } }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 440, padding: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Assign to Patient</h2>
+              <button onClick={() => { setShowAssignModal(false); setAssignSelectedId(null); }} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
+              Select a patient to assign <strong style={{ color: 'var(--text)' }}>{name || 'this template'}</strong>. The template will be auto-saved to your library.
+            </p>
+            <input
+              autoFocus
+              value={assignPatientSearch}
+              onChange={e => setAssignPatientSearch(e.target.value)}
+              placeholder="Search patients…"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 12 }}
+            />
+            <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+              {!assignPatientsLoaded ? (
+                <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>Loading patients…</p>
+              ) : assignPatients.filter(p => p.name.toLowerCase().includes(assignPatientSearch.toLowerCase())).length === 0 ? (
+                <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+                  {assignPatients.length === 0 ? 'No linked patients found.' : 'No patients match your search.'}
+                </p>
+              ) : assignPatients.filter(p => p.name.toLowerCase().includes(assignPatientSearch.toLowerCase())).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setAssignSelectedId(prev => prev === p.id ? null : p.id)}
+                  style={{
+                    background: assignSelectedId === p.id ? `${PURPLE}20` : 'var(--card-alt)',
+                    border: `1px solid ${assignSelectedId === p.id ? PURPLE + '60' : 'var(--border-strong)'}`,
+                    color: assignSelectedId === p.id ? PURPLE : 'var(--text)',
+                    borderRadius: 10, padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
+                    fontSize: 14, fontWeight: assignSelectedId === p.id ? 700 : 400,
+                  }}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowAssignModal(false); setAssignSelectedId(null); }} disabled={assigning} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleAssign}
+                disabled={!assignSelectedId || assigning || assignDone}
+                style={{ flex: 2, background: assignDone ? TEAL : PURPLE, color: assignDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: (!assignSelectedId || assigning) ? 'not-allowed' : 'pointer', opacity: (!assignSelectedId || assigning) ? 0.6 : 1, transition: 'background 0.2s' }}
+              >
+                {assignDone ? '✓ Assigned!' : assigning ? 'Assigning…' : 'Assign Plan'}
+              </button>
+            </div>
           </div>
         </div>
       )}
