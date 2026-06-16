@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
@@ -108,10 +108,13 @@ export default function PlanLibraryPage() {
   const [previewTpl,     setPreviewTpl]     = useState<Template | null>(null);
   const [previewWeek,    setPreviewWeek]    = useState(1);
   const [bodyFilter,     setBodyFilter]     = useState('');
+  const [bodyFilterGroup, setBodyFilterGroup] = useState<string | null>(null);
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
   const [bodySearch,     setBodySearch]     = useState('');
   const [sortBy,         setSortBy]         = useState<SortOption>('recent');
   const [sortOpen,       setSortOpen]       = useState(false);
+  const sortRef       = useRef<HTMLDivElement>(null);
+  const bodyFilterRef = useRef<HTMLDivElement>(null);
   const [showArchived,   setShowArchived]   = useState(false);
   const [archiving,      setArchiving]      = useState<string | null>(null);
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>>>({});
@@ -203,6 +206,29 @@ export default function PlanLibraryPage() {
       setLoading(false);
     });
   }, [router]);
+
+  // Close Sort dropdown on outside click
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sortOpen]);
+
+  // Close Body Part dropdown on outside click
+  useEffect(() => {
+    if (!bodyFilterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (bodyFilterRef.current && !bodyFilterRef.current.contains(e.target as Node)) {
+        setBodyFilterOpen(false);
+        setBodySearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [bodyFilterOpen]);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -369,7 +395,11 @@ export default function PlanLibraryPage() {
     if (showArchived ? !isArchived : isArchived) return false;
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTag && !tags.includes(activeTag)) return false;
-    if (bodyFilter) {
+    if (bodyFilterGroup) {
+      const muscleGroups = derivedMuscleGroups(t.exercises);
+      const groupTags = BODY_PART_GROUPS.find(g => g.label === bodyFilterGroup)?.tags ?? [];
+      if (!groupTags.some(tag => muscleGroups.includes(tag) || tags.includes(tag))) return false;
+    } else if (bodyFilter) {
       const muscleGroups = derivedMuscleGroups(t.exercises);
       if (!muscleGroups.includes(bodyFilter) && !tags.includes(bodyFilter)) return false;
     }
@@ -476,7 +506,7 @@ export default function PlanLibraryPage() {
             )}
             {/* Sort dropdown */}
             {templates.length > 0 && (
-              <div style={{ position: 'relative' }}>
+              <div ref={sortRef} style={{ position: 'relative' }}>
                 <button
                   onClick={() => setSortOpen(o => !o)}
                   style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 16px', color: 'var(--text-muted)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -511,12 +541,12 @@ export default function PlanLibraryPage() {
             )}
             {/* Body part filter */}
             {templates.length > 0 && (
-              <div style={{ position: 'relative' }}>
+              <div ref={bodyFilterRef} style={{ position: 'relative' }}>
                 <button
                   onClick={() => setBodyFilterOpen(o => !o)}
-                  style={{ background: bodyFilter ? 'var(--badge-teal-bg)' : 'var(--btn-purple-bg)', border: `1px solid ${bodyFilter ? 'var(--btn-teal-border)' : 'var(--btn-purple-border)'}`, borderRadius: 10, padding: '10px 16px', color: bodyFilter ? 'var(--badge-teal-text)' : 'var(--btn-purple-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ background: (bodyFilter || bodyFilterGroup) ? 'var(--badge-teal-bg)' : 'var(--btn-purple-bg)', border: `1px solid ${(bodyFilter || bodyFilterGroup) ? 'var(--btn-teal-border)' : 'var(--btn-purple-border)'}`, borderRadius: 10, padding: '10px 16px', color: (bodyFilter || bodyFilterGroup) ? 'var(--badge-teal-text)' : 'var(--btn-purple-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
-                  {bodyFilter || 'Body Part'} {bodyFilterOpen ? '▲' : '▼'}
+                  {bodyFilterGroup || bodyFilter || 'Body Part'} {bodyFilterOpen ? '▲' : '▼'}
                 </button>
                 {bodyFilterOpen && (
                   <div
@@ -534,8 +564,8 @@ export default function PlanLibraryPage() {
                       />
                     </div>
                     <button
-                      onMouseDown={() => { setBodyFilter(''); setBodyFilterOpen(false); setBodySearch(''); }}
-                      style={{ textAlign: 'left', padding: '9px 16px', background: !bodyFilter ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: !bodyFilter ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 13, fontWeight: !bodyFilter ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid var(--border-subtle)' }}
+                      onMouseDown={() => { setBodyFilter(''); setBodyFilterGroup(null); setBodyFilterOpen(false); setBodySearch(''); }}
+                      style={{ textAlign: 'left', padding: '9px 16px', background: (!bodyFilter && !bodyFilterGroup) ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: (!bodyFilter && !bodyFilterGroup) ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 13, fontWeight: (!bodyFilter && !bodyFilterGroup) ? 700 : 400, cursor: 'pointer', borderBottom: '1px solid var(--border-subtle)' }}
                     >
                       All body parts
                     </button>
@@ -544,7 +574,7 @@ export default function PlanLibraryPage() {
                         BODY_PART_TAGS.filter(tag => tag.toLowerCase().includes(bodySearch.toLowerCase())).map(tag => (
                           <button
                             key={tag}
-                            onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
+                            onMouseDown={() => { setBodyFilter(tag); setBodyFilterGroup(null); setBodyFilterOpen(false); setBodySearch(''); }}
                             style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
                             onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
                             onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
@@ -553,24 +583,33 @@ export default function PlanLibraryPage() {
                           </button>
                         ))
                       ) : (
-                        BODY_PART_GROUPS.map(group => (
-                          <div key={group.label}>
-                            <div style={{ padding: '7px 16px 4px', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', borderTop: '1px solid var(--border-subtle)' }}>
-                              {group.label}
-                            </div>
-                            {group.tags.map(tag => (
+                        BODY_PART_GROUPS.map(group => {
+                          const groupActive = bodyFilterGroup === group.label;
+                          return (
+                            <div key={group.label}>
                               <button
-                                key={tag}
-                                onMouseDown={() => { setBodyFilter(tag); setBodyFilterOpen(false); setBodySearch(''); }}
-                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 16px 8px 24px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
-                                onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
-                                onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                                onMouseDown={() => { setBodyFilterGroup(group.label); setBodyFilter(''); setBodyFilterOpen(false); setBodySearch(''); }}
+                                title={`Show all ${group.label} plans`}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 16px 5px', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: groupActive ? 'var(--badge-teal-text)' : 'var(--text-dim)', background: groupActive ? 'var(--badge-teal-bg)' : 'none', border: 'none', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+                                onMouseEnter={e => { if (!groupActive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
+                                onMouseLeave={e => { if (!groupActive) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
                               >
-                                {tag}
+                                {group.label}
                               </button>
-                            ))}
-                          </div>
-                        ))
+                              {group.tags.map(tag => (
+                                <button
+                                  key={tag}
+                                  onMouseDown={() => { setBodyFilter(tag); setBodyFilterGroup(null); setBodyFilterOpen(false); setBodySearch(''); }}
+                                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 16px 8px 24px', background: bodyFilter === tag ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: bodyFilter === tag ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: bodyFilter === tag ? 700 : 400, cursor: 'pointer' }}
+                                  onMouseEnter={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
+                                  onMouseLeave={e => { if (bodyFilter !== tag) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -768,7 +807,7 @@ export default function PlanLibraryPage() {
                           {muscleGroups.map((mg: string) => (
                             <span
                               key={mg}
-                              onClick={e => { e.stopPropagation(); setBodyFilter(bodyFilter === mg ? '' : mg); }}
+                              onClick={e => { e.stopPropagation(); setBodyFilterGroup(null); setBodyFilter(bodyFilter === mg ? '' : mg); }}
                               style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--card-alt)', color: 'var(--text-muted)', cursor: 'pointer', border: bodyFilter === mg ? `1px solid ${TEAL}` : '1px solid transparent' }}
                             >
                               {mg}
