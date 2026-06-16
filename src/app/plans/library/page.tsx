@@ -24,7 +24,15 @@ interface Template {
   description: string | null;
   exercises: any[];
   created_at: string;
+  archived?: boolean;
 }
+
+type SortOption = 'recent' | 'alpha' | 'assigned';
+const SORT_LABELS: Record<SortOption, string> = {
+  recent: 'Recently Created',
+  alpha: 'A–Z',
+  assigned: 'Most Assigned',
+};
 
 // Normalize exercises from either a flat array or the { frequencyPerWeek, days } object
 // saved by the library editor — the DB column can hold either format.
@@ -102,6 +110,10 @@ export default function PlanLibraryPage() {
   const [bodyFilter,     setBodyFilter]     = useState('');
   const [bodyFilterOpen, setBodyFilterOpen] = useState(false);
   const [bodySearch,     setBodySearch]     = useState('');
+  const [sortBy,         setSortBy]         = useState<SortOption>('recent');
+  const [sortOpen,       setSortOpen]       = useState(false);
+  const [showArchived,   setShowArchived]   = useState(false);
+  const [archiving,      setArchiving]      = useState<string | null>(null);
   const [planAssignments, setPlanAssignments] = useState<Record<string, Array<{ planId: string; patientId: string; patientName: string; weeks: number[]; exercisesRaw: any }>>>({});
   const [unassigning,    setUnassigning]    = useState<string | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<{ planId: string; planName: string; patientName: string; weeks: number[]; exercisesRaw: any; templateId: string; availableWeeks: number[] } | null>(null);
@@ -209,6 +221,13 @@ export default function PlanLibraryPage() {
     await getSupabase().from('plan_templates').delete().eq('id', t.id);
     setTemplates(prev => prev.filter(x => x.id !== t.id));
     setDeleting(null);
+  };
+
+  const handleArchive = async (t: Template, archived: boolean) => {
+    setArchiving(t.id);
+    await getSupabase().from('plan_templates').update({ archived }).eq('id', t.id);
+    setTemplates(prev => prev.map(x => x.id === t.id ? { ...x, archived } : x));
+    setArchiving(null);
   };
 
   const handleUnassign = async (planId: string, planName: string) => {
@@ -346,6 +365,8 @@ export default function PlanLibraryPage() {
 
   const filtered = templates.filter(t => {
     const tags = (t as any).tags ?? [];
+    const isArchived = !!t.archived;
+    if (showArchived ? !isArchived : isArchived) return false;
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTag && !tags.includes(activeTag)) return false;
     if (bodyFilter) {
@@ -353,6 +374,15 @@ export default function PlanLibraryPage() {
       if (!muscleGroups.includes(bodyFilter) && !tags.includes(bodyFilter)) return false;
     }
     return true;
+  });
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortBy === 'alpha') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'assigned') {
+      const diff = (planAssignments[b.name]?.length ?? 0) - (planAssignments[a.name]?.length ?? 0);
+      return diff !== 0 ? diff : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   // Ordered list of exercise IDs — detects same-exercise templates even with
@@ -365,7 +395,7 @@ export default function PlanLibraryPage() {
   const nameIndex = new Map<string, number>();
   const fpIndex   = new Map<string, number>();
 
-  for (const t of filtered) {
+  for (const t of sortedFiltered) {
     const fp = exerciseFingerprint(t.exercises);
 
     // 1. Same name → add to existing group
@@ -432,7 +462,7 @@ export default function PlanLibraryPage() {
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>📋 Plan Library</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
-              Reusable templates with week-by-week progression
+              {showArchived ? 'Archived templates — restore or permanently delete' : 'Reusable templates with week-by-week progression'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -443,6 +473,41 @@ export default function PlanLibraryPage() {
                 placeholder="Search templates…"
                 style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 16px', color: 'var(--text)', fontSize: 14, outline: 'none', width: 200 }}
               />
+            )}
+            {/* Sort dropdown */}
+            {templates.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setSortOpen(o => !o)}
+                  style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 16px', color: 'var(--text-muted)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Sort: {SORT_LABELS[sortBy]} {sortOpen ? '▲' : '▼'}
+                </button>
+                {sortOpen && (
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
+                      <button
+                        key={opt}
+                        onMouseDown={() => { setSortBy(opt); setSortOpen(false); }}
+                        style={{ textAlign: 'left', padding: '9px 16px', background: sortBy === opt ? 'var(--badge-teal-bg)' : 'none', border: 'none', color: sortBy === opt ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: sortBy === opt ? 700 : 400, cursor: 'pointer' }}
+                        onMouseEnter={e => { if (sortBy !== opt) (e.currentTarget as HTMLButtonElement).style.background = 'var(--card-alt)'; }}
+                        onMouseLeave={e => { if (sortBy !== opt) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+                      >
+                        {SORT_LABELS[opt]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Archived toggle */}
+            {templates.length > 0 && (
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                style={{ background: showArchived ? 'var(--badge-teal-bg)' : 'var(--card-alt)', border: `1px solid ${showArchived ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', color: showArchived ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                🗄 Archived
+              </button>
             )}
             {/* Body part filter */}
             {templates.length > 0 && (
@@ -603,7 +668,9 @@ export default function PlanLibraryPage() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No templates match "{search}"</p>
+          <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>
+            {showArchived ? 'No archived templates.' : `No templates match "${search}"`}
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28 }}>
             {groupedFiltered.map(({ canonical: t, variants }) => {
@@ -618,7 +685,7 @@ export default function PlanLibraryPage() {
                 <div
                   key={t.id}
                   onClick={() => { setPreviewWeek(1); setPreviewTpl(bestPreview); }}
-                  style={{ position: 'relative', background: hoveredId === t.id ? 'var(--border-subtle)' : 'var(--card)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'var(--border)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s', cursor: 'pointer' }}
+                  style={{ position: 'relative', background: hoveredId === t.id ? 'var(--border-subtle)' : 'var(--card)', border: `1px solid ${hoveredId === t.id ? 'rgba(95,207,191,0.3)' : 'var(--border)'}`, borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'background 0.15s, border-color 0.15s', cursor: 'pointer', opacity: t.archived ? 0.6 : 1 }}
                   onMouseEnter={() => setHoveredId(t.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
@@ -652,6 +719,11 @@ export default function PlanLibraryPage() {
                       <span style={{ fontWeight: 700, fontSize: 16, color: t.name ? 'var(--text)' : 'var(--text-faint)', fontStyle: t.name ? 'normal' : 'italic' }}>
                         {t.name || 'Untitled template'}
                       </span>
+                      {t.archived && (
+                        <span style={{ background: 'var(--card-alt)', color: 'var(--text-dim)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border-strong)' }}>
+                          Archived
+                        </span>
+                      )}
                       <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
                         {t.exercises.length} exercise{t.exercises.length !== 1 ? 's' : ''}
                       </span>
@@ -754,32 +826,51 @@ export default function PlanLibraryPage() {
                         View / Edit
                       </button>
                     )}
-                    <button
-                      onClick={() => openAssign(t)}
-                      style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      Assign to Patient
-                    </button>
+                    {!t.archived && (
+                      <button
+                        onClick={() => openAssign(t)}
+                        style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Assign to Patient
+                      </button>
+                    )}
                     {isGrouped ? (
-                      // Delete per version
+                      // Archive + Delete per version
                       allVersions.map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => handleDelete(v)}
-                          disabled={deleting === v.id}
-                          style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deleting === v.id ? 0.5 : 1 }}
-                        >
-                          Del {numWeeks(v.exercises)}wk
-                        </button>
+                        <div key={v.id} style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => handleArchive(v, !v.archived)}
+                            disabled={archiving === v.id}
+                            style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: archiving === v.id ? 0.5 : 1 }}
+                          >
+                            {v.archived ? `Restore ${numWeeks(v.exercises)}wk` : `Archive ${numWeeks(v.exercises)}wk`}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(v)}
+                            disabled={deleting === v.id}
+                            style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deleting === v.id ? 0.5 : 1 }}
+                          >
+                            Del {numWeeks(v.exercises)}wk
+                          </button>
+                        </div>
                       ))
                     ) : (
-                      <button
-                        onClick={() => handleDelete(t)}
-                        disabled={deleting === t.id}
-                        style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
-                      >
-                        Delete
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleArchive(t, !t.archived)}
+                          disabled={archiving === t.id}
+                          style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: archiving === t.id ? 0.5 : 1 }}
+                        >
+                          {t.archived ? 'Restore' : 'Archive'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t)}
+                          disabled={deleting === t.id}
+                          style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deleting === t.id ? 0.5 : 1 }}
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
