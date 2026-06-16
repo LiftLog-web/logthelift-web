@@ -66,6 +66,8 @@ export default function MediaLibraryPage() {
   const [assignItem,     setAssignItem]     = useState<MediaItem | null>(null);
   const [assignSelected, setAssignSelected] = useState<Set<string>>(new Set());
   const [assignSaving,   setAssignSaving]   = useState(false);
+  const [assignError,    setAssignError]    = useState('');
+  const [assignSearch,   setAssignSearch]   = useState('');
 
   // Modal
   const [showModal,      setShowModal]      = useState(false);
@@ -336,10 +338,14 @@ export default function MediaLibraryPage() {
   function openAssignModal(item: MediaItem) {
     setAssignItem(item);
     setAssignSelected(new Set(mediaShares[item.id] ?? []));
+    setAssignError('');
+    setAssignSearch('');
   }
 
   function closeAssignModal() {
     setAssignItem(null);
+    setAssignError('');
+    setAssignSearch('');
   }
 
   function toggleAssignPatient(patientId: string) {
@@ -353,17 +359,32 @@ export default function MediaLibraryPage() {
   async function handleSaveAssign() {
     if (!assignItem) return;
     setAssignSaving(true);
+    setAssignError('');
     const sb = getSupabase();
     const ids = [...assignSelected];
-    await sb.from('exercise_media_shares').delete().eq('media_id', assignItem.id);
+    const { error: deleteError } = await sb
+      .from('exercise_media_shares')
+      .delete()
+      .eq('media_id', assignItem.id);
+    if (deleteError) {
+      setAssignError('Could not update sharing — please try again.');
+      setAssignSaving(false);
+      return;
+    }
     if (ids.length > 0) {
-      await sb.from('exercise_media_shares').insert(
+      const { error: insertError } = await sb.from('exercise_media_shares').insert(
         ids.map(pid => ({ media_id: assignItem.id, patient_id: pid, practitioner_id: userId })),
       );
+      if (insertError) {
+        setAssignError('Could not assign to all selected patients — please try again.');
+        setAssignSaving(false);
+        return;
+      }
     }
     setMediaShares(prev => ({ ...prev, [assignItem.id]: ids }));
     setAssignSaving(false);
     setAssignItem(null);
+    setAssignSearch('');
   }
 
   // Escape closes whichever modal is currently on top
@@ -537,6 +558,11 @@ export default function MediaLibraryPage() {
 
                           <td style={{ padding: '12px 24px', fontWeight: 600 }}>{item.exercise_name}
                             {item.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontWeight: 400 }}>{item.notes}</div>}
+                            {(mediaShares[item.id]?.length ?? 0) > 0 && (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, background: 'rgba(95,207,191,0.12)', color: TEAL, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
+                                ✓ Shared with {mediaShares[item.id]!.length}
+                              </div>
+                            )}
                           </td>
 
                           <td style={{ padding: '12px 24px', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -862,39 +888,65 @@ export default function MediaLibraryPage() {
               <button onClick={closeAssignModal} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', marginTop: 20 }}>
+            {patients.length > 0 && (
+              <input
+                type="text"
+                value={assignSearch}
+                onChange={e => setAssignSearch(e.target.value)}
+                placeholder="Search patients…"
+                style={{ marginTop: 16, width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'var(--text-main)', outline: 'none' }}
+              />
+            )}
+
+            <div style={{ flex: 1, overflowY: 'auto', marginTop: 12 }}>
               {patients.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontSize: 14 }}>
                   <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
                   You don&apos;t have any patients yet.
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {patients
+                (() => {
+                  const filtered = patients
                     .slice()
                     .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(p => {
-                      const checked = assignSelected.has(p.id);
-                      return (
-                        <label
-                          key={p.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: checked ? 'rgba(95,207,191,0.1)' : 'var(--card-alt)', border: `1px solid ${checked ? TEAL : 'var(--border-subtle)'}`, cursor: 'pointer' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAssignPatient(p.id)}
-                            style={{ width: 16, height: 16, accentColor: TEAL, cursor: 'pointer' }}
-                          />
-                          <span style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</span>
-                        </label>
-                      );
-                    })}
-                </div>
+                    .filter(p => p.name.toLowerCase().includes(assignSearch.trim().toLowerCase()));
+                  if (filtered.length === 0) {
+                    return (
+                      <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-dim)', fontSize: 14 }}>
+                        No patients match &quot;{assignSearch}&quot;.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {filtered.map(p => {
+                        const checked = assignSelected.has(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: checked ? 'rgba(95,207,191,0.1)' : 'var(--card-alt)', border: `1px solid ${checked ? TEAL : 'var(--border-subtle)'}`, cursor: 'pointer' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAssignPatient(p.id)}
+                              style={{ width: 16, height: 16, accentColor: TEAL, cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               )}
             </div>
 
-            <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', gap: 12 }}>
+            {assignError && (
+              <p style={{ color: '#EF4444', fontSize: 13, margin: '12px 0 0' }}>{assignError}</p>
+            )}
+
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', gap: 12 }}>
               <button onClick={closeAssignModal} disabled={assignSaving} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleSaveAssign} disabled={assignSaving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: assignSaving ? 'not-allowed' : 'pointer', opacity: assignSaving ? 0.7 : 1 }}>
                 {assignSaving ? 'Saving…' : `Save${assignSelected.size > 0 ? ` (${assignSelected.size})` : ''}`}
