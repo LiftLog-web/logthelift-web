@@ -29,6 +29,7 @@ export default function ImportPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [authed,   setAuthed]   = useState(false);
+  const [isEmployer, setIsEmployer] = useState(false);
   const [step,     setStep]     = useState<Step>('upload');
   const [rows,     setRows]     = useState<PatientRow[]>([]);
   const [results,  setResults]  = useState<ImportResult[]>([]);
@@ -41,8 +42,9 @@ export default function ImportPage() {
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
       setToken(data.session.access_token);
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      setIsEmployer(!!(prof as any)?.is_employer);
       setAuthed(true);
     });
   }, [router]);
@@ -145,9 +147,9 @@ export default function ImportPage() {
     <div className="min-h-screen bg-[#0f1117] text-white">
       <div className="max-w-2xl mx-auto px-4 py-10">
 
-        <h1 className="text-2xl font-bold mb-1">Import Patients</h1>
+        <h1 className="text-2xl font-bold mb-1">Import {isEmployer ? 'Employees' : 'Patients'}</h1>
         <p className="text-white/50 text-sm mb-8">
-          Upload a CSV file with patient emails. Each patient gets a unique invite code sent to their inbox.
+          Upload a CSV file with {isEmployer ? 'employee' : 'patient'} emails. Each {isEmployer ? 'employee' : 'patient'} gets a unique invite code sent to their inbox.
         </p>
 
         {/* ── Upload step ── */}

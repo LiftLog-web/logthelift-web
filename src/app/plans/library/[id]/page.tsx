@@ -167,6 +167,7 @@ export default function TemplateEditorPage() {
   const lastRestRef = useRef<number>(60);
   const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
 
+  const [isEmployer,     setIsEmployer]     = useState(false);
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
   const [addVideoTarget, setAddVideoTarget] = useState<string | null>(null);
@@ -192,7 +193,7 @@ export default function TemplateEditorPage() {
   const [assignPatients,     setAssignPatients]     = useState<{ id: string; name: string }[]>([]);
   const [assignPatientsLoaded, setAssignPatientsLoaded] = useState(false);
   const [assignPatientSearch, setAssignPatientSearch] = useState('');
-  const [assignSelectedId,   setAssignSelectedId]   = useState<string | null>(null);
+  const [assignSelectedIds,  setAssignSelectedIds]  = useState<Set<string>>(new Set());
   const [assigning,          setAssigning]          = useState(false);
   const [assignDone,         setAssignDone]         = useState(false);
   const [assignAttempted,    setAssignAttempted]    = useState(false);
@@ -221,10 +222,11 @@ export default function TemplateEditorPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setAuthed(true);
       setUserId(data.session.user.id);
+      setIsEmployer(!!(prof as any)?.is_employer);
 
       const { data: mediaItems } = await sb
         .from('exercise_media')
@@ -657,7 +659,7 @@ export default function TemplateEditorPage() {
 
   const openAssignModal = async () => {
     setShowAssignModal(true);
-    setAssignSelectedId(null);
+    setAssignSelectedIds(new Set());
     setAssignPatientSearch('');
     setAssignDone(false);
     setAssignAttempted(false);
@@ -677,7 +679,7 @@ export default function TemplateEditorPage() {
 
   const handleAssign = async () => {
     if (!name.trim()) { setAssignAttempted(true); return; }
-    if (!assignSelectedId) return;
+    if (assignSelectedIds.size === 0) return;
     setAssigning(true);
     const sb = getSupabase();
     // Auto-save template first
@@ -686,22 +688,27 @@ export default function TemplateEditorPage() {
       .eq('id', templateId);
     isDirtyRef.current = false;
     isNewRef.current = false;
-    // Create patient plan from template (strip web-only fields)
-    const { error } = await sb.from('workout_plans').insert({
+    // Create one patient plan per selected patient from template (strip web-only fields)
+    const now = new Date().toISOString();
+    const exercisesPayload = { frequencyPerWeek, days: stripSkippedWeeks(days) };
+    const selectedIds = Array.from(assignSelectedIds);
+    const { error } = await sb.from('workout_plans').insert(selectedIds.map(patientId => ({
       practitioner_id: userId,
-      patient_id: assignSelectedId,
+      patient_id: patientId,
       name: name.trim(),
       description: description.trim() || null,
-      exercises: { frequencyPerWeek, days: stripSkippedWeeks(days) },
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+      exercises: exercisesPayload,
+      created_at: now,
+      updated_at: now,
+    })));
     if (error) {
       alert('Could not assign plan: ' + error.message);
       setAssigning(false);
       return;
     }
-    sb.functions.invoke('notify-plan-assigned', { body: { patient_id: assignSelectedId, plan_name: name.trim() } });
+    selectedIds.forEach(patientId => {
+      sb.functions.invoke('notify-plan-assigned', { body: { patient_id: patientId, plan_name: name.trim() } });
+    });
     setAssignDone(true);
     setAssigning(false);
     setTimeout(() => { setShowAssignModal(false); router.push('/plans'); }, 1200);
@@ -883,7 +890,7 @@ export default function TemplateEditorPage() {
             onClick={openAssignModal}
             style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
           >
-            Assign to Patient →
+            Assign to {isEmployer ? 'Employee' : 'Patient'} →
           </button>
           <button
             onClick={handleSave}
@@ -1268,16 +1275,34 @@ export default function TemplateEditorPage() {
         </div>
       )}
 
-      {/* Assign to Patient modal */}
-      {showAssignModal && (
-        <div onClick={() => { if (!assigning) { setShowAssignModal(false); setAssignSelectedId(null); } }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
+      {/* Assign to Patient/Employee modal */}
+      {showAssignModal && (() => {
+        const filteredAssignPatients = assignPatients.filter(p => p.name.toLowerCase().includes(assignPatientSearch.toLowerCase()));
+        const allFilteredSelected = filteredAssignPatients.length > 0 && filteredAssignPatients.every(p => assignSelectedIds.has(p.id));
+        const toggleSelectAll = () => {
+          setAssignSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allFilteredSelected) filteredAssignPatients.forEach(p => next.delete(p.id));
+            else filteredAssignPatients.forEach(p => next.add(p.id));
+            return next;
+          });
+        };
+        const toggleOne = (id: string) => {
+          setAssignSelectedIds(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          });
+        };
+        return (
+        <div onClick={() => { if (!assigning) { setShowAssignModal(false); setAssignSelectedIds(new Set()); } }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 440, padding: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Assign to Patient</h2>
-              <button onClick={() => { setShowAssignModal(false); setAssignSelectedId(null); }} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+              <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Assign to {isEmployer ? 'Employee' : 'Patient'}</h2>
+              <button onClick={() => { setShowAssignModal(false); setAssignSelectedIds(new Set()); }} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
-              Select a patient to assign <strong style={{ color: 'var(--text)' }}>{name || 'this template'}</strong>. The template will be auto-saved to your library.
+              Select one or more {isEmployer ? 'employees' : 'patients'} to assign <strong style={{ color: 'var(--text)' }}>{name || 'this template'}</strong>. The template will be auto-saved to your library.
             </p>
             {assignAttempted && !name.trim() && (
               <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, margin: '0 0 12px', padding: '8px 12px', background: 'rgba(248,113,113,0.1)', borderRadius: 8, border: '1px solid rgba(248,113,113,0.3)' }}>
@@ -1288,47 +1313,79 @@ export default function TemplateEditorPage() {
               autoFocus
               value={assignPatientSearch}
               onChange={e => setAssignPatientSearch(e.target.value)}
-              placeholder="Search patients…"
+              placeholder={isEmployer ? 'Search employees…' : 'Search patients…'}
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 12 }}
             />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                {assignSelectedIds.size} selected
+              </span>
+              {filteredAssignPatients.length > 0 && (
+                <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', color: PURPLE, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+                  {allFilteredSelected ? 'Deselect all' : 'Select all'}
+                </button>
+              )}
+            </div>
             <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
               {!assignPatientsLoaded ? (
-                <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>Loading patients…</p>
-              ) : assignPatients.filter(p => p.name.toLowerCase().includes(assignPatientSearch.toLowerCase())).length === 0 ? (
+                <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>{isEmployer ? 'Loading employees…' : 'Loading patients…'}</p>
+              ) : filteredAssignPatients.length === 0 ? (
                 <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                  {assignPatients.length === 0 ? 'No linked patients found.' : 'No patients match your search.'}
+                  {assignPatients.length === 0
+                    ? (isEmployer ? 'No linked employees found.' : 'No linked patients found.')
+                    : (isEmployer ? 'No employees match your search.' : 'No patients match your search.')}
                 </p>
-              ) : assignPatients.filter(p => p.name.toLowerCase().includes(assignPatientSearch.toLowerCase())).map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setAssignSelectedId(prev => prev === p.id ? null : p.id)}
-                  style={{
-                    background: assignSelectedId === p.id ? `${PURPLE}20` : 'var(--card-alt)',
-                    border: `1px solid ${assignSelectedId === p.id ? PURPLE + '60' : 'var(--border-strong)'}`,
-                    color: assignSelectedId === p.id ? PURPLE : 'var(--text)',
-                    borderRadius: 10, padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
-                    fontSize: 14, fontWeight: assignSelectedId === p.id ? 700 : 400,
-                  }}
-                >
-                  {p.name}
-                </button>
-              ))}
+              ) : filteredAssignPatients.map(p => {
+                const selected = assignSelectedIds.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => toggleOne(p.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: selected ? `${PURPLE}20` : 'var(--card-alt)',
+                      border: `1px solid ${selected ? PURPLE + '60' : 'var(--border-strong)'}`,
+                      color: selected ? PURPLE : 'var(--text)',
+                      borderRadius: 10, padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
+                      fontSize: 14, fontWeight: selected ? 700 : 400,
+                    }}
+                  >
+                    <span style={{
+                      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                      border: `1px solid ${selected ? PURPLE : 'var(--border-strong)'}`,
+                      background: selected ? PURPLE : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, color: '#0f1117', lineHeight: 1,
+                    }}>
+                      {selected ? '✓' : ''}
+                    </span>
+                    {p.name}
+                  </button>
+                );
+              })}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { setShowAssignModal(false); setAssignSelectedId(null); }} disabled={assigning} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={() => { setShowAssignModal(false); setAssignSelectedIds(new Set()); }} disabled={assigning} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
                 onClick={handleAssign}
-                disabled={!assignSelectedId || assigning || assignDone}
-                style={{ flex: 2, background: assignDone ? TEAL : PURPLE, color: assignDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: (!assignSelectedId || assigning) ? 'not-allowed' : 'pointer', opacity: (!assignSelectedId || assigning) ? 0.6 : 1, transition: 'background 0.2s' }}
+                disabled={assignSelectedIds.size === 0 || assigning || assignDone}
+                style={{ flex: 2, background: assignDone ? TEAL : PURPLE, color: assignDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: (assignSelectedIds.size === 0 || assigning) ? 'not-allowed' : 'pointer', opacity: (assignSelectedIds.size === 0 || assigning) ? 0.6 : 1, transition: 'background 0.2s' }}
               >
-                {assignDone ? '✓ Assigned!' : assigning ? 'Assigning…' : 'Assign Plan'}
+                {assignDone
+                  ? '✓ Assigned!'
+                  : assigning
+                  ? 'Assigning…'
+                  : assignSelectedIds.size > 1
+                  ? `Assign to ${assignSelectedIds.size} ${isEmployer ? 'Employees' : 'Patients'}`
+                  : 'Assign Plan'}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Add video link modal */}
       {addVideoTarget && (

@@ -98,6 +98,7 @@ export default function PlanLibraryPage() {
   const router = useRouter();
   const [authed,     setAuthed]     = useState(false);
   const [userId,     setUserId]     = useState('');
+  const [isEmployer, setIsEmployer] = useState(false);
   const [templates,  setTemplates]  = useState<Template[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [creating,   setCreating]   = useState(false);
@@ -146,10 +147,11 @@ export default function PlanLibraryPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setAuthed(true);
       setUserId(data.session.user.id);
+      setIsEmployer(!!(prof as any)?.is_employer);
       const { data: rows } = await sb
         .from('plan_templates')
         .select('*')
@@ -257,7 +259,7 @@ export default function PlanLibraryPage() {
   };
 
   const handleUnassign = async (planId: string, planName: string) => {
-    if (!confirm('Remove this patient from the plan?')) return;
+    if (!confirm(`Remove this ${isEmployer ? 'employee' : 'patient'} from the plan?`)) return;
     setUnassigning(planId);
     await getSupabase().from('workout_plans').delete().eq('id', planId);
     setPlanAssignments(prev => {
@@ -311,7 +313,7 @@ export default function PlanLibraryPage() {
   }
 
   async function handleAssign() {
-    if (!assignPatientId) { setAssignError('Please select a patient.'); return; }
+    if (!assignPatientId) { setAssignError(`Please select ${isEmployer ? 'an employee' : 'a patient'}.`); return; }
     if (assignReminder && !assignRemindDate) { setAssignError('Please choose a reminder date.'); return; }
     setAssigning(true);
     setAssignError('');
@@ -833,7 +835,7 @@ export default function PlanLibraryPage() {
                               <button
                                 onClick={e => { e.stopPropagation(); setEditingAssignment({ planId: a.planId, planName: t.name, patientName: a.patientName, weeks: a.weeks, exercisesRaw: a.exercisesRaw, templateId: t.id, availableWeeks: deriveWeekList(t.exercises) }); setEditingAssWeeks([...a.weeks]); }}
                                 style={{ background: `${PURPLE}30`, border: `1px solid ${PURPLE}60`, color: PURPLE, borderRadius: 6, padding: '1px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-                                title="Edit weeks shared with this patient"
+                                title={`Edit weeks shared with this ${isEmployer ? 'employee' : 'patient'}`}
                               >
                                 Edit
                               </button>
@@ -842,7 +844,7 @@ export default function PlanLibraryPage() {
                               onClick={e => { e.stopPropagation(); handleUnassign(a.planId, t.name); }}
                               disabled={unassigning === a.planId}
                               style={{ background: 'none', border: 'none', color: 'inherit', cursor: unassigning === a.planId ? 'not-allowed' : 'pointer', padding: '0 0 0 2px', fontSize: 14, lineHeight: 1, opacity: unassigning === a.planId ? 0.4 : 0.7 }}
-                              title="Un-assign this patient"
+                              title={`Un-assign this ${isEmployer ? 'employee' : 'patient'}`}
                             >
                               ×
                             </button>
@@ -870,7 +872,7 @@ export default function PlanLibraryPage() {
                         onClick={() => openAssign(t)}
                         style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                       >
-                        Assign to Patient
+                        Assign to {isEmployer ? 'Employee' : 'Patient'}
                       </button>
                     )}
                     {isGrouped ? (
@@ -997,14 +999,14 @@ export default function PlanLibraryPage() {
                 onClick={() => { setPreviewTpl(null); openAssign(previewTpl); }}
                 style={{ flex: 1, background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
-                Assign to Patient
+                Assign to {isEmployer ? 'Employee' : 'Patient'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Assign to Patient modal */}
+      {/* Assign to Patient/Employee modal */}
       {assignTpl && (
         <div
           onClick={() => { if (!assigning) setAssignTpl(null); }}
@@ -1014,7 +1016,7 @@ export default function PlanLibraryPage() {
             {/* Header */}
             <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <h2 style={{ fontWeight: 800, fontSize: 18, margin: '0 0 4px' }}>Assign to Patient</h2>
+                <h2 style={{ fontWeight: 800, fontSize: 18, margin: '0 0 4px' }}>Assign to {isEmployer ? 'Employee' : 'Patient'}</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{assignTpl.name || 'Untitled template'}</p>
               </div>
               <button onClick={() => setAssignTpl(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
@@ -1036,19 +1038,19 @@ export default function PlanLibraryPage() {
 
               {/* Patient */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Patient</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{isEmployer ? 'Employee' : 'Patient'}</label>
                 <select
                   value={assignPatientId}
                   onChange={e => setAssignPatientId(e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: assignPatientId ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, outline: 'none', cursor: 'pointer' }}
                 >
-                  <option value="">Select a patient…</option>
+                  <option value="">{isEmployer ? 'Select an employee…' : 'Select a patient…'}</option>
                   {patients.map(p => (
                     <option key={p.id} value={p.id}>{p.display_name}</option>
                   ))}
                 </select>
                 {patients.length === 0 && (
-                  <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '6px 0 0' }}>No linked patients found.</p>
+                  <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '6px 0 0' }}>{isEmployer ? 'No linked employees found.' : 'No linked patients found.'}</p>
                 )}
               </div>
 
@@ -1084,7 +1086,7 @@ export default function PlanLibraryPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Set a Reminder</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Get reminded to update this patient's plan</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Get reminded to update this {isEmployer ? 'employee' : 'patient'}'s plan</p>
                   </div>
                   <button
                     onClick={() => setAssignReminder(v => !v)}
@@ -1171,7 +1173,7 @@ export default function PlanLibraryPage() {
             </div>
             <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-                Select which weeks to share with this patient. Currently assigned: {editingAssignment.weeks.map(w => `W${w}`).join(', ')}.
+                Select which weeks to share with this {isEmployer ? 'employee' : 'patient'}. Currently assigned: {editingAssignment.weeks.map(w => `W${w}`).join(', ')}.
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {editingAssignment.availableWeeks.map(w => {

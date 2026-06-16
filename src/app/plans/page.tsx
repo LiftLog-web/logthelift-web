@@ -126,6 +126,7 @@ export default function PlansPage() {
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
   const [userId, setUserId]             = useState<string>('');
+  const [isEmployer, setIsEmployer]     = useState(false);
   const [editingPlan, setEditingPlan]   = useState<Plan | null>(null);
   const [editingWeeks, setEditingWeeks] = useState<number[]>([]);
   const [editingTemplateFull, setEditingTemplateFull] = useState<any>(null);
@@ -148,7 +149,7 @@ export default function PlansPage() {
 
       const { data: prof } = await sb
         .from('profiles')
-        .select('role, approved, is_gym_owner, inactivity_threshold_days')
+        .select('role, approved, is_gym_owner, is_employer, inactivity_threshold_days')
         .eq('id', data.session.user.id)
         .single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
@@ -157,6 +158,7 @@ export default function PlansPage() {
       setThreshold(t);
       setThresholdInput(String(t));
       setUserId(data.session.user.id);
+      setIsEmployer(!!(prof as any)?.is_employer);
       setAuthed(true);
 
       const { data: rawPlans } = await sb
@@ -303,6 +305,9 @@ export default function PlansPage() {
       .map(g => ({ type: 'inactive' as const, patient_id: g.patient_id, patientName: g.patientName, days: daysSince(lastWorkoutMap.get(g.patient_id)) })),
   ];
 
+  const patientLabel = isEmployer ? 'employee' : 'patient';
+  const patientLabelCap = isEmployer ? 'Employee' : 'Patient';
+
   if (!authed || loading) {
     return (
       <SkPage>
@@ -340,7 +345,7 @@ export default function PlansPage() {
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Workout Plans</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
-              {activeGrouped.length} patient{activeGrouped.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
+              {activeGrouped.length} {patientLabel}{activeGrouped.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -349,7 +354,7 @@ export default function PlansPage() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search patients…"
+                placeholder={`Search ${patientLabel}s…`}
                 style={{
                   background: 'var(--card-alt)', border: '1px solid var(--border-strong)',
                   borderRadius: 10, padding: '10px 16px', color: 'var(--text)', fontSize: 14, outline: 'none', width: 220,
@@ -368,7 +373,7 @@ export default function PlansPage() {
         {plans.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
-            <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No plans yet. Create your first plan for a patient.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No plans yet. Create your first plan for a {patientLabel}.</p>
             <button onClick={() => router.push('/plans/new')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
               Create First Plan
             </button>
@@ -420,7 +425,7 @@ export default function PlansPage() {
                 {attentionItems.length === 0 ? (
                   <div style={{ background: 'var(--card)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>All patients are on track</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>All {patientLabel}s are on track</span>
                   </div>
                 ) : (
                   <div style={{ background: 'var(--card)' }}>
@@ -473,7 +478,7 @@ export default function PlansPage() {
 
             {/* ── Patient plan list ── */}
             {filtered.length === 0 ? (
-              <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No patients match "{search}"</p>
+              <p style={{ color: 'var(--text-dim)', marginTop: 40, textAlign: 'center' }}>No {patientLabel}s match "{search}"</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {filtered.map(group => {
@@ -605,7 +610,7 @@ export default function PlansPage() {
                   }}
                 >
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text-muted)' }}>
-                    Previous Patients ({filteredPrevious.length})
+                    Previous {patientLabelCap}s ({filteredPrevious.length})
                   </p>
                   <span style={{ color: 'var(--text-muted)', fontSize: 14, transform: showPrevious ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
                     ▾
@@ -662,7 +667,7 @@ export default function PlansPage() {
               <button onClick={() => { setEditingPlan(null); setEditingTemplateFull(null); }} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
-              Select which weeks to share with this patient.{editingTemplateFull ? ' You can add or remove weeks.' : ' Unselected weeks will be removed.'}
+              Select which weeks to share with this {patientLabel}.{editingTemplateFull ? ' You can add or remove weeks.' : ' Unselected weeks will be removed.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
               {Array.from(new Set([...deriveAllWeeks(editingPlan.exercisesRaw), ...(editingTemplateFull ? deriveWeeks(editingTemplateFull) : [])])).sort((a, b) => a - b).map(w => {

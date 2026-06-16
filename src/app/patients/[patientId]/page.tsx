@@ -224,6 +224,7 @@ export default function PatientProgressPage() {
   const [sendResult,   setSendResult]   = useState<'ok' | 'error' | null>(null);
 
   const [practId,          setPractId]          = useState('');
+  const [isEmployer,       setIsEmployer]       = useState(false);
 
   // Assigned plans + week editing
   const [assignedPlans,    setAssignedPlans]    = useState<Array<{ id: string; name: string; weeks: number[]; allWeeks: number[]; exercisesRaw: any }>>([]);
@@ -247,10 +248,12 @@ export default function PatientProgressPage() {
       if (!data.session) { router.push('/login'); return; }
 
       const uid = data.session.user.id;
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, display_name').eq('id', uid).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer, display_name').eq('id', uid).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setPractName(prof?.display_name ?? 'Your Practitioner');
       setPractId(uid);
+      const employerFlag = !!(prof as any)?.is_employer;
+      setIsEmployer(employerFlag);
 
       // Verify this patient is linked to the practitioner
       const { data: link } = await sb
@@ -264,7 +267,7 @@ export default function PatientProgressPage() {
 
       // Load patient profile
       const { data: patProf } = await sb.from('profiles').select('display_name, email').eq('id', patientId).single();
-      setPatientName(patProf?.display_name ?? 'Patient');
+      setPatientName(patProf?.display_name ?? (employerFlag ? 'Employee' : 'Patient'));
       setPatientEmail(patProf?.email ?? '');
 
       // Load workouts
@@ -524,7 +527,7 @@ export default function PatientProgressPage() {
   if (loading || !authed) {
     if (noAccess) return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--text-muted)' }}>You don't have access to this patient's data.</p>
+        <p style={{ color: 'var(--text-muted)' }}>You don't have access to this {isEmployer ? 'employee' : 'patient'}'s data.</p>
       </div>
     );
     return (
@@ -632,7 +635,7 @@ export default function PatientProgressPage() {
               onClick={() => { setEmailOpen(true); setSendResult(null); }}
               style={{ background: 'var(--btn-purple-bg)', border: '1px solid var(--btn-purple-border)', color: 'var(--btn-purple-text)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
             >
-              ✉ Email Patient
+              ✉ Email {isEmployer ? 'Employee' : 'Patient'}
             </button>
           )}
           <button
@@ -895,7 +898,7 @@ export default function PatientProgressPage() {
         {workouts.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
             <p style={{ fontSize: 36, marginBottom: 12 }}>📭</p>
-            <p style={{ color: 'var(--text-muted)' }}>No workouts synced yet for this patient.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No workouts synced yet for this {isEmployer ? 'employee' : 'patient'}.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1049,7 +1052,7 @@ export default function PatientProgressPage() {
                                             <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                               {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
                                             </span>
-                                            {hasNote && <span title="Patient note" style={{ fontSize: 13 }}>💬</span>}
+                                            {hasNote && <span title={isEmployer ? 'Employee note' : 'Patient note'} style={{ fontSize: 13 }}>💬</span>}
                                             <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                                           </button>
                                           {exOpen && (
@@ -1210,7 +1213,7 @@ export default function PatientProgressPage() {
             </div>
             {editingPlanWeeks.length < editingPlan.allWeeks.length && (
               <p style={{ color: PURPLE, fontSize: 12, margin: '0 0 18px' }}>
-                Deselected weeks will be removed from this patient's plan.
+                Deselected weeks will be removed from this {isEmployer ? 'employee' : 'patient'}'s plan.
               </p>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

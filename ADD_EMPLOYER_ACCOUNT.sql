@@ -1,0 +1,4 @@
+-- Run in Supabase SQL editor
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_employer BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_name TEXT;

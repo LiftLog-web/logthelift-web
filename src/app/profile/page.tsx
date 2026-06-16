@@ -18,6 +18,8 @@ interface Profile {
   role: 'patient' | 'practitioner';
   approved: boolean;
   is_gym_owner: boolean;
+  is_employer: boolean;
+  company_name: string | null;
   avatar_url: string | null;
 }
 
@@ -73,7 +75,7 @@ export default function ProfilePage() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('id, display_name, email, role, approved, is_gym_owner, avatar_url')
+        .select('id, display_name, email, role, approved, is_gym_owner, is_employer, company_name, avatar_url')
         .eq('id', userId)
         .single();
 
@@ -229,6 +231,7 @@ export default function ProfilePage() {
   }
 
   const isPractitioner = profile?.role === 'practitioner';
+  const isEmployer = !!profile?.is_employer;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
@@ -256,9 +259,12 @@ export default function ProfilePage() {
               <button onClick={handleSignOut} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Sign Out</button>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
+            {isEmployer && profile?.company_name && (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 12px' }}>{profile.company_name}</p>
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                {isPractitioner ? 'Practitioner' : 'Patient'}
+                {isEmployer ? 'Employer' : isPractitioner ? 'Practitioner' : 'Patient'}
               </span>
               {isPractitioner && (
                 <span style={{ background: profile?.approved ? 'var(--badge-teal-bg)' : 'var(--badge-yellow-bg)', color: profile?.approved ? 'var(--badge-teal-text)' : 'var(--badge-yellow-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
@@ -273,7 +279,7 @@ export default function ProfilePage() {
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
           <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
-              {isPractitioner ? `My Patients (${patients.length})` : `My Practitioners (${practitioners.length})`}
+              {isPractitioner ? `My ${isEmployer ? 'Employees' : 'Patients'} (${patients.length})` : `My Practitioners (${practitioners.length})`}
             </h2>
           </div>
 
@@ -281,7 +287,7 @@ export default function ProfilePage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
                 {isPractitioner
-                  ? 'No patients linked yet. Use your invite code below or send an invite email.'
+                  ? `No ${isEmployer ? 'employees' : 'patients'} linked yet. Use your invite code below or send an invite email.`
                   : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
               </p>
               {!isPractitioner && (
@@ -317,7 +323,7 @@ export default function ProfilePage() {
           <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>My Invite Code</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>
-              Share this code with a patient. They enter it in the LiftLog app under <strong style={{ color: 'var(--text)' }}>Stats → Link to Practitioner</strong>.
+              Share this code with {isEmployer ? 'an employee' : 'a patient'}. They enter it in the LiftLog app under <strong style={{ color: 'var(--text)' }}>Stats → Link to Practitioner</strong>.
             </p>
 
             {inviteLoading ? (
@@ -357,22 +363,22 @@ export default function ProfilePage() {
           <div style={{ marginTop: 16, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Invite by Email</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 8px' }}>
-              Send a patient their unique invite code and app download link by email.
+              Send {isEmployer ? 'an employee' : 'a patient'} their unique invite code and app download link by email.
             </p>
             <p style={{ fontSize: 14, margin: '0 0 20px' }}>
-              <strong>Remind your patient to check their junk/spam folder</strong> if they don&apos;t see the email in their inbox.
+              <strong>Remind your {isEmployer ? 'employee' : 'patient'} to check their junk/spam folder</strong> if they don&apos;t see the email in their inbox.
             </p>
             <div style={{ display: 'flex', gap: 10, marginBottom: inviteError ? 8 : 12, flexWrap: 'wrap' }}>
               <input
                 value={inviteName}
                 onChange={e => setInviteName(e.target.value)}
-                placeholder="Patient name (optional)"
+                placeholder={isEmployer ? 'Employee name (optional)' : 'Patient name (optional)'}
                 style={{ flex: 1, minWidth: 150, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
               />
               <input
                 value={inviteEmail}
                 onChange={e => { setInviteEmail(e.target.value); setInviteError(''); }}
-                placeholder="patient@email.com"
+                placeholder={isEmployer ? 'employee@email.com' : 'patient@email.com'}
                 type="email"
                 style={{ flex: 2, minWidth: 200, background: 'var(--card-alt)', border: `1px solid ${inviteError ? '#ff6b6b' : 'var(--border)'}`, borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
               />
@@ -391,11 +397,11 @@ export default function ProfilePage() {
         {isPractitioner && (
           <div style={{ marginTop: 16, background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
-              <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import Patients</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Import multiple patients at once from a file.</p>
+              <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px' }}>Bulk Import {isEmployer ? 'Employees' : 'Patients'}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Import multiple {isEmployer ? 'employees' : 'patients'} at once from a file.</p>
             </div>
             <a href="/import" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap', border: 'none' }}>
-              Import Patients
+              Import {isEmployer ? 'Employees' : 'Patients'}
             </a>
           </div>
         )}
