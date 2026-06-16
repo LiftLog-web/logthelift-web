@@ -31,6 +31,11 @@ interface PlanViewer {
   patientName: string;
 }
 
+interface PatientOption {
+  id: string;
+  name: string;
+}
+
 interface ViewMedia {
   url: string;
   type: 'photo' | 'video';
@@ -54,6 +59,13 @@ export default function MediaLibraryPage() {
   const [viewersItem, setViewersItem] = useState<MediaItem | null>(null);
   const [allPlans,    setAllPlans]    = useState<Array<{ id: string; name: string; patient_id: string; exercises: unknown[] }>>([]);
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+  const [patients,    setPatients]    = useState<PatientOption[]>([]);
+  const [mediaShares, setMediaShares] = useState<Record<string, string[]>>({});
+
+  // Assign-to-patients modal
+  const [assignItem,     setAssignItem]     = useState<MediaItem | null>(null);
+  const [assignSelected, setAssignSelected] = useState<Set<string>>(new Set());
+  const [assignSaving,   setAssignSaving]   = useState(false);
 
   // Modal
   const [showModal,      setShowModal]      = useState(false);
@@ -87,7 +99,7 @@ export default function MediaLibraryPage() {
   async function loadAll(uid: string) {
     const sb = getSupabase();
 
-    const [mediaRes, plansRes, customRes] = await Promise.all([
+    const [mediaRes, plansRes, customRes, linksRes, sharesRes] = await Promise.all([
       sb.from('exercise_media')
         .select('id, exercise_name, media_type, file_path, url_link, muscle_group, notes, created_at')
         .eq('practitioner_id', uid)
@@ -98,6 +110,12 @@ export default function MediaLibraryPage() {
       sb.from('custom_exercises')
         .select('name')
         .eq('creator_id', uid),
+      sb.from('patient_links')
+        .select('profiles:patient_id(id, display_name)')
+        .eq('practitioner_id', uid),
+      sb.from('exercise_media_shares')
+        .select('media_id, patient_id')
+        .eq('practitioner_id', uid),
     ]);
 
     const mediaItems: MediaItem[] = mediaRes.data ?? [];
@@ -135,6 +153,19 @@ export default function MediaLibraryPage() {
     const nameMap: Record<string, string> = {};
     for (const p of plans) nameMap[p.patient_id] = p.patientName;
     setPatientNames(nameMap);
+
+    type LinkRow = { profiles: { id: string; display_name: string } | { id: string; display_name: string }[] | null };
+    const pats: PatientOption[] = ((linksRes.data ?? []) as LinkRow[])
+      .map(l => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles)
+      .filter((p): p is { id: string; display_name: string } => !!p)
+      .map(p => ({ id: p.id, name: p.display_name }));
+    setPatients(pats);
+
+    const sharesMap: Record<string, string[]> = {};
+    for (const row of (sharesRes.data ?? [])) {
+      (sharesMap[row.media_id] ??= []).push(row.patient_id);
+    }
+    setMediaShares(sharesMap);
 
     setLoading(false);
   }
@@ -301,6 +332,52 @@ export default function MediaLibraryPage() {
         patientName: patientNames[plan.patient_id] ?? plan.patientName,
       }));
   }
+
+  function openAssignModal(item: MediaItem) {
+    setAssignItem(item);
+    setAssignSelected(new Set(mediaShares[item.id] ?? []));
+  }
+
+  function closeAssignModal() {
+    setAssignItem(null);
+  }
+
+  function toggleAssignPatient(patientId: string) {
+    setAssignSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(patientId)) next.delete(patientId); else next.add(patientId);
+      return next;
+    });
+  }
+
+  async function handleSaveAssign() {
+    if (!assignItem) return;
+    setAssignSaving(true);
+    const sb = getSupabase();
+    const ids = [...assignSelected];
+    await sb.from('exercise_media_shares').delete().eq('media_id', assignItem.id);
+    if (ids.length > 0) {
+      await sb.from('exercise_media_shares').insert(
+        ids.map(pid => ({ media_id: assignItem.id, patient_id: pid, practitioner_id: userId })),
+      );
+    }
+    setMediaShares(prev => ({ ...prev, [assignItem.id]: ids }));
+    setAssignSaving(false);
+    setAssignItem(null);
+  }
+
+  // Escape closes whichever modal is currently on top
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (assignItem) { setAssignItem(null); return; }
+      if (showModal) { closeModal(); return; }
+      if (viewMedia) { setViewMedia(null); return; }
+      if (viewersItem) { setViewersItem(null); return; }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [assignItem, showModal, viewMedia, viewersItem]);
 
   if (!authed || loading) {
     return (
@@ -572,7 +649,6 @@ export default function MediaLibraryPage() {
           <div
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 24 }}
             onClick={closeModal}
-            onKeyDown={e => { if (e.key === 'Escape') closeModal(); }}
           >
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 36, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -706,7 +782,6 @@ export default function MediaLibraryPage() {
         return (
           <div
             onClick={() => setViewersItem(null)}
-            onKeyDown={e => { if (e.key === 'Escape') setViewersItem(null); }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
           >
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
@@ -749,18 +824,85 @@ export default function MediaLibraryPage() {
                 )}
               </div>
 
-              <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
                   {viewers.length} patient{viewers.length !== 1 ? 's' : ''} · {viewers.length} plan{viewers.length !== 1 ? 's' : ''}
+                  {(mediaShares[viewersItem.id]?.length ?? 0) > 0 && (
+                    <> · {mediaShares[viewersItem.id]!.length} directly shared</>
+                  )}
                 </span>
-                <button onClick={() => setViewersItem(null)} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-                  Close
-                </button>
+                <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                  <button onClick={() => openAssignModal(viewersItem)} style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Assign to Patients
+                  </button>
+                  <button onClick={() => setViewersItem(null)} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         );
       })()}
+
+      {/* ── ASSIGN TO PATIENTS MODAL ── */}
+      {assignItem && (
+        <div
+          onClick={closeAssignModal}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 250, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div>
+                <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Assign to Patients</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                  {assignItem.exercise_name} — share this demo directly, even if it&apos;s not in their plan yet.
+                </p>
+              </div>
+              <button onClick={closeAssignModal} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', marginTop: 20 }}>
+              {patients.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontSize: 14 }}>
+                  <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
+                  You don&apos;t have any patients yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {patients
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(p => {
+                      const checked = assignSelected.has(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: checked ? 'rgba(95,207,191,0.1)' : 'var(--card-alt)', border: `1px solid ${checked ? TEAL : 'var(--border-subtle)'}`, cursor: 'pointer' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAssignPatient(p.id)}
+                            style={{ width: 16, height: 16, accentColor: TEAL, cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</span>
+                        </label>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', gap: 12 }}>
+              <button onClick={closeAssignModal} disabled={assignSaving} style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveAssign} disabled={assignSaving} style={{ flex: 2, background: TEAL, color: '#0f1117', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: assignSaving ? 'not-allowed' : 'pointer', opacity: assignSaving ? 0.7 : 1 }}>
+                {assignSaving ? 'Saving…' : `Save${assignSelected.size > 0 ? ` (${assignSelected.size})` : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
