@@ -484,7 +484,7 @@ export default function PlanLibraryPage() {
                   Sort: {SORT_LABELS[sortBy]} {sortOpen ? '▲' : '▼'}
                 </button>
                 {sortOpen && (
-                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                       <button
                         key={opt}
@@ -520,7 +520,7 @@ export default function PlanLibraryPage() {
                 </button>
                 {bodyFilterOpen && (
                   <div
-                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                    style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border-strong)', borderRadius: 12, zIndex: 300, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                   >
                     {/* Search inside dropdown */}
                     <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -693,7 +693,7 @@ export default function PlanLibraryPage() {
                   {hoveredId === t.id && t.exercises.length > 0 && (
                     <div style={{
                       position: 'absolute', right: 'calc(100% + 12px)', top: 0,
-                      width: 240, background: 'var(--card)', border: '1px solid var(--border-strong)',
+                      width: 240, background: 'var(--modal-bg)', border: '1px solid var(--border-strong)',
                       borderRadius: 12, padding: '14px 16px', zIndex: 50,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                       pointerEvents: 'none',
