@@ -61,6 +61,9 @@ export default function MediaLibraryPage() {
   const [patientNames, setPatientNames] = useState<Record<string, string>>({});
   const [patients,    setPatients]    = useState<PatientOption[]>([]);
   const [mediaShares, setMediaShares] = useState<Record<string, string[]>>({});
+  const [showDirectShares, setShowDirectShares] = useState(false);
+  const [removingShareId, setRemovingShareId]   = useState<string | null>(null);
+  const [removeShareError, setRemoveShareError] = useState('');
 
   // Assign-to-patients modal
   const [assignItem,     setAssignItem]     = useState<MediaItem | null>(null);
@@ -387,6 +390,24 @@ export default function MediaLibraryPage() {
     setAssignSearch('');
   }
 
+  async function handleRemoveShare(mediaId: string, patientId: string) {
+    setRemovingShareId(patientId);
+    setRemoveShareError('');
+    const sb = getSupabase();
+    const { error } = await sb
+      .from('exercise_media_shares')
+      .delete()
+      .eq('media_id', mediaId)
+      .eq('patient_id', patientId);
+    if (error) {
+      setRemoveShareError('Could not remove this patient — please try again.');
+      setRemovingShareId(null);
+      return;
+    }
+    setMediaShares(prev => ({ ...prev, [mediaId]: (prev[mediaId] ?? []).filter(id => id !== patientId) }));
+    setRemovingShareId(null);
+  }
+
   // Escape closes whichever modal is currently on top
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -525,7 +546,7 @@ export default function MediaLibraryPage() {
                       return (
                         <tr
                           key={item.id}
-                          onClick={() => setViewersItem(item)}
+                          onClick={() => { setViewersItem(item); setShowDirectShares(false); setRemoveShareError(''); }}
                           style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', background: i % 2 === 0 ? 'transparent' : 'var(--card)', cursor: 'pointer', transition: 'background 0.15s' }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(95,207,191,0.05)')}
                           onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'var(--card)')}
@@ -849,6 +870,48 @@ export default function MediaLibraryPage() {
                   </div>
                 )}
               </div>
+
+              {(mediaShares[viewersItem.id]?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+                  <button
+                    onClick={() => setShowDirectShares(s => !s)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                      Directly shared with {mediaShares[viewersItem.id]!.length} patient{mediaShares[viewersItem.id]!.length !== 1 ? 's' : ''}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13, transform: showDirectShares ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                      ▾
+                    </span>
+                  </button>
+
+                  {showDirectShares && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, maxHeight: 200, overflowY: 'auto' }}>
+                      {mediaShares[viewersItem.id]!.map(patientId => {
+                        const name = patients.find(p => p.id === patientId)?.name ?? 'Unknown';
+                        return (
+                          <div
+                            key={patientId}
+                            style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                          >
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>{name}</span>
+                            <button
+                              onClick={() => handleRemoveShare(viewersItem.id, patientId)}
+                              disabled={removingShareId === patientId}
+                              style={{ background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: removingShareId === patientId ? 'not-allowed' : 'pointer', opacity: removingShareId === patientId ? 0.6 : 1 }}
+                            >
+                              {removingShareId === patientId ? 'Removing…' : 'Remove'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {removeShareError && (
+                        <p style={{ color: '#EF4444', fontSize: 12, margin: '4px 0 0' }}>{removeShareError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>

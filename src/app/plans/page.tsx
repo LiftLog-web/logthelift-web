@@ -138,6 +138,8 @@ export default function PlansPage() {
   const [lastWorkoutMap, setLastWorkoutMap] = useState<Map<string, string | null>>(new Map());
   const [noPlanPatients, setNoPlanPatients] = useState<{ patient_id: string; patientName: string }[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
+  const [linkedPatientIds, setLinkedPatientIds] = useState<Set<string>>(new Set());
+  const [showPrevious, setShowPrevious] = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -209,6 +211,7 @@ export default function PlansPage() {
           return { patient_id: l.patient_id, patientName: patient?.display_name ?? 'Unknown' };
         });
       setNoPlanPatients(noPlan);
+      setLinkedPatientIds(new Set((linkedResult.data ?? []).map((l: any) => l.patient_id as string)));
       setLoadingActivity(false);
     });
   }, [router]);
@@ -277,17 +280,25 @@ export default function PlansPage() {
     seen.get(plan.patient_id)!.plans.push(plan);
   }
 
-  const filtered = grouped.filter(g =>
+  // Split into currently-linked patients vs. previously-linked (unlinked but with historical plans)
+  const activeGrouped = grouped.filter(g => linkedPatientIds.has(g.patient_id));
+  const previousGrouped = grouped.filter(g => !linkedPatientIds.has(g.patient_id));
+
+  const filtered = activeGrouped.filter(g =>
     g.patientName.toLowerCase().includes(search.toLowerCase())
   );
+  const filteredPrevious = previousGrouped.filter(g =>
+    g.patientName.toLowerCase().includes(search.toLowerCase())
+  );
+  const activePlanCount = activeGrouped.reduce((sum, g) => sum + g.plans.length, 0);
 
-  // All attention flags combined (unfiltered by search)
+  // All attention flags combined (unfiltered by search) — only for currently-linked patients
   const attentionItems: AttentionItem[] = [
     ...noPlanPatients.map(p => ({ type: 'no_plan' as const, ...p })),
-    ...grouped
+    ...activeGrouped
       .filter(g => g.plans.length > 1)
       .map(g => ({ type: 'multiple_plans' as const, patient_id: g.patient_id, patientName: g.patientName, planCount: g.plans.length })),
-    ...grouped
+    ...activeGrouped
       .filter(g => { const d = daysSince(lastWorkoutMap.get(g.patient_id)); return d === null || d >= threshold; })
       .map(g => ({ type: 'inactive' as const, patient_id: g.patient_id, patientName: g.patientName, days: daysSince(lastWorkoutMap.get(g.patient_id)) })),
   ];
@@ -329,7 +340,7 @@ export default function PlansPage() {
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Workout Plans</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
-              {grouped.length} patient{grouped.length !== 1 ? 's' : ''} · {plans.length} plan{plans.length !== 1 ? 's' : ''}
+              {activeGrouped.length} patient{activeGrouped.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -580,6 +591,56 @@ export default function PlansPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── Previous patients (unlinked, but with historical plans) ── */}
+            {filteredPrevious.length > 0 && (
+              <div style={{ marginTop: 28 }}>
+                <button
+                  onClick={() => setShowPrevious(p => !p)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '8px 4px', textAlign: 'left',
+                  }}
+                >
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text-muted)' }}>
+                    Previous Patients ({filteredPrevious.length})
+                  </p>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 14, transform: showPrevious ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                    ▾
+                  </span>
+                </button>
+
+                {showPrevious && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                    {filteredPrevious.map(group => (
+                      <div key={group.patient_id} style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', opacity: 0.7 }}>
+                        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: 'var(--card)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--card-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                              🏋️
+                            </div>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+                                {group.patientName}
+                              </p>
+                              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                                {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''} · Unlinked
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => router.push(`/patients/${group.patient_id}`)}
+                            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            View Progress
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
