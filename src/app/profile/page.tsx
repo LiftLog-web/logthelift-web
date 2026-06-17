@@ -287,7 +287,7 @@ export default function ProfilePage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
                 {isPractitioner
-                  ? `No ${isEmployer ? 'employees' : 'patients'} linked yet. Use your invite code below or send an invite email.`
+                  ? (isEmployer ? 'No employees linked yet. Send an invite email or upload a CSV to get started.' : 'No patients linked yet. Use your invite code below or send an invite email.')
                   : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
               </p>
               {!isPractitioner && (
@@ -318,8 +318,8 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Invite code (practitioners only) */}
-        {isPractitioner && (
+        {/* Invite code (non-employer practitioners only) */}
+        {isPractitioner && !isEmployer && (
           <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
             <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>My Invite Code</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>
@@ -366,7 +366,7 @@ export default function ProfilePage() {
               Send {isEmployer ? 'an employee' : 'a patient'} their unique invite code and app download link by email.
             </p>
             <p style={{ fontSize: 14, margin: '0 0 20px' }}>
-              <strong>Remind your {isEmployer ? 'employee' : 'patient'} to check their junk/spam folder</strong> if they don&apos;t see the email in their inbox.
+              <strong>Remind your {isEmployer ? 'employee' : 'patient'} to check their junk/spam folder</strong>{' '}if they don&apos;t see the email in their inbox.
             </p>
             <div style={{ display: 'flex', gap: 10, marginBottom: inviteError ? 8 : 12, flexWrap: 'wrap' }}>
               <input
