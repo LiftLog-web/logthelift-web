@@ -221,9 +221,18 @@ export default function DashboardPage() {
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
-            // Only count ratings from workouts that used a plan assigned by this PT
+            // Only count ratings from plan-based workouts attributed to this PT.
+            // New format: planId is the actual workout_plans UUID (matched precisely).
+            // Legacy format: planId is the string 'plan' — patient is already scoped
+            // to this PT via patient_links, so attribute those here too.
             const ptPlanIds = new Set((plans).map((p: any) => p.id));
-            const planWorkouts = workouts.filter((w: any) => ptPlanIds.has(w.data?.planId));
+            const planWorkouts = workouts.filter((w: any) => {
+              const pid = w.data?.planId;
+              if (!pid) return false;
+              if (ptPlanIds.has(pid)) return true;   // new: exact UUID match
+              if (pid === 'plan') return true;        // legacy: scoped via patient_links
+              return false;
+            });
 
             // Avg ratings (all-time) — effectiveness and enjoyment tracked separately
             const effectivenessRatings = planWorkouts
