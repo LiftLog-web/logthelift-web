@@ -68,6 +68,17 @@ export default function ImportPage() {
     }).filter(r => r.email);
   }
 
+  function downloadTemplate() {
+    const csv = 'email,name\njohn.smith@example.com,John Smith\nsarah.jones@example.com,Sarah Jones\nmike@example.com,';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = isEmployer ? 'employee_import_template.csv' : 'patient_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function handleFile(file: File) {
     setError('');
     if (!file.name.match(/\.(csv|txt)$/i)) {
@@ -173,7 +184,16 @@ export default function ImportPage() {
 
             {/* Format guide */}
             <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-white/60 text-sm font-semibold mb-3">Expected format</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/60 text-sm font-semibold">Expected format</p>
+                <button
+                  onClick={downloadTemplate}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                  style={{ background: `${TEAL}22`, color: TEAL, border: `1px solid ${TEAL}44` }}
+                >
+                  ↓ Download Template
+                </button>
+              </div>
               <pre className="text-xs text-white/40 font-mono leading-6">
 {`email,name
 john.smith@example.com,John Smith
