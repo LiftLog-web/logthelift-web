@@ -8,7 +8,7 @@ import PlanLibraryIcon from './icons/PlanLibraryIcon';
 import VideoLibraryIcon from './icons/VideoLibraryIcon';
 import ProfileIcon from './icons/ProfileIcon';
 
-const TEAL = '#5fcfbf';
+const PURPLE = '#C471ED';
 
 export default function PractitionerNav({ rightSlot, isEmployer = false }: { rightSlot?: React.ReactNode; isEmployer?: boolean }) {
   const router    = useRouter();
@@ -41,7 +41,7 @@ export default function PractitionerNav({ rightSlot, isEmployer = false }: { rig
       height: 56,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 18, textDecoration: 'none', marginRight: 16 }}>
+        <a href="/" style={{ color: PURPLE, fontWeight: 800, fontSize: 18, textDecoration: 'none', marginRight: 16 }}>
           LiftLog
         </a>
         {NAV_ITEMS.map(item => (
@@ -51,13 +51,13 @@ export default function PractitionerNav({ rightSlot, isEmployer = false }: { rig
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: isActive(item.href) ? `2px solid ${TEAL}` : '2px solid transparent',
+              borderBottom: isActive(item.href) ? `2px solid ${PURPLE}` : '2px solid transparent',
               padding: '0 12px',
               height: 56,
               cursor: 'pointer',
-              color: isActive(item.href) ? TEAL : 'var(--text)',
-              fontSize: 13,
-              fontWeight: isActive(item.href) ? 700 : 400,
+              color: isActive(item.href) ? PURPLE : 'var(--text)',
+              fontSize: 14,
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
