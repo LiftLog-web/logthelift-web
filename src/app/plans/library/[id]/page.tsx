@@ -19,7 +19,7 @@ const MUSCLE_GROUP_SECTIONS = [
   { label: 'Core',               members: ['Core'] },
   { label: 'Legs',               members: ['Quadriceps', 'Hamstrings', 'Adductors', 'Glutes', 'Calves', 'Hip Flexors'] },
   { label: 'Other',              members: ['Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics', 'Rotator Cuff', 'Ankle & Foot', 'Cervical', 'Lumbar'] },
-  { label: 'Workplace Wellness', members: ['Desk & Office', 'Wheelchair & Seated'] },
+  { label: 'Workplace Wellness', members: ['Desk & Office', 'Seated & Chair-Based'] },
 ];
 
 const getMuscleGroupSections = (isEmployer: boolean) =>
@@ -29,7 +29,7 @@ const getMuscleGroupSections = (isEmployer: boolean) =>
 
 // When an employer views "All", only show exercises suited to an office environment
 const EMPLOYER_RELEVANT_GROUPS = new Set([
-  'Desk & Office', 'Wheelchair & Seated',
+  'Desk & Office', 'Seated & Chair-Based',
   'Yoga', 'Pilates', 'Isometrics', 'Balance',
   'Core', 'Hip Flexors', 'Lumbar', 'Cervical', 'Rotator Cuff', 'Ankle & Foot',
 ]);
