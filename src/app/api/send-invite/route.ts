@@ -14,7 +14,23 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildInviteHtml(practitionerName: string, firstName: string, code: string): string {
+function buildInviteHtml(senderName: string, firstName: string, code: string, isEmployer: boolean): string {
+  const headline = isEmployer
+    ? `Hi ${escapeHtml(firstName)}, ${escapeHtml(senderName)} has invited you to LiftLog 🌿`
+    : `Hi ${escapeHtml(firstName)}, ${escapeHtml(senderName)} invited you to LiftLog 👋`;
+
+  const body = isEmployer
+    ? `<strong style="color:#fff;">${escapeHtml(senderName)}</strong> wants to invite you to LiftLog to promote a healthy work environment and help you incorporate stretching and mobility into your work day. Your personalized office wellness plan will be waiting for you once you sign up.`
+    : `Your practitioner wants to track your workout progress and send you personalized training plans through LiftLog.`;
+
+  const linkStep = isEmployer
+    ? `Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong>`
+    : `Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong>`;
+
+  const footer = isEmployer
+    ? `Sent on behalf of <strong style="color:rgba(255,255,255,0.6);">${escapeHtml(senderName)}</strong> via LiftLog. If you were not expecting this, you can safely ignore it.`
+    : `Invited by <strong style="color:rgba(255,255,255,0.6);">${escapeHtml(senderName)}</strong> via LiftLog. If you don't know this person, you can safely ignore this email.`;
+
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -25,10 +41,8 @@ function buildInviteHtml(practitionerName: string, firstName: string, code: stri
     </div>
     <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px;">
       <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 6px;">You have a new invitation</p>
-      <h1 style="color:#fff;font-size:22px;font-weight:700;margin:0 0 20px;">Hi ${escapeHtml(firstName)}, ${escapeHtml(practitionerName)} invited you to LiftLog 👋</h1>
-      <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.7;margin:0 0 28px;">
-        Your practitioner wants to track your workout progress and send you personalized training plans through LiftLog.
-      </p>
+      <h1 style="color:#fff;font-size:22px;font-weight:700;margin:0 0 20px;">${headline}</h1>
+      <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.7;margin:0 0 28px;">${body}</p>
 
       <div style="background:rgba(95,207,191,0.1);border:1px solid rgba(95,207,191,0.3);border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
         <p style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;letter-spacing:1px;margin:0 0 8px;">YOUR INVITE CODE</p>
@@ -39,7 +53,7 @@ function buildInviteHtml(practitionerName: string, firstName: string, code: stri
       <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2;margin:0 0 28px;padding-left:20px;">
         <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store (iOS) or Google Play (Android)</li>
         <li>Create your free account</li>
-        <li>Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong></li>
+        <li>${linkStep}</li>
         <li>Enter the code above — you'll be connected instantly</li>
       </ol>
 
@@ -52,10 +66,7 @@ function buildInviteHtml(practitionerName: string, firstName: string, code: stri
       </p>
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
-        <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">
-          Invited by <strong style="color:rgba(255,255,255,0.6);">${escapeHtml(practitionerName)}</strong> via LiftLog.
-          If you don't know this person, you can safely ignore this email.
-        </p>
+        <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">${footer}</p>
       </div>
     </div>
     <p style="color:rgba(255,255,255,0.2);font-size:12px;text-align:center;margin-top:24px;">
@@ -93,15 +104,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const practitionerName = (prof?.display_name as string | null) ?? 'Your practitioner';
-
   let patients: { email: string; name?: string }[] = [];
+  let isEmployer = false;
+  let companyName = '';
   try {
     const body = await req.json();
-    patients = body.patients ?? [];
+    patients    = body.patients    ?? [];
+    isEmployer  = !!(body.isEmployer);
+    companyName = body.companyName ?? '';
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
+
+  const senderName = isEmployer && companyName
+    ? companyName
+    : ((prof?.display_name as string | null) ?? 'Your practitioner');
 
   if (!patients.length) {
     return NextResponse.json({ error: 'No patients provided.' }, { status: 400 });
@@ -128,11 +145,14 @@ export async function POST(req: NextRequest) {
     }
 
     const firstName = patient.name?.trim().split(' ')[0] ?? 'there';
+    const subject   = isEmployer
+      ? `${senderName} has invited you to LiftLog`
+      : `${senderName} has invited you to LiftLog`;
     const { error: emailErr } = await resend.emails.send({
       from:    'LiftLog <noreply@logthelift.ca>',
       to:      [email],
-      subject: `${practitionerName} has invited you to LiftLog`,
-      html:    buildInviteHtml(practitionerName, firstName, code),
+      subject,
+      html:    buildInviteHtml(senderName, firstName, code, isEmployer),
     });
 
     results.push({ email, success: !emailErr, error: emailErr?.message });

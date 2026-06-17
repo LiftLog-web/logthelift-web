@@ -28,23 +28,25 @@ export default function ImportPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [authed,   setAuthed]   = useState(false);
-  const [isEmployer, setIsEmployer] = useState(false);
-  const [step,     setStep]     = useState<Step>('upload');
-  const [rows,     setRows]     = useState<PatientRow[]>([]);
-  const [results,  setResults]  = useState<ImportResult[]>([]);
-  const [dragOver, setDragOver] = useState(false);
-  const [error,    setError]    = useState('');
-  const [token,    setToken]    = useState('');
+  const [authed,      setAuthed]      = useState(false);
+  const [isEmployer,  setIsEmployer]  = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [step,        setStep]        = useState<Step>('upload');
+  const [rows,        setRows]        = useState<PatientRow[]>([]);
+  const [results,     setResults]     = useState<ImportResult[]>([]);
+  const [dragOver,    setDragOver]    = useState(false);
+  const [error,       setError]       = useState('');
+  const [token,       setToken]       = useState('');
 
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
       setToken(data.session.access_token);
-      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer, company_name').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setIsEmployer(!!(prof as any)?.is_employer);
+      setCompanyName((prof as any)?.company_name ?? '');
       setAuthed(true);
     });
   }, [router]);
@@ -104,10 +106,17 @@ export default function ImportPage() {
   }
 
   async function sendInvites() {
-    const valid = rows.filter(r => r.valid);
+    const valid   = rows.filter(r => r.valid);
+    const invalid = rows.filter(r => !r.valid);
     if (!valid.length) return;
 
     setStep('sending');
+
+    const invalidResults: ImportResult[] = invalid.map(r => ({
+      email:   r.email,
+      success: false,
+      error:   'Invalid email address — skipped',
+    }));
 
     try {
       const res = await fetch('/api/send-invite', {
@@ -116,10 +125,14 @@ export default function ImportPage() {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ patients: valid.map(r => ({ email: r.email, name: r.name || undefined })) }),
+        body: JSON.stringify({
+          patients:    valid.map(r => ({ email: r.email, name: r.name || undefined })),
+          isEmployer,
+          companyName,
+        }),
       });
       const data = await res.json();
-      setResults(data.results ?? []);
+      setResults([...(data.results ?? []), ...invalidResults]);
       setStep('done');
     } catch {
       setError('Something went wrong. Please try again.');
@@ -267,16 +280,24 @@ mike@example.com`}
         {/* ── Done step ── */}
         {step === 'done' && (
           <>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-3xl">✅</span>
-              <div>
-                <p className="font-bold text-lg">Invites sent!</p>
-                <p className="text-white/50 text-sm">
-                  {results.filter(r => r.success).length} sent successfully
-                  {results.filter(r => !r.success).length > 0 && ` · ${results.filter(r => !r.success).length} failed`}
-                </p>
-              </div>
-            </div>
+            {(() => {
+              const sent    = results.filter(r => r.success).length;
+              const skipped = results.filter(r => !r.success && r.error?.includes('Invalid email')).length;
+              const failed  = results.filter(r => !r.success && !r.error?.includes('Invalid email')).length;
+              return (
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-3xl">{failed > 0 ? '⚠️' : '✅'}</span>
+                  <div>
+                    <p className="font-bold text-lg">{sent} invite{sent !== 1 ? 's' : ''} sent</p>
+                    <p className="text-white/50 text-sm">
+                      {skipped > 0 && <span className="text-amber-400">{skipped} skipped (invalid email{skipped !== 1 ? 's' : ''})</span>}
+                      {skipped > 0 && failed > 0 && ' · '}
+                      {failed > 0 && <span className="text-red-400">{failed} failed to send</span>}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden mb-6">
               <table className="w-full text-sm">
@@ -287,16 +308,21 @@ mike@example.com`}
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
-                    <tr key={i} className="border-b border-white/5 last:border-0">
-                      <td className="px-4 py-3 text-white/70">{r.email}</td>
-                      <td className="px-4 py-3 text-right">
-                        {r.success
-                          ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)' }}>Sent</span>
-                          : <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-400" title={r.error}>Failed</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {results.map((r, i) => {
+                    const isInvalid = !r.success && r.error?.includes('Invalid email');
+                    return (
+                      <tr key={i} className="border-b border-white/5 last:border-0">
+                        <td className="px-4 py-3 text-white/70">{r.email || <span className="text-white/30 italic">empty</span>}</td>
+                        <td className="px-4 py-3 text-right">
+                          {r.success
+                            ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)' }}>Sent</span>
+                            : isInvalid
+                              ? <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }} title={r.error}>Invalid email</span>
+                              : <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-400" title={r.error}>Failed</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
