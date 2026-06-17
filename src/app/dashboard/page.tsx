@@ -203,7 +203,7 @@ export default function DashboardPage() {
         // Run all accepted-PT queries in parallel
         const [patientLinksRes, plansRes] = await Promise.all([
           getSupabase().from('patient_links').select('patient_id').eq('practitioner_id', link.pt_id),
-          getSupabase().from('workout_plans').select('created_at').eq('practitioner_id', link.pt_id).order('created_at', { ascending: false }),
+          getSupabase().from('workout_plans').select('id, created_at').eq('practitioner_id', link.pt_id).order('created_at', { ascending: false }),
         ]);
 
         const patientIds = (patientLinksRes.data ?? []).map((p: any) => p.patient_id);
@@ -221,11 +221,15 @@ export default function DashboardPage() {
             .in('user_id', patientIds);
 
           if (workouts && workouts.length > 0) {
+            // Only count ratings from workouts that used a plan assigned by this PT
+            const ptPlanIds = new Set((plans).map((p: any) => p.id));
+            const planWorkouts = workouts.filter((w: any) => ptPlanIds.has(w.data?.planId));
+
             // Avg ratings (all-time) — effectiveness and enjoyment tracked separately
-            const effectivenessRatings = workouts
+            const effectivenessRatings = planWorkouts
               .map((w: any) => w.data?.effectivenessRating ?? w.data?.satisfactionRating)
               .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
-            const enjoymentRatings = workouts
+            const enjoymentRatings = planWorkouts
               .map((w: any) => w.data?.enjoymentRating)
               .filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
             if (effectivenessRatings.length > 0) {
