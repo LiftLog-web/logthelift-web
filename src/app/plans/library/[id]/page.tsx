@@ -27,6 +27,14 @@ const getMuscleGroupSections = (isEmployer: boolean) =>
     ? [MUSCLE_GROUP_SECTIONS[5], ...MUSCLE_GROUP_SECTIONS.slice(0, 5)]
     : MUSCLE_GROUP_SECTIONS;
 
+// When an employer views "All", only show exercises suited to an office environment
+const EMPLOYER_RELEVANT_GROUPS = new Set([
+  'Desk & Office', 'Wheelchair & Seated',
+  'Yoga', 'Pilates', 'Isometrics', 'Balance',
+  'Core', 'Hip Flexors', 'Lumbar', 'Cervical', 'Rotator Cuff', 'Ankle & Foot',
+]);
+const OFFICE_EQUIPMENT = new Set(['Bodyweight', 'Resistance Band', 'Dumbbell', 'Other']);
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type WeightUnit = 'lbs' | 'kg';
@@ -852,7 +860,9 @@ export default function TemplateEditorPage() {
   const filteredExercises = [...customExercises, ...EXERCISES].filter(ex => {
     const section = getMuscleGroupSections(isEmployer).find(s => s.label === muscleFilter);
     const matchesMuscle = muscleFilter === 'All'
-      ? true
+      ? isEmployer
+        ? EMPLOYER_RELEVANT_GROUPS.has(ex.muscleGroup) && OFFICE_EQUIPMENT.has(ex.equipment)
+        : true
       : section
         ? section.members.includes(ex.muscleGroup)
         : ex.muscleGroup === muscleFilter;
