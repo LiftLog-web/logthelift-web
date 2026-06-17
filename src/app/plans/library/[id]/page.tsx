@@ -179,7 +179,7 @@ export default function TemplateEditorPage() {
     return 'lbs';
   });
   const lastRestRef = useRef<number>(60);
-  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState(1);
 
   const [isEmployer,     setIsEmployer]     = useState(false);
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});

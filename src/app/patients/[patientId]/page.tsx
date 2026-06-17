@@ -416,7 +416,7 @@ export default function PatientProgressPage() {
         unit: 'kg',
         rest: 60,
       }] }],
-      frequencyPerWeek: 3,
+      frequencyPerWeek: 1,
     };
     const { data, error } = await getSupabase()
       .from('plan_templates')

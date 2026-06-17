@@ -85,7 +85,7 @@ function NewPlanInner() {
   const [description,  setDescription]  = useState('');
   const [days,             setDays]             = useState<PlanDay[]>([{ id: 'day-1', label: 'Day 1', exercises: [] }]);
   const [activeDayId,      setActiveDayId]      = useState('day-1');
-  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState(1);
   const [editingDayId,     setEditingDayId]     = useState<string | null>(null);
   const [editingDayLabel,  setEditingDayLabel]  = useState('');
   const [search,       setSearch]       = useState('');
@@ -188,7 +188,7 @@ function NewPlanInner() {
           const raw = tpl.exercises;
           if (raw && !Array.isArray(raw) && raw.days) {
             // New multi-day format
-            setFrequencyPerWeek(raw.frequencyPerWeek ?? 3);
+            setFrequencyPerWeek(raw.frequencyPerWeek ?? 1);
             const loadedDays: PlanDay[] = (raw.days as any[]).map((day: any) => ({
               id: day.id ?? String(Math.random()),
               label: day.label ?? 'Day',
@@ -240,7 +240,7 @@ function NewPlanInner() {
           const raw = plan.exercises;
           if (raw && !Array.isArray(raw) && raw.days) {
             // New multi-day format
-            setFrequencyPerWeek(raw.frequencyPerWeek ?? 3);
+            setFrequencyPerWeek(raw.frequencyPerWeek ?? 1);
             const loadedDays: PlanDay[] = (raw.days as any[]).map((day: any) => ({
               id: day.id ?? String(Math.random()),
               label: day.label ?? 'Day',
