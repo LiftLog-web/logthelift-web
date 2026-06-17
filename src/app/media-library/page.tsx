@@ -49,6 +49,7 @@ export default function MediaLibraryPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [authed,      setAuthed]      = useState(false);
+  const [isEmployer,  setIsEmployer]  = useState(false);
   const [userId,      setUserId]      = useState('');
   const [items,       setItems]       = useState<MediaItem[]>([]);
   const [signedUrls,  setSignedUrls]  = useState<Record<string, string>>({});
@@ -93,8 +94,9 @@ export default function MediaLibraryPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
-      const { data: prof } = await sb.from('profiles').select('role').eq('id', data.session.user.id).single();
+      const { data: prof } = await sb.from('profiles').select('role, is_employer').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner') { router.push('/plans'); return; }
+      setIsEmployer(!!(prof as any)?.is_employer);
       setUserId(data.session.user.id);
       setAuthed(true);
       await loadAll(data.session.user.id);
@@ -497,7 +499,7 @@ export default function MediaLibraryPage() {
           <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
             <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
-            Patients tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
+            {isEmployer ? 'Team members' : 'Patients'} tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
           </p>
         </div>
 
@@ -836,7 +838,7 @@ export default function MediaLibraryPage() {
                 <div>
                   <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>{viewersItem.exercise_name}</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
-                    Patients who have this exercise in one of their plans
+                    {isEmployer ? 'Team members' : 'Patients'} who have this exercise in one of their plans
                   </p>
                 </div>
                 <button onClick={() => setViewersItem(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
@@ -846,7 +848,7 @@ export default function MediaLibraryPage() {
                 {viewers.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontSize: 14 }}>
                     <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
-                    No patients have this exercise in any active plan yet.
+                    No {isEmployer ? 'team members' : 'patients'} have this exercise in any active plan yet.
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -878,7 +880,7 @@ export default function MediaLibraryPage() {
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
                   >
                     <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
-                      Directly shared with {mediaShares[viewersItem.id]!.length} patient{mediaShares[viewersItem.id]!.length !== 1 ? 's' : ''}
+                      Directly shared with {mediaShares[viewersItem.id]!.length} {isEmployer ? 'team member' : 'patient'}{mediaShares[viewersItem.id]!.length !== 1 ? 's' : ''}
                     </span>
                     <span style={{ color: 'var(--text-muted)', fontSize: 13, transform: showDirectShares ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
                       ▾
@@ -915,14 +917,14 @@ export default function MediaLibraryPage() {
 
               <div style={{ marginTop: 24, borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-                  {viewers.length} patient{viewers.length !== 1 ? 's' : ''} · {viewers.length} plan{viewers.length !== 1 ? 's' : ''}
+                  {viewers.length} {isEmployer ? 'team member' : 'patient'}{viewers.length !== 1 ? 's' : ''} · {viewers.length} plan{viewers.length !== 1 ? 's' : ''}
                   {(mediaShares[viewersItem.id]?.length ?? 0) > 0 && (
                     <> · {mediaShares[viewersItem.id]!.length} directly shared</>
                   )}
                 </span>
                 <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
                   <button onClick={() => openAssignModal(viewersItem)} style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '8px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    Assign to Patients
+                    Assign to {isEmployer ? 'Team Members' : 'Patients'}
                   </button>
                   <button onClick={() => setViewersItem(null)} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                     Close
@@ -943,7 +945,7 @@ export default function MediaLibraryPage() {
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
               <div>
-                <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Assign to Patients</h2>
+                <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Assign to {isEmployer ? 'Team Members' : 'Patients'}</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
                   {assignItem.exercise_name} — share this demo directly, even if it&apos;s not in their plan yet.
                 </p>
@@ -956,7 +958,7 @@ export default function MediaLibraryPage() {
                 type="text"
                 value={assignSearch}
                 onChange={e => setAssignSearch(e.target.value)}
-                placeholder="Search patients…"
+                placeholder={isEmployer ? 'Search team members…' : 'Search patients…'}
                 style={{ marginTop: 16, width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: 'var(--text-main)', outline: 'none' }}
               />
             )}
@@ -965,7 +967,7 @@ export default function MediaLibraryPage() {
               {patients.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)', fontSize: 14 }}>
                   <p style={{ fontSize: 32, marginBottom: 12 }}>👤</p>
-                  You don&apos;t have any patients yet.
+                  You don&apos;t have any {isEmployer ? 'team members' : 'patients'} yet.
                 </div>
               ) : (
                 (() => {
@@ -976,7 +978,7 @@ export default function MediaLibraryPage() {
                   if (filtered.length === 0) {
                     return (
                       <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-dim)', fontSize: 14 }}>
-                        No patients match &quot;{assignSearch}&quot;.
+                        No {isEmployer ? 'team members' : 'patients'} match &quot;{assignSearch}&quot;.
                       </div>
                     );
                   }

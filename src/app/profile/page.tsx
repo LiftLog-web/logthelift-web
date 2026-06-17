@@ -348,7 +348,7 @@ export default function ProfilePage() {
               </>
             ) : (
               <>
-                <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', marginBottom: 16 }}>No active code. Generate one to share with a patient.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', marginBottom: 16 }}>No active code. Generate one to share with {isEmployer ? 'a team member' : 'a patient'}.</p>
                 <button onClick={handleGenerateCode}
                   style={{ width: '100%', background: TEAL, color: '#0f1117', border: 'none', borderRadius: 12, padding: '13px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
                   Generate Invite Code

@@ -1175,7 +1175,7 @@ export default function PatientProgressPage() {
                 { label: 'Lower', members: ['Quadriceps','Hamstrings','Glutes','Calves','Adductors'] },
                 { label: 'Core', members: ['Core'] },
                 { label: 'Activity', members: ['Cardio','Plyometrics','Balance','Isometrics','Pilates','Yoga'] },
-                { label: 'Physio', members: ['Hip Flexors','Rotator Cuff','Lumbar','Cervical','Ankle & Foot'] },
+                { label: 'Rehab', members: ['Hip Flexors','Rotator Cuff','Lumbar','Cervical','Ankle & Foot'] },
               ].map(sec => (
                 <div key={sec.label} style={{ marginBottom: 8 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{sec.label}</span>
