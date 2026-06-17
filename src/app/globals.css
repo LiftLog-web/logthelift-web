@@ -127,6 +127,16 @@ input[type="number"] {
   color-scheme: light;
 }
 
+/* ── Nav colour tokens ── */
+:root {
+  --nav-active:   #ffffff;   /* active tab text: white in dark mode */
+  --nav-inactive: #ffffff;   /* inactive tab text: white in dark mode */
+}
+[data-theme="light"] {
+  --nav-active:   #C471ED;   /* active tab text: purple in light mode */
+  --nav-inactive: #C471ED;   /* inactive tab text: purple in light mode */
+}
+
 /* ── Nav icon fills (dark mode default, light mode override) ── */
 .liftlog-icon-pill      { fill: #0d2e24; }
 .liftlog-icon-clipboard { fill: #0d2e24; }
