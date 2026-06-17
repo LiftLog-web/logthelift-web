@@ -55,10 +55,17 @@ interface WorkoutSet {
   reps?: number;
   weight?: number;
   unit?: 'kg' | 'lbs';
-  duration?: number;       // seconds (duration exercises)
-  cardioduration?: number; // minutes (cardio)
+  duration?: number;
+  cardioduration?: number;
   speed?: number;
   incline?: number;
+  isSplit?: boolean;
+  leftReps?: number;
+  rightReps?: number;
+  leftWeight?: number;
+  rightWeight?: number;
+  leftDuration?: number;
+  rightDuration?: number;
 }
 
 interface LoggedExercise {
@@ -95,9 +102,12 @@ function exStatus(ex: LoggedExercise): ExStatus {
     const a = ex.sets[i];
     if (!a) break;
     if (t.reps !== undefined) {
-      if ((a.reps ?? 0) >= t.reps && (a.weight ?? 0) >= (t.weight ?? 0)) met++;
+      const actualReps   = a.isSplit ? Math.min(a.leftReps   ?? 0, a.rightReps   ?? 0) : (a.reps   ?? 0);
+      const actualWeight = a.isSplit ? Math.min(a.leftWeight ?? 0, a.rightWeight ?? 0) : (a.weight ?? 0);
+      if (actualReps >= t.reps && actualWeight >= (t.weight ?? 0)) met++;
     } else if (t.duration !== undefined) {
-      if ((a.duration ?? 0) >= t.duration) met++;
+      const actualDuration = a.isSplit ? Math.min(a.leftDuration ?? 0, a.rightDuration ?? 0) : (a.duration ?? 0);
+      if (actualDuration >= t.duration) met++;
     } else if (t.cardioduration !== undefined) {
       if ((a.cardioduration ?? 0) >= t.cardioduration) met++;
     } else {
@@ -160,10 +170,18 @@ const STATUS_LABEL: Record<ExStatus, string> = {
 };
 
 function setLabel(s: WorkoutSet, type: string): string {
-  if (type === 'cardio')    return s.cardioduration ? `${s.cardioduration} min` : '—';
-  if (type === 'duration')  return s.duration       ? `${s.duration}s`          : '—';
+  if (type === 'cardio') return s.cardioduration ? `${s.cardioduration} min` : '—';
+  if (type === 'duration') {
+    if (s.isSplit) return `L ${s.leftDuration ?? 0}s / R ${s.rightDuration ?? 0}s`;
+    return s.duration ? `${s.duration}s` : '—';
+  }
+  if (s.isSplit) {
+    const lw = s.leftWeight  ? ` × ${s.leftWeight}${s.unit ?? 'lbs'}`  : '';
+    const rw = s.rightWeight ? ` × ${s.rightWeight}${s.unit ?? 'lbs'}` : '';
+    return `L ${s.leftReps ?? 0} reps${lw} / R ${s.rightReps ?? 0} reps${rw}`;
+  }
   const w = s.weight !== undefined ? `${s.weight}${s.unit ?? 'kg'}` : '';
-  const r = s.reps    !== undefined ? `${s.reps} reps`                : '';
+  const r = s.reps   !== undefined ? `${s.reps} reps` : '';
   return [r, w].filter(Boolean).join(' × ') || '—';
 }
 
@@ -1067,9 +1085,16 @@ export default function PatientProgressPage() {
                                                       const tLabel = target ? setLabel(target, ex.exercise.type) : null;
                                                       let setMet: boolean | null = null;
                                                       if (target) {
-                                                        if (target.reps !== undefined) setMet = (s.reps ?? 0) >= target.reps && (s.weight ?? 0) >= (target.weight ?? 0);
-                                                        else if (target.duration !== undefined) setMet = (s.duration ?? 0) >= target.duration;
-                                                        else if (target.cardioduration !== undefined) setMet = (s.cardioduration ?? 0) >= target.cardioduration;
+                                                        if (target.reps !== undefined) {
+                                                          const aReps = s.isSplit ? Math.min(s.leftReps ?? 0, s.rightReps ?? 0) : (s.reps ?? 0);
+                                                          const aWt   = s.isSplit ? Math.min(s.leftWeight ?? 0, s.rightWeight ?? 0) : (s.weight ?? 0);
+                                                          setMet = aReps >= target.reps && aWt >= (target.weight ?? 0);
+                                                        } else if (target.duration !== undefined) {
+                                                          const aDur = s.isSplit ? Math.min(s.leftDuration ?? 0, s.rightDuration ?? 0) : (s.duration ?? 0);
+                                                          setMet = aDur >= target.duration;
+                                                        } else if (target.cardioduration !== undefined) {
+                                                          setMet = (s.cardioduration ?? 0) >= target.cardioduration;
+                                                        }
                                                       }
                                                       return (
                                                         <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
