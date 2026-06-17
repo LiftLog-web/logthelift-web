@@ -199,7 +199,7 @@ export default function LeaderboardPage() {
       for (const w of workouts ?? []) {
         const planId = w.data?.planId;
         if (!planId) continue;
-        if (ptPlanIds.has(planId) || planId === 'plan') {
+        if (ptPlanIds.has(planId)) {
           dateMap[w.user_id]?.push(w.date);
         }
       }

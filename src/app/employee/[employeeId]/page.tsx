@@ -163,10 +163,10 @@ export default function EmployeeOverviewPage() {
         .select('date, data')
         .eq('user_id', employeeId);
 
-      // Filter to employer plans only
+      // Filter strictly to plans assigned by this employer
       const relevant = (workouts ?? []).filter((w: any) => {
         const pid = w.data?.planId;
-        return pid && (ptPlanIds.has(pid) || pid === 'plan');
+        return pid && ptPlanIds.has(pid);
       });
 
       let exCount   = 0;
