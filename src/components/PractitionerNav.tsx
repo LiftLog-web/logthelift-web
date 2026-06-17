@@ -3,23 +3,24 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useNavGuard } from '@/lib/NavGuardContext';
 import PatientsIcon from './icons/PatientsIcon';
+import TeamMembersIcon from './icons/TeamMembersIcon';
 import PlanLibraryIcon from './icons/PlanLibraryIcon';
 import VideoLibraryIcon from './icons/VideoLibraryIcon';
 import ProfileIcon from './icons/ProfileIcon';
 
 const TEAL = '#5fcfbf';
 
-const NAV_ITEMS = [
-  { href: '/plans',         label: 'Patients',     Icon: PatientsIcon },
-  { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
-  { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
-  { href: '/profile',       label: 'Profile',       Icon: ProfileIcon },
-];
-
-export default function PractitionerNav({ rightSlot }: { rightSlot?: React.ReactNode }) {
+export default function PractitionerNav({ rightSlot, isEmployer = false }: { rightSlot?: React.ReactNode; isEmployer?: boolean }) {
   const router    = useRouter();
   const pathname  = usePathname();
   const { guardFn } = useNavGuard();
+
+  const NAV_ITEMS = [
+    { href: '/plans',         label: isEmployer ? 'Team Members' : 'Patients',    Icon: isEmployer ? TeamMembersIcon : PatientsIcon },
+    { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
+    { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
+    { href: '/profile',       label: 'Profile',       Icon: ProfileIcon },
+  ];
 
   const isActive = (href: string) => {
     if (href === '/plans') return pathname === '/plans' || pathname.startsWith('/plans/new');

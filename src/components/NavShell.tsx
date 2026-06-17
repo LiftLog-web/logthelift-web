@@ -8,7 +8,8 @@ import PatientNav from './PatientNav';
 type NavRole = 'pract' | 'patient' | null;
 
 export default function NavShell() {
-  const [role, setRole] = useState<NavRole>(null);
+  const [role,       setRole]       = useState<NavRole>(null);
+  const [isEmployer, setIsEmployer] = useState(false);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -21,11 +22,12 @@ export default function NavShell() {
         return;
       }
       const { data: prof } = await supabase
-        .from('profiles').select('role, is_gym_owner').eq('id', session.user.id).single();
+        .from('profiles').select('role, is_gym_owner, is_employer').eq('id', session.user.id).single();
 
       if (prof?.role === 'practitioner' || !!prof?.is_gym_owner) {
         localStorage.setItem('ll_pract', '1');
         localStorage.removeItem('ll_patient');
+        setIsEmployer(!!(prof as any)?.is_employer);
         setRole('pract');
       } else if (prof?.role === 'patient') {
         localStorage.setItem('ll_patient', '1');
@@ -47,7 +49,7 @@ export default function NavShell() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (role === 'pract')   return <PractitionerNav />;
+  if (role === 'pract')   return <PractitionerNav isEmployer={isEmployer} />;
   if (role === 'patient') return <PatientNav />;
   return null;
 }
