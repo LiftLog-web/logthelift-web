@@ -33,6 +33,9 @@ export const MUSCLE_GROUPS = [
   'Ankle & Foot',
   'Cervical',
   'Lumbar',
+  // Employer / corporate wellness
+  'Desk & Office',
+  'Wheelchair & Seated',
 ];
 
 export const EXERCISES: Exercise[] = [
@@ -495,6 +498,60 @@ export const EXERCISES: Exercise[] = [
   { id: 'cd14',name: 'Box Jump',                   muscleGroup: 'Cardio',     equipment: 'Other',      type: 'cardio' },
   { id: 'cd15',name: 'Burpee',                     muscleGroup: 'Cardio',     equipment: 'Bodyweight', type: 'cardio' },
   { id: 'cd16',name: 'Ski Erg',                    muscleGroup: 'Cardio',     equipment: 'Machine',    type: 'cardio' },
+
+  // ── Desk & Office ──────────────────────────────────────
+  { id: 'do1',  name: 'Seated Neck Rolls',                muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do2',  name: 'Chin Tuck',                        muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do3',  name: 'Shoulder Blade Squeeze',           muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do4',  name: 'Seated Shoulder Shrugs',           muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do5',  name: 'Doorway Chest Stretch',            muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do6',  name: 'Seated Spinal Twist',              muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do7',  name: 'Seated Cat-Cow',                   muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do8',  name: 'Seated Forward Fold',              muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do9',  name: 'Seated Thoracic Extension',        muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do10', name: 'Desk Push-Up',                     muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do11', name: 'Chair Squat',                      muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do12', name: 'Wall Sit',                         muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do13', name: 'Standing Calf Raises',             muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do14', name: 'Standing Hip Flexor Stretch',      muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do15', name: 'Seated Figure Four Stretch',       muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do16', name: 'Seated Leg Extensions',            muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do17', name: 'Office Chair Tricep Dips',         muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'weighted' },
+  { id: 'do18', name: 'Seated Wrist Stretch',             muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do19', name: 'Seated Ankle Circles',             muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do20', name: 'Standing Quad Stretch',            muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do21', name: 'Standing Side Reach',              muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do22', name: 'Standing Calf Stretch',            muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do23', name: 'Seated Core Breathing',            muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'duration' },
+  { id: 'do24', name: 'Marching in Place',                muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'cardio'   },
+  { id: 'do25', name: 'Desk Walking Break',               muscleGroup: 'Desk & Office', equipment: 'Bodyweight', type: 'cardio'   },
+
+  // ── Wheelchair & Seated ────────────────────────────────
+  { id: 'ws1',  name: 'Seated Arm Circles',               muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws2',  name: 'Seated Shoulder Press',            muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws3',  name: 'Seated Bicep Curl',                muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws4',  name: 'Seated Tricep Extension',          muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws5',  name: 'Seated Chest Press',               muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws6',  name: 'Seated Lateral Raise',             muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws7',  name: 'Seated Front Raise',               muscleGroup: 'Wheelchair & Seated', equipment: 'Dumbbell',         type: 'weighted' },
+  { id: 'ws8',  name: 'Seated Row (Resistance Band)',     muscleGroup: 'Wheelchair & Seated', equipment: 'Resistance Band',  type: 'weighted' },
+  { id: 'ws9',  name: 'Seated Band Pull-Apart',           muscleGroup: 'Wheelchair & Seated', equipment: 'Resistance Band',  type: 'weighted' },
+  { id: 'ws10', name: 'Seated Overhead Band Press',       muscleGroup: 'Wheelchair & Seated', equipment: 'Resistance Band',  type: 'weighted' },
+  { id: 'ws11', name: 'Seated Torso Twist',               muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws12', name: 'Seated Side Bend',                 muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'duration' },
+  { id: 'ws13', name: 'Seated Forward Bend',              muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'duration' },
+  { id: 'ws14', name: 'Seated Neck Stretch',              muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'duration' },
+  { id: 'ws15', name: 'Seated Chest Stretch',             muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'duration' },
+  { id: 'ws16', name: 'Seated Core Hold',                 muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'duration' },
+  { id: 'ws17', name: 'Seated Push-Up (Chair/Wheelchair)',muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws18', name: 'Seated Hip Marching',              muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws19', name: 'Seated Leg Lift',                  muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws20', name: 'Seated Boxing',                    muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'cardio'   },
+  { id: 'ws21', name: 'Wheelchair Propulsion (Distance)', muscleGroup: 'Wheelchair & Seated', equipment: 'Other',            type: 'cardio'   },
+  { id: 'ws22', name: 'Wheelchair Sprints',               muscleGroup: 'Wheelchair & Seated', equipment: 'Other',            type: 'cardio'   },
+  { id: 'ws23', name: 'Hand & Grip Strengthening',        muscleGroup: 'Wheelchair & Seated', equipment: 'Other',            type: 'weighted' },
+  { id: 'ws24', name: 'Seated Wrist Flexion & Extension', muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
+  { id: 'ws25', name: 'Seated Ankle Pumps',               muscleGroup: 'Wheelchair & Seated', equipment: 'Bodyweight',       type: 'weighted' },
 ];
 
 export const getExercisesByMuscleGroup = (group: string): Exercise[] =>
@@ -524,4 +581,6 @@ export const MUSCLE_GROUP_COLORS: Record<string, string> = {
   'Ankle & Foot': '#B2EBF2',
   Cervical:     '#E1BEE7',
   Lumbar:       '#FFECB3',
+  'Desk & Office':        '#C8E6C9',
+  'Wheelchair & Seated':  '#B3E5FC',
 };

@@ -14,12 +14,18 @@ const PURPLE = '#C471ED';
 const RED    = '#EF4444';
 
 const MUSCLE_GROUP_SECTIONS = [
-  { label: 'Upper Body', members: ['Chest', 'Back', 'Shoulders'] },
-  { label: 'Arms',       members: ['Biceps', 'Triceps', 'Forearms'] },
-  { label: 'Core',       members: ['Core'] },
-  { label: 'Legs',       members: ['Quadriceps', 'Hamstrings', 'Adductors', 'Glutes', 'Calves', 'Hip Flexors'] },
-  { label: 'Other',      members: ['Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics', 'Rotator Cuff', 'Ankle & Foot', 'Cervical', 'Lumbar'] },
+  { label: 'Upper Body',         members: ['Chest', 'Back', 'Shoulders'] },
+  { label: 'Arms',               members: ['Biceps', 'Triceps', 'Forearms'] },
+  { label: 'Core',               members: ['Core'] },
+  { label: 'Legs',               members: ['Quadriceps', 'Hamstrings', 'Adductors', 'Glutes', 'Calves', 'Hip Flexors'] },
+  { label: 'Other',              members: ['Cardio', 'Pilates', 'Yoga', 'Isometrics', 'Balance', 'Plyometrics', 'Rotator Cuff', 'Ankle & Foot', 'Cervical', 'Lumbar'] },
+  { label: 'Workplace Wellness', members: ['Desk & Office', 'Wheelchair & Seated'] },
 ];
+
+const getMuscleGroupSections = (isEmployer: boolean) =>
+  isEmployer
+    ? [MUSCLE_GROUP_SECTIONS[5], ...MUSCLE_GROUP_SECTIONS.slice(0, 5)]
+    : MUSCLE_GROUP_SECTIONS;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -844,7 +850,7 @@ export default function TemplateEditorPage() {
   );
 
   const filteredExercises = [...customExercises, ...EXERCISES].filter(ex => {
-    const section = MUSCLE_GROUP_SECTIONS.find(s => s.label === muscleFilter);
+    const section = getMuscleGroupSections(isEmployer).find(s => s.label === muscleFilter);
     const matchesMuscle = muscleFilter === 'All'
       ? true
       : section
@@ -950,7 +956,7 @@ export default function TemplateEditorPage() {
                   {muscleDropdownOpen && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 200, maxHeight: 280, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
                       <button onClick={() => { setMuscleFilter('All'); setMuscleDropdownOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: muscleFilter === 'All' ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === 'All' ? 'var(--badge-teal-text)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: '1px solid var(--border-subtle)' }}>All muscle groups</button>
-                      {MUSCLE_GROUP_SECTIONS.map(section => (
+                      {getMuscleGroupSections(isEmployer).map(section => (
                         <Fragment key={section.label}>
                           <button onClick={() => { setMuscleFilter(section.label); setMuscleDropdownOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px 4px', background: muscleFilter === section.label ? 'var(--badge-teal-bg)' : 'transparent', color: muscleFilter === section.label ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: 'none' }}>{section.label}</button>
                           {section.members.map(mg => (
