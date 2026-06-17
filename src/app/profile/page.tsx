@@ -300,7 +300,7 @@ export default function ProfilePage() {
           ) : (
             <div>
               {(isPractitioner ? patients : practitioners).map((person, i) => (
-                <a key={person.id} href={isPractitioner ? `/patients/${person.id}` : undefined}
+                <a key={person.id} href={isPractitioner ? (isEmployer ? `/employee/${person.id}` : `/patients/${person.id}`) : undefined}
                   style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', color: 'inherit', cursor: isPractitioner ? 'pointer' : 'default', transition: 'background 0.15s' }}
                   onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
                   onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
