@@ -26,11 +26,6 @@ function PendingContent() {
     });
   }, []);
 
-  async function handleSignOut() {
-    await getSupabase().auth.signOut();
-    window.location.href = '/login';
-  }
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 24, textDecoration: 'none', marginBottom: 40 }}>LiftLog</a>
@@ -54,12 +49,12 @@ function PendingContent() {
           Questions? Email us at{' '}
           <a href="mailto:logthelift@gmail.com" style={{ color: TEAL, fontWeight: 600 }}>logthelift@gmail.com</a>
         </p>
-        <button
-          onClick={handleSignOut}
-          style={{ background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        <a
+          href="/login"
+          style={{ display: 'inline-block', background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 24px', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
         >
-          Sign Out
-        </button>
+          Return to Login
+        </a>
       </div>
     </div>
   );
