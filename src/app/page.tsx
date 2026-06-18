@@ -159,12 +159,12 @@ export default function Home() {
           ))}
         </div>
         <p className="text-center text-sm mt-10" style={{ color: 'var(--text-muted)' }}>
-          Have any questions about pricing?{' '}
+          Have any questions about pricing? Email us at{' '}
           <a
             href="mailto:logthelift@gmail.com"
             style={{ color: TEAL, fontWeight: 600, textDecoration: 'underline' }}
           >
-            Email us
+            logthelift@gmail.com
           </a>
         </p>
       </section>
