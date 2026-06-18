@@ -18,6 +18,7 @@ export default function NavShell() {
     const supabase = getSupabase();
 
     const resolveRole = async (session: { user: { id: string } } | null) => {
+      console.log('[NavShell] session uid:', session?.user?.id, '| MASTER_ID:', MASTER_ID);
       if (!session) {
         localStorage.removeItem('ll_pract');
         localStorage.removeItem('ll_patient');
