@@ -297,14 +297,14 @@ mike@example.com`}
             <div className="flex gap-3">
               <button
                 onClick={reset}
-                className="flex-1 py-3 rounded-xl font-bold border border-white/20 text-white/70 hover:bg-white/5 transition-colors"
+                className="flex-1 py-3 rounded-xl font-bold border border-white/20 text-white/70 hover:bg-white/5 transition-colors cursor-pointer"
               >
                 ← Back
               </button>
               <button
                 onClick={sendInvites}
                 disabled={!validRows.length}
-                className="flex-[2] py-3 rounded-xl font-bold text-[#0f1117] text-base transition-opacity disabled:opacity-40"
+                className="flex-[2] py-3 rounded-xl font-bold text-[#0f1117] text-base transition-opacity disabled:opacity-40 cursor-pointer"
                 style={{ backgroundColor: TEAL }}
               >
                 Send {validRows.length} Invite{validRows.length !== 1 ? 's' : ''}
@@ -374,13 +374,13 @@ mike@example.com`}
             <div className="flex gap-3">
               <button
                 onClick={reset}
-                className="flex-1 py-3 rounded-xl font-bold border border-white/20 text-white/70 hover:bg-white/5 transition-colors"
+                className="flex-1 py-3 rounded-xl font-bold border border-white/20 text-white/70 hover:bg-white/5 transition-colors cursor-pointer"
               >
                 Import Another File
               </button>
               <button
                 onClick={() => router.push('/plans')}
-                className="flex-1 py-3 rounded-xl font-bold text-[#0f1117]"
+                className="flex-1 py-3 rounded-xl font-bold text-[#0f1117] cursor-pointer"
                 style={{ backgroundColor: TEAL }}
               >
                 Back to Plans
