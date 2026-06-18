@@ -423,9 +423,9 @@ export default function DashboardPage() {
           <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
           <h1 style={{ color: 'var(--text)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Not a gym owner account</h1>
           <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>This dashboard is only accessible to approved gym owner accounts.</p>
-          <button onClick={handleLogout} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-            Sign Out
-          </button>
+          <a href="/profile" style={{ display: 'inline-block', background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none' }}>
+            Go to Profile
+          </a>
         </div>
       </div>
     );
@@ -448,9 +448,6 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <a href="/plans" style={{ color: 'var(--text-muted)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>My Plans</a>
           <a href="/import-pts" style={{ color: 'var(--text-muted)', fontSize: 14, textDecoration: 'none', padding: '8px 16px' }}>Import PTs</a>
-          <button onClick={handleLogout} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>
-            Sign Out
-          </button>
         </div>
       </nav>
 
