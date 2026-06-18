@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import PractitionerNav from './PractitionerNav';
 import PatientNav from './PatientNav';
+import MasterNav from './MasterNav';
 
-type NavRole = 'pract' | 'patient' | null;
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+
+type NavRole = 'master' | 'pract' | 'patient' | null;
 
 export default function NavShell() {
   const [role,       setRole]       = useState<NavRole>(null);
@@ -27,8 +30,12 @@ export default function NavShell() {
       if (prof?.role === 'practitioner' || !!prof?.is_gym_owner) {
         localStorage.setItem('ll_pract', '1');
         localStorage.removeItem('ll_patient');
-        setIsEmployer(!!(prof as any)?.is_employer);
-        setRole('pract');
+        if (session.user.id === MASTER_ID) {
+          setRole('master');
+        } else {
+          setIsEmployer(!!(prof as any)?.is_employer);
+          setRole('pract');
+        }
       } else if (prof?.role === 'patient') {
         localStorage.setItem('ll_patient', '1');
         localStorage.removeItem('ll_pract');
@@ -49,6 +56,7 @@ export default function NavShell() {
     return () => subscription.unsubscribe();
   }, []);
 
+  if (role === 'master')  return <MasterNav />;
   if (role === 'pract')   return <PractitionerNav isEmployer={isEmployer} />;
   if (role === 'patient') return <PatientNav />;
   return null;

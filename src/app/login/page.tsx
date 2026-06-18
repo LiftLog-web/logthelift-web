@@ -52,10 +52,13 @@ export default function LoginPage() {
       .eq('id', data.user.id)
       .single();
 
-    if (profile?.is_gym_owner) {
+    const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+    if (data.user.id === MASTER_ID) {
+      router.push('/master/dashboard');
+    } else if (profile?.is_gym_owner) {
       router.push('/dashboard');
     } else if ((profile as any)?.is_employer) {
-      router.push('/plans');
+      router.push('/programs');
     } else if ((profile as any)?.business_type && !profile?.is_gym_owner && !(profile as any)?.is_employer) {
       router.push('/pending');
     } else {

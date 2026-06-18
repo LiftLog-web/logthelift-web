@@ -86,6 +86,11 @@ export default function ProfilePage() {
       const userId = data.session.user.id;
       setSessionToken(data.session.access_token);
 
+      if (userId === MASTER_PRACTITIONER_ID) {
+        router.push('/master/dashboard');
+        return;
+      }
+
       const { data: prof } = await supabase
         .from('profiles')
         .select('id, display_name, email, role, approved, is_gym_owner, is_employer, company_name, avatar_url')
