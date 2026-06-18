@@ -14,11 +14,43 @@ const features = [
   { icon: '👥', title: 'Social Feed',            desc: 'Share milestones and stay motivated with friends.',                      color: YELLOW },
 ];
 
-const gymTiers = [
-  { name: 'Solo',      price: 'C$30',  per: '/PT/month', desc: '1–4 PTs at C$30/PT. No commitment — pay only for what you use.',  color: TEAL   },
-  { name: 'Small Gym', price: 'C$125', per: '/month',     desc: 'Up to 5 PTs at C$25/PT. Best for small studios.',                color: PURPLE },
-  { name: 'Mid Gym',   price: 'C$300', per: '/month',     desc: 'Up to 15 PTs at C$20/PT. Best value for growing gyms.',          color: YELLOW },
-  { name: 'Large Gym', price: 'C$450', per: '/month',     desc: 'Up to 30 PTs at C$15/PT. Built for large facilities.',           color: '#f87171' },
+const audiences = [
+  {
+    icon: '🩺',
+    title: 'Practitioners & PTs',
+    color: PURPLE,
+    points: [
+      'Patient management dashboard',
+      'Custom plan builder',
+      'Daily & weekly progress reports',
+      'Exercise demo video library',
+      'Satisfaction ratings from patients',
+    ],
+  },
+  {
+    icon: '🏋️',
+    title: 'Gyms & Studios',
+    color: TEAL,
+    points: [
+      'Manage multiple trainers under one account',
+      'Assign plans across your entire team',
+      'Track client engagement at scale',
+      'Gym-wide leaderboard & activity stats',
+      'Bulk import clients via CSV',
+    ],
+  },
+  {
+    icon: '🏢',
+    title: 'Offices & Employers',
+    color: YELLOW,
+    points: [
+      'Promote workplace wellness effortlessly',
+      'Desk stretch & mobility plans for staff',
+      'Team leaderboard to keep employees engaged',
+      'Aggregate wellness stats — no personal data shared',
+      'Bulk invite employees via CSV',
+    ],
+  },
 ];
 
 export default function Home() {
@@ -60,8 +92,8 @@ export default function Home() {
           <span style={{ color: YELLOW }}>Build better outcomes.</span>
         </h1>
         <p className="text-lg max-w-xl" style={{ color: 'var(--text-muted)' }}>
-          LiftLog connects patients and practitioners in one seamless fitness tracking platform.
-          Log workouts, monitor progress, and build personalized plans together.
+          LiftLog is a fitness tracking platform built for practitioners, gyms, and offices —
+          connecting every client, patient, and employee with the plans and progress tools they need.
         </p>
         <div className="flex gap-4 flex-wrap justify-center mt-2">
           <a
@@ -74,11 +106,11 @@ export default function Home() {
             Download on App Store
           </a>
           <a
-            href="#gym-owners"
+            href="#for-businesses"
             className="px-8 py-3 rounded-full font-bold text-lg transition-colors"
             style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
           >
-            Gym Owners →
+            For Businesses →
           </a>
         </div>
       </section>
@@ -149,27 +181,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Gym Owner Pricing */}
-      <section id="gym-owners" className="px-6 py-16 max-w-6xl mx-auto w-full">
-        <h2 className="text-3xl font-bold text-center mb-4">Gym Owner Plans</h2>
-        <p className="text-center mb-12" style={{ color: 'var(--text-muted)' }}>Manage multiple PTs under one gym account. All prices in CAD.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {gymTiers.map((t) => (
+      {/* Who it's for */}
+      <section id="for-businesses" className="px-6 py-16 max-w-6xl mx-auto w-full">
+        <h2 className="text-3xl font-bold text-center mb-4">Built for every workspace</h2>
+        <p className="text-center mb-12" style={{ color: 'var(--text-muted)' }}>
+          Whether you run a clinic, a gym, or a company — LiftLog scales to fit your team.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {audiences.map((a) => (
             <div
-              key={t.name}
-              className="rounded-2xl p-6 flex flex-col gap-3"
-              style={{ border: `1px solid ${t.color}55`, background: `${t.color}10` }}
+              key={a.title}
+              className="rounded-2xl p-6 flex flex-col gap-4"
+              style={{ background: 'var(--card)', border: `1px solid ${a.color}44` }}
             >
-              <p className="font-bold text-lg" style={{ color: t.color }}>{t.name}</p>
-              <div className="flex items-end gap-1">
-                <span className="text-3xl font-extrabold" style={{ color: t.color }}>{t.price}</span>
-                <span className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>{t.per}</span>
-              </div>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t.desc}</p>
+              <span className="text-4xl">{a.icon}</span>
+              <h3 className="font-bold text-xl" style={{ color: a.color }}>{a.title}</h3>
+              <ul className="flex flex-col gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                {a.points.map((p) => (
+                  <li key={p} className="flex gap-2 items-start">
+                    <span style={{ color: a.color, flexShrink: 0, marginTop: 1 }}>✓</span> {p}
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
-        <p className="text-center text-sm mt-8" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-center text-sm mt-10" style={{ color: 'var(--text-muted)' }}>
           Have any questions about pricing?{' '}
           <a
             href="mailto:logthelift@gmail.com"
