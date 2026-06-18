@@ -2,14 +2,14 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const YELLOW = '#F9F295';
 
-export default function PendingPage() {
+function PendingContent() {
   const searchParams = useSearchParams();
   const [companyName, setCompanyName] = useState(searchParams.get('company') ?? '');
 
@@ -62,5 +62,13 @@ export default function PendingPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function PendingPage() {
+  return (
+    <Suspense>
+      <PendingContent />
+    </Suspense>
   );
 }
