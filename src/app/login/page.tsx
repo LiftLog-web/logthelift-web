@@ -98,25 +98,21 @@ export default function LoginPage() {
         return;
       }
 
-      if (!data.user) {
-        setError('This email is already registered. Please sign in instead.');
-        setLoading(false);
-        return;
+      // Newer Supabase JS versions return user: null even for successful new signups
+      // when email confirmation is pending — only block on actual errors above.
+      if (data.user) {
+        const profileRow: Record<string, unknown> = {
+          id:           data.user.id,
+          display_name: name,
+          role:         role === 'business' ? 'practitioner' : role,
+          email,
+        };
+        if (role === 'business') {
+          profileRow.company_name  = companyName.trim();
+          profileRow.business_type = businessType;
+        }
+        await supabase.from('profiles').upsert(profileRow);
       }
-
-      const profileRow: Record<string, unknown> = {
-        id:           data.user.id,
-        display_name: name,
-        role:         role === 'business' ? 'practitioner' : role,
-        email,
-      };
-
-      if (role === 'business') {
-        profileRow.company_name  = companyName.trim();
-        profileRow.business_type = businessType;
-      }
-
-      await supabase.from('profiles').upsert(profileRow);
 
       if (role === 'business') {
         await fetch('/api/business-application', {
@@ -125,6 +121,12 @@ export default function LoginPage() {
           body:    JSON.stringify({ name, email, companyName: companyName.trim(), businessType }),
         });
         window.location.href = '/pending?company=' + encodeURIComponent(companyName.trim());
+        return;
+      }
+
+      if (!data.user) {
+        setError('This email is already registered. Please sign in instead.');
+        setLoading(false);
         return;
       }
 
