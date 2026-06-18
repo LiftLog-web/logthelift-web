@@ -107,8 +107,7 @@ export default function EmployeeOverviewPage() {
   const [loading,       setLoading]       = useState(true);
   const [employeeName,  setEmployeeName]  = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
-  const [totalWorkouts, setTotalWorkouts] = useState(0);
-  const [totalExercises, setTotalExercises] = useState(0);
+  const [totalWorkouts,  setTotalWorkouts]  = useState(0);
   const [totalStretches, setTotalStretches] = useState(0);
   const [avgEffectiveness, setAvgEffectiveness] = useState<number | null>(null);
   const [avgEnjoyment,     setAvgEnjoyment]     = useState<number | null>(null);
@@ -163,38 +162,36 @@ export default function EmployeeOverviewPage() {
         .select('date, data')
         .eq('user_id', employeeId);
 
-      // Filter strictly to plans assigned by this employer
-      const relevant = (workouts ?? []).filter((w: any) => {
+      const all = workouts ?? [];
+
+      // Employer-plan workouts only — used for office stretches and ratings
+      const employerWorkouts = all.filter((w: any) => {
         const pid = w.data?.planId;
         return pid && ptPlanIds.has(pid);
       });
 
-      let exCount   = 0;
       let strCount  = 0;
       const effRatings: number[] = [];
       const enjRatings: number[] = [];
-      const dates: string[]      = [];
 
-      for (const w of relevant) {
+      for (const w of employerWorkouts) {
         const log = w.data as WorkoutLog;
-        dates.push(w.date);
-
         for (const ex of log.exercises ?? []) {
-          exCount++;
           if (OFFICE_GROUPS.has(ex.exercise?.muscleGroup ?? '')) strCount++;
         }
-
         const eff = log.effectivenessRating ?? log.satisfactionRating;
         if (typeof eff === 'number' && eff > 0) effRatings.push(eff);
         if (typeof log.enjoymentRating === 'number' && log.enjoymentRating > 0) enjRatings.push(log.enjoymentRating);
       }
 
-      setTotalWorkouts(relevant.length);
-      setTotalExercises(exCount);
+      // Total workouts and activity = all logged workouts (count only, no details)
+      const allDates = all.map((w: any) => w.date as string);
+
+      setTotalWorkouts(all.length);
       setTotalStretches(strCount);
       setAvgEffectiveness(effRatings.length ? effRatings.reduce((a, b) => a + b, 0) / effRatings.length : null);
       setAvgEnjoyment(enjRatings.length ? enjRatings.reduce((a, b) => a + b, 0) / enjRatings.length : null);
-      setActivityDates([...new Set(dates)]);
+      setActivityDates([...new Set(allDates)]);
       setLoading(false);
     })();
   }, [router, employeeId]);
@@ -249,10 +246,9 @@ export default function EmployeeOverviewPage() {
         </div>
 
         {/* Stat cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
-          <StatCard label="Workouts Logged" value={totalWorkouts} sub="from employer plans" accent={TEAL} icon="🏃" />
-          <StatCard label="Exercises Completed" value={totalExercises} sub="total sets logged" icon="💪" />
-          <StatCard label="Office Stretches" value={totalStretches} sub="desk & seated exercises" accent={PURPLE} icon="🧘" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+          <StatCard label="Workouts Logged" value={totalWorkouts} sub="all activity" accent={TEAL} icon="🏃" />
+          <StatCard label="Office Stretches" value={totalStretches} sub="from employer plans" accent={PURPLE} icon="🧘" />
         </div>
 
         {/* Ratings */}
