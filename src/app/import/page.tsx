@@ -294,14 +294,22 @@ mike@example.com`}
 
             {error && <p className="mb-4 text-red-400 text-sm">{error}</p>}
 
-            <button
-              onClick={sendInvites}
-              disabled={!validRows.length}
-              className="w-full py-3 rounded-xl font-bold text-[#0f1117] text-base transition-opacity disabled:opacity-40"
-              style={{ backgroundColor: TEAL }}
-            >
-              Send {validRows.length} Invite{validRows.length !== 1 ? 's' : ''}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={reset}
+                className="flex-1 py-3 rounded-xl font-bold border border-white/20 text-white/70 hover:bg-white/5 transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={sendInvites}
+                disabled={!validRows.length}
+                className="flex-[2] py-3 rounded-xl font-bold text-[#0f1117] text-base transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: TEAL }}
+              >
+                Send {validRows.length} Invite{validRows.length !== 1 ? 's' : ''}
+              </button>
+            </div>
           </>
         )}
 
