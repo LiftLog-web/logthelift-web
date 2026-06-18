@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import * as XLSX from 'xlsx';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -81,21 +82,56 @@ export default function ImportPage() {
     URL.revokeObjectURL(url);
   }
 
+  function rowsFromSheet(sheet: XLSX.WorkSheet): PatientRow[] {
+    const raw = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' });
+    if (!raw.length) return [];
+    const firstRow = (raw[0] as string[]).map(c => String(c).toLowerCase());
+    const hasHeader = firstRow.some(c => c.includes('email') || c.includes('name'));
+    const dataRows = hasHeader ? raw.slice(1) : raw;
+    return (dataRows as string[][])
+      .map(cols => {
+        const email = String(cols[0] ?? '').trim();
+        const name  = String(cols[1] ?? '').trim();
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        return { email, name, valid };
+      })
+      .filter(r => r.email);
+  }
+
   function handleFile(file: File) {
     setError('');
-    if (!file.name.match(/\.(csv|txt)$/i)) {
-      setError('Please upload a .csv or .txt file.');
+    if (!file.name.match(/\.(csv|txt|xlsx|xls)$/i)) {
+      setError('Please upload a .csv, .txt, or .xlsx file.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target?.result as string;
-      const parsed = parseCSV(text);
-      if (!parsed.length) { setError('No rows found in file.'); return; }
-      setRows(parsed);
-      setStep('preview');
-    };
-    reader.readAsText(file);
+
+    if (file.name.match(/\.xlsx?$/i)) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const wb   = XLSX.read(data, { type: 'array' });
+          const ws   = wb.Sheets[wb.SheetNames[0]];
+          const parsed = rowsFromSheet(ws);
+          if (!parsed.length) { setError('No rows found in file.'); return; }
+          setRows(parsed);
+          setStep('preview');
+        } catch {
+          setError('Could not read Excel file. Try saving as CSV and uploading that instead.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const text = e.target?.result as string;
+        const parsed = parseCSV(text);
+        if (!parsed.length) { setError('No rows found in file.'); return; }
+        setRows(parsed);
+        setStep('preview');
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -189,8 +225,8 @@ export default function ImportPage() {
             >
               <div className="text-5xl mb-4">📂</div>
               <p className="text-white/70 font-semibold mb-1">Drop your CSV here or click to browse</p>
-              <p className="text-white/30 text-sm">Accepts .csv or .txt · Columns: email, name (optional)</p>
-              <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <p className="text-white/30 text-sm">Accepts .csv, .txt, or .xlsx · Columns: email, name (optional)</p>
+              <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
 
             {error && <p className="mt-4 text-red-400 text-sm">{error}</p>}
@@ -213,7 +249,7 @@ john.smith@example.com,John Smith
 sarah.jones@example.com,Sarah Jones
 mike@example.com`}
               </pre>
-              <p className="text-white/30 text-xs mt-3">Name is optional. Comma, semicolon, or tab delimiters all work. Header row is auto-detected.</p>
+              <p className="text-white/30 text-xs mt-3">Name is optional. Comma, semicolon, or tab delimiters all work. Header row is auto-detected. Excel (.xlsx) files are supported.</p>
             </div>
           </>
         )}
