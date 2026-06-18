@@ -37,6 +37,17 @@ interface Patient {
 
 type PageState = 'loading' | 'ready' | 'unauthenticated';
 
+const MASTER_PRACTITIONER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+
+interface FeaturedStats {
+  avg_effectiveness:     number | null;
+  effectiveness_count:   number;
+  avg_enjoyment:         number | null;
+  enjoyment_count:       number;
+  active_employer_count: number;
+  total_employee_count:  number;
+}
+
 function makeCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -49,6 +60,8 @@ export default function ProfilePage() {
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [patients, setPatients]       = useState<Patient[]>([]);
   const [sessionToken, setSessionToken] = useState('');
+
+  const [featuredStats, setFeaturedStats] = useState<FeaturedStats | null>(null);
 
   // Invite code state
   const [inviteCode, setInviteCode]   = useState<{ code: string; expires_at: string } | null>(null);
@@ -112,6 +125,11 @@ export default function ProfilePage() {
           .limit(1)
           .single();
         setInviteCode(codeData ?? null);
+
+        if (userId === MASTER_PRACTITIONER_ID) {
+          const { data: statsRows } = await supabase.rpc('get_featured_program_stats', { p_practitioner_id: userId });
+          setFeaturedStats((statsRows as FeaturedStats[])?.[0] ?? null);
+        }
       }
 
       setPageState('ready');
@@ -315,6 +333,70 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Master practitioner program metrics */}
+        {profile?.id === MASTER_PRACTITIONER_ID && (
+          <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px' }}>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Program Ratings</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' }}>
+              Aggregated from all employees across active employer programs.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              {/* Avg Effectiveness */}
+              <div style={{ background: 'var(--card-alt)', border: `1px solid ${PURPLE}30`, borderRadius: 16, padding: '20px 20px 18px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Avg Effectiveness</p>
+                {featuredStats?.avg_effectiveness != null ? (
+                  <>
+                    <p style={{ fontSize: 28, fontWeight: 800, color: PURPLE, margin: '0 0 4px' }}>
+                      {Number(featuredStats.avg_effectiveness).toFixed(1)}
+                      <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 2 }}>/5</span>
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
+                      {'★'.repeat(Math.round(Number(featuredStats.avg_effectiveness)))}{'☆'.repeat(5 - Math.round(Number(featuredStats.avg_effectiveness)))}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>{featuredStats.effectiveness_count} vote{featuredStats.effectiveness_count !== 1 ? 's' : ''}</p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-dim)', margin: 0 }}>—</p>
+                )}
+              </div>
+
+              {/* Avg Enjoyment */}
+              <div style={{ background: 'var(--card-alt)', border: `1px solid ${TEAL}30`, borderRadius: 16, padding: '20px 20px 18px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Avg Enjoyment</p>
+                {featuredStats?.avg_enjoyment != null ? (
+                  <>
+                    <p style={{ fontSize: 28, fontWeight: 800, color: TEAL, margin: '0 0 4px' }}>
+                      {Number(featuredStats.avg_enjoyment).toFixed(1)}
+                      <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 2 }}>/5</span>
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
+                      {'★'.repeat(Math.round(Number(featuredStats.avg_enjoyment)))}{'☆'.repeat(5 - Math.round(Number(featuredStats.avg_enjoyment)))}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>{featuredStats.enjoyment_count} vote{featuredStats.enjoyment_count !== 1 ? 's' : ''}</p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-dim)', margin: 0 }}>—</p>
+                )}
+              </div>
+
+              {/* Active Employers */}
+              <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 20px 18px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Active Employers</p>
+                <p style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>{featuredStats?.active_employer_count ?? '—'}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>running a program</p>
+              </div>
+
+              {/* Total Employees */}
+              <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 20px 18px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Total Employees</p>
+                <p style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>{featuredStats?.total_employee_count ?? '—'}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>across all employers</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Invite code (non-employer practitioners only) */}
         {isPractitioner && !isEmployer && (
