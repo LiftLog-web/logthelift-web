@@ -17,7 +17,7 @@ const features = [
 const audiences = [
   {
     icon: '🩺',
-    title: 'Practitioners & PTs',
+    title: 'Practitioners',
     color: PURPLE,
     points: [
       'Patient management dashboard',
@@ -130,54 +130,6 @@ export default function Home() {
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Practitioner section */}
-      <section className="px-6 py-16 max-w-6xl mx-auto w-full">
-        <div
-          className="rounded-3xl p-10 flex flex-col md:flex-row gap-10 items-center"
-          style={{ background: `${PURPLE}10`, border: `1px solid ${PURPLE}40` }}
-        >
-          <div className="flex-1 flex flex-col gap-4">
-            <span className="text-4xl">🩺</span>
-            <h2 className="text-3xl font-bold">Built for practitioners</h2>
-            <p style={{ color: 'var(--text-muted)' }}>
-              Manage your patients, assign custom workout plans, monitor session completion,
-              and receive automated progress reports — all from one app.
-            </p>
-            <ul className="flex flex-col gap-2 text-sm mt-2" style={{ color: 'var(--text-dim)' }}>
-              {[
-                'Patient management dashboard',
-                'Custom plan builder',
-                'Daily & weekly email reports',
-                'Exercise demo library',
-                'Satisfaction ratings from patients',
-              ].map((item) => (
-                <li key={item} className="flex gap-2 items-center">
-                  <span style={{ color: TEAL }}>✓</span> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div
-            className="flex-1 flex flex-col gap-4 rounded-2xl p-6"
-            style={{ background: 'var(--card)', border: `1px solid ${PURPLE}60` }}
-          >
-            <p className="font-bold text-lg" style={{ color: PURPLE }}>Practitioner Pro</p>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Apply in the app to get approved as a practitioner and unlock the full suite of tools.
-            </p>
-            <a
-              href="https://apps.apple.com/app/id6762567982"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-center py-3 rounded-xl font-bold mt-2"
-              style={{ backgroundColor: PURPLE, color: '#fff' }}
-            >
-              Get Started
-            </a>
-          </div>
         </div>
       </section>
 
