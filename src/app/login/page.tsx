@@ -8,22 +8,28 @@ import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
+const YELLOW = '#F9F295';
 
-type Tab = 'signin' | 'signup';
+type Tab  = 'signin' | 'signup';
+type Role = 'patient' | 'practitioner' | 'business';
+type BusinessType = 'gym' | 'employer';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [tab, setTab]           = useState<Tab>('signin');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName]         = useState('');
-  const [role, setRole]         = useState<'patient' | 'practitioner'>('patient');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState('');
+  const [tab,          setTab]          = useState<Tab>('signin');
+  const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [name,         setName]         = useState('');
+  const [role,         setRole]         = useState<Role>('patient');
+  const [companyName,  setCompanyName]  = useState('');
+  const [businessType, setBusinessType] = useState<BusinessType>('employer');
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState('');
+  const [success,      setSuccess]      = useState('');
 
   const resetForm = () => {
-    setEmail(''); setPassword(''); setName(''); setError(''); setSuccess('');
+    setEmail(''); setPassword(''); setName(''); setCompanyName('');
+    setError(''); setSuccess(''); setRole('patient'); setBusinessType('employer');
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -40,15 +46,18 @@ export default function LoginPage() {
       return;
     }
 
-    // Check if gym owner → dashboard, else → profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_gym_owner')
+      .select('role, is_gym_owner, is_employer, business_type')
       .eq('id', data.user.id)
       .single();
 
     if (profile?.is_gym_owner) {
       router.push('/dashboard');
+    } else if ((profile as any)?.is_employer) {
+      router.push('/plans');
+    } else if ((profile as any)?.business_type && !profile?.is_gym_owner && !(profile as any)?.is_employer) {
+      router.push('/pending');
     } else {
       router.push('/profile');
     }
@@ -62,6 +71,12 @@ export default function LoginPage() {
 
     if (!name.trim()) {
       setError('Please enter your name.');
+      setLoading(false);
+      return;
+    }
+
+    if (role === 'business' && !companyName.trim()) {
+      setError('Please enter your company or organization name.');
       setLoading(false);
       return;
     }
@@ -80,30 +95,52 @@ export default function LoginPage() {
     }
 
     if (data.user) {
-      // Upsert profile row
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
+      const profileRow: Record<string, unknown> = {
+        id:           data.user.id,
         display_name: name,
-        role,
+        role:         role === 'business' ? 'practitioner' : role,
         email,
-      });
+      };
+
+      if (role === 'business') {
+        profileRow.company_name  = companyName.trim();
+        profileRow.business_type = businessType;
+      }
+
+      await supabase.from('profiles').upsert(profileRow);
+
+      if (role === 'business') {
+        await fetch('/api/business-application', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ name, email, companyName: companyName.trim(), businessType }),
+        });
+        setSuccess("Application submitted! We'll review your account and be in touch within 24 hours.");
+      } else {
+        setSuccess('Account created! Check your email to confirm your address, then sign in.');
+      }
     }
 
-    setSuccess('Account created! Check your email to confirm your address, then sign in.');
     setLoading(false);
   };
 
   const inputStyle: React.CSSProperties = {
-    background: 'var(--input-bg)',
-    border: '1px solid var(--border-strong)',
-    borderRadius: 12,
-    padding: '12px 16px',
-    color: 'var(--text)',
-    fontSize: 15,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
+    background:    'var(--input-bg)',
+    border:        '1px solid var(--border-strong)',
+    borderRadius:  12,
+    padding:       '12px 16px',
+    color:         'var(--text)',
+    fontSize:      15,
+    outline:       'none',
+    width:         '100%',
+    boxSizing:     'border-box',
   };
+
+  const roles: { value: Role; label: string; color: string }[] = [
+    { value: 'patient',       label: 'Patient',      color: PURPLE },
+    { value: 'practitioner',  label: 'Practitioner', color: PURPLE },
+    { value: 'business',      label: 'Business',     color: YELLOW },
+  ];
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -120,9 +157,10 @@ export default function LoginPage() {
               key={t}
               onClick={() => { setTab(t); resetForm(); }}
               style={{
-                flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
+                flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
                 background: tab === t ? TEAL : 'transparent',
-                color: tab === t ? '#0f1117' : PURPLE,
+                color:      tab === t ? '#0f1117' : PURPLE,
               }}
             >
               {t === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -133,7 +171,7 @@ export default function LoginPage() {
         {/* Sign In */}
         {tab === 'signin' && (
           <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+            <input type="email"    placeholder="Email"    value={email}    onChange={e => setEmail(e.target.value)}    required style={inputStyle} />
             <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={inputStyle} />
             {error && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{error}</p>}
             <button type="submit" disabled={loading} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
@@ -145,38 +183,91 @@ export default function LoginPage() {
         {/* Sign Up */}
         {tab === 'signup' && (
           <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <input type="text" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required style={inputStyle} />
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
+            <input type="text"     placeholder="Full name"               value={name}     onChange={e => setName(e.target.value)}     required style={inputStyle} />
+            <input type="email"    placeholder="Email"                   value={email}    onChange={e => setEmail(e.target.value)}    required style={inputStyle} />
             <input type="password" placeholder="Password (min 6 characters)" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={inputStyle} />
 
             {/* Role selector */}
             <div>
               <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>I am a…</p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['patient', 'practitioner'] as const).map(r => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {roles.map(r => (
                   <button
-                    key={r}
+                    key={r.value}
                     type="button"
-                    onClick={() => setRole(r)}
+                    onClick={() => setRole(r.value)}
                     style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10, border: `1px solid ${role === r ? PURPLE : 'var(--border-strong)'}`,
-                      background: role === r ? `${PURPLE}22` : 'transparent',
-                      color: role === r ? PURPLE : 'var(--text-muted)',
-                      fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      border:      `1px solid ${role === r.value ? r.color : 'var(--border-strong)'}`,
+                      background:  role === r.value ? `${r.color}22` : 'transparent',
+                      color:       role === r.value ? r.color : 'var(--text-muted)',
+                      fontWeight:  700, fontSize: 12, cursor: 'pointer',
                     }}
                   >
-                    {r.charAt(0).toUpperCase() + r.slice(1)}
+                    {r.label}
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Business extra fields */}
+            {role === 'business' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Company or organization name"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+                <div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Business type</p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {([
+                      { value: 'employer', label: 'Corporate / Employer' },
+                      { value: 'gym',      label: 'Gym / Studio' },
+                    ] as { value: BusinessType; label: string }[]).map(bt => (
+                      <button
+                        key={bt.value}
+                        type="button"
+                        onClick={() => setBusinessType(bt.value)}
+                        style={{
+                          flex: 1, padding: '10px 0', borderRadius: 10,
+                          border:     `1px solid ${businessType === bt.value ? YELLOW : 'var(--border-strong)'}`,
+                          background: businessType === bt.value ? `${YELLOW}22` : 'transparent',
+                          color:      businessType === bt.value ? YELLOW : 'var(--text-muted)',
+                          fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                        }}
+                      >
+                        {bt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                  Business accounts are reviewed before activation. We'll be in touch within 24 hours.
+                </p>
+              </>
+            )}
+
             {error   && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{error}</p>}
-            {success && <p style={{ color: TEAL, fontSize: 13, margin: 0 }}>{success}</p>}
+            {success && <p style={{ color: TEAL,     fontSize: 13, margin: 0 }}>{success}</p>}
 
             {!success && (
-              <button type="submit" disabled={loading} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
-                {loading ? 'Creating account…' : 'Create Account'}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  background: role === 'business' ? YELLOW : PURPLE,
+                  color:      role === 'business' ? '#0f1117' : 'var(--text)',
+                  borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15,
+                  border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading
+                  ? (role === 'business' ? 'Submitting…' : 'Creating account…')
+                  : (role === 'business' ? 'Submit Application' : 'Create Account')}
               </button>
             )}
           </form>
