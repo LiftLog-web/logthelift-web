@@ -89,9 +89,6 @@ export default function LoginPage() {
         options: { data: { display_name: name } },
       });
 
-      console.log('[signUp] raw data:', JSON.stringify(data));
-      console.log('[signUp] raw error:', JSON.stringify(err));
-
       if (err) {
         setError(err.message);
         setLoading(false);
