@@ -1,15 +1,21 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import ProfileIcon from './icons/ProfileIcon';
+import LogWorkoutIcon from './icons/LogWorkoutIcon';
+import MyPlansIcon from './icons/MyPlansIcon';
+import ProgressIcon from './icons/ProgressIcon';
+import TeamMembersIcon from './icons/TeamMembersIcon';
 
-const TEAL = '#5fcfbf';
+const TEAL   = '#5fcfbf';
+const PURPLE = '#C471ED';
 
 const NAV_ITEMS = [
-  { href: '/profile',  label: 'Profile',     icon: '👤' },
-  { href: '/log',      label: 'Log Workout', icon: '📅' },
-  { href: '/my-plans', label: 'My Plans',    icon: '📋' },
-  { href: '/progress', label: 'Progress',    icon: '📊' },
-  { href: '/friends',  label: 'Friends',     icon: '👥' },
+  { href: '/profile',  label: 'Profile',     Icon: ProfileIcon     },
+  { href: '/log',      label: 'Log Workout', Icon: LogWorkoutIcon  },
+  { href: '/my-plans', label: 'My Plans',    Icon: MyPlansIcon     },
+  { href: '/progress', label: 'Progress',    Icon: ProgressIcon    },
+  { href: '/friends',  label: 'Friends',     Icon: TeamMembersIcon },
 ];
 
 export default function PatientNav() {
@@ -40,13 +46,13 @@ export default function PatientNav() {
           style={{
             background: 'none',
             border: 'none',
-            borderBottom: isActive(item.href) ? `2px solid ${TEAL}` : '2px solid transparent',
+            borderBottom: isActive(item.href) ? `2px solid ${PURPLE}` : '2px solid transparent',
             padding: '0 12px',
             height: 56,
             cursor: 'pointer',
-            color: isActive(item.href) ? TEAL : 'var(--text)',
-            fontSize: 13,
-            fontWeight: isActive(item.href) ? 700 : 400,
+            color: isActive(item.href) ? 'var(--nav-active)' : 'var(--nav-inactive)',
+            fontSize: 14,
+            fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -54,7 +60,7 @@ export default function PatientNav() {
             whiteSpace: 'nowrap',
           }}
         >
-          <span style={{ fontSize: 15 }}>{item.icon}</span>
+          <item.Icon size={24} />
           {item.label}
         </button>
       ))}
