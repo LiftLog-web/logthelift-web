@@ -117,6 +117,11 @@ function daysSince(dateStr: string | null | undefined): number | null {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
+function makeCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
 export default function PlansPage() {
   const router = useRouter();
   const [plans, setPlans]         = useState<Plan[]>([]);
@@ -142,6 +147,18 @@ export default function PlansPage() {
   const [linkedPatientIds, setLinkedPatientIds] = useState<Set<string>>(new Set());
   const [showPrevious, setShowPrevious] = useState(false);
 
+  // Add Patient modal
+  const [sessionToken, setSessionToken] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteCode, setInviteCode]     = useState<{ code: string; expires_at: string } | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [copiedCode, setCopiedCode]     = useState(false);
+  const [inviteEmail, setInviteEmail]   = useState('');
+  const [inviteName, setInviteName]     = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSent, setInviteSent]     = useState(false);
+  const [inviteError, setInviteError]   = useState('');
+
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
@@ -159,7 +176,20 @@ export default function PlansPage() {
       setThresholdInput(String(t));
       setUserId(data.session.user.id);
       setIsEmployer(!!(prof as any)?.is_employer);
+      setSessionToken(data.session.access_token);
       setAuthed(true);
+
+      // Load active invite code (for Add Patient modal)
+      const { data: codeData } = await sb
+        .from('invite_codes')
+        .select('code, expires_at')
+        .eq('practitioner_id', data.session.user.id)
+        .is('used_by', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      setInviteCode(codeData ?? null);
 
       const { data: rawPlans } = await sb
         .from('workout_plans')
@@ -308,6 +338,64 @@ export default function PlansPage() {
   const patientLabel = isEmployer ? 'employee' : 'patient';
   const patientLabelCap = isEmployer ? 'Employee' : 'Patient';
 
+  // Escape key closes invite modal
+  useEffect(() => {
+    if (!showInviteModal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowInviteModal(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showInviteModal]);
+
+  const handleGenerateCode = async () => {
+    setInviteLoading(true);
+    const sb = getSupabase();
+    await sb.from('invite_codes').delete().eq('practitioner_id', userId).is('used_by', null);
+    const code = makeCode();
+    await sb.from('invite_codes').insert({ practitioner_id: userId, code });
+    const { data } = await sb
+      .from('invite_codes')
+      .select('code, expires_at')
+      .eq('practitioner_id', userId)
+      .is('used_by', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    setInviteCode(data ?? null);
+    setInviteLoading(false);
+  };
+
+  const handleCopyCode = () => {
+    if (!inviteCode?.code) return;
+    navigator.clipboard.writeText(inviteCode.code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setSendingInvite(true);
+    setInviteError('');
+    try {
+      const res = await fetch('/api/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ patients: [{ email: inviteEmail.trim(), name: inviteName.trim() || undefined }] }),
+      });
+      const json = await res.json();
+      if (json.sent > 0) {
+        setInviteSent(true);
+        setInviteEmail('');
+        setInviteName('');
+        setTimeout(() => setInviteSent(false), 4000);
+      } else {
+        setInviteError(json.results?.[0]?.error ?? 'Failed to send. Please try again.');
+      }
+    } catch {
+      setInviteError('Failed to send. Please try again.');
+    }
+    setSendingInvite(false);
+  };
+
   if (!authed || loading) {
     return (
       <SkPage>
@@ -361,6 +449,12 @@ export default function PlansPage() {
                 }}
               />
             )}
+            <button
+              onClick={() => setShowInviteModal(true)}
+              style={{ background: 'none', color: PURPLE, border: `1.5px solid ${PURPLE}`, borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+            >
+              + Add {patientLabelCap}
+            </button>
             <button
               onClick={() => router.push('/plans/new')}
               style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
@@ -651,6 +745,91 @@ export default function PlansPage() {
           </>
         )}
       </main>
+
+      {/* Add Patient modal */}
+      {showInviteModal && (
+        <div
+          onClick={() => setShowInviteModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 440, padding: 28 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Add {patientLabelCap}</h2>
+              <button onClick={() => setShowInviteModal(false)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+
+            {/* Section 1: Generate Invite Code */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 10px', color: 'var(--text)' }}>Generate Invite Code</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                Share this code with your {patientLabel}. They enter it in the LiftLog app to connect with you.
+              </p>
+              {inviteCode ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ background: 'var(--card-alt)', border: `1.5px solid ${TEAL}`, borderRadius: 10, padding: '10px 20px', fontFamily: 'monospace', fontSize: 22, fontWeight: 800, letterSpacing: 4, color: 'var(--text)', flex: 1, textAlign: 'center' }}>
+                    {inviteCode.code}
+                  </div>
+                  <button
+                    onClick={handleCopyCode}
+                    style={{ background: copiedCode ? TEAL : 'var(--card-alt)', color: copiedCode ? '#0f1117' : 'var(--text)', border: `1px solid ${copiedCode ? TEAL : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {copiedCode ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', margin: '0 0 8px' }}>No active code.</p>
+              )}
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '8px 0 10px' }}>
+                {inviteCode ? `Expires ${new Date(inviteCode.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+              </p>
+              <button
+                onClick={handleGenerateCode}
+                disabled={inviteLoading}
+                style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '9px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: inviteLoading ? 0.6 : 1 }}
+              >
+                {inviteLoading ? 'Generating…' : inviteCode ? 'Regenerate Code' : 'Generate Code'}
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 24px' }} />
+
+            {/* Section 2: Invite by Email */}
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 10px', color: 'var(--text)' }}>Invite by Email</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                Send your {patientLabel} an email with a direct link to download the LiftLog app and connect.
+              </p>
+              <input
+                type="text"
+                value={inviteName}
+                onChange={e => setInviteName(e.target.value)}
+                placeholder={`${patientLabelCap} name (optional)`}
+                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSendInvite(); }}
+                  placeholder={`${patientLabelCap} email`}
+                  style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                />
+                <button
+                  onClick={handleSendInvite}
+                  disabled={sendingInvite || !inviteEmail.trim()}
+                  style={{ background: PURPLE, color: 'var(--text)', border: 'none', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: (sendingInvite || !inviteEmail.trim()) ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                >
+                  {sendingInvite ? 'Sending…' : 'Send Invite'}
+                </button>
+              </div>
+              {inviteSent && <p style={{ color: TEAL, fontSize: 13, fontWeight: 700, marginTop: 10 }}>Invite sent!</p>}
+              {inviteError && <p style={{ color: '#f87171', fontSize: 13, marginTop: 10 }}>{inviteError}</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Weeks modal */}
       {editingPlan && (
