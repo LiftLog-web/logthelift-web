@@ -89,7 +89,7 @@ export default function ProgramsPage() {
       const today = new Date().toISOString().slice(0, 10);
 
       const [templatesRes, programRes, teamsRes, linkCountRes] = await Promise.all([
-        sb.from('plan_templates').select('id, name, description, featured_duration_days, exercises').eq('is_featured', true).order('name'),
+        sb.from('plan_templates').select('id, name, description, featured_duration_days, exercises').eq('practitioner_id', process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID!).eq('is_featured', true).order('name'),
         sb.from('employer_programs').select('id, plan_template_id, name, started_at, ends_at').eq('employer_id', uid).gte('ends_at', today).order('started_at', { ascending: false }).limit(1),
         sb.from('employer_teams').select('id, name').eq('employer_id', uid).order('name'),
         sb.from('patient_links').select('patient_id', { count: 'exact', head: true }).eq('practitioner_id', uid),
