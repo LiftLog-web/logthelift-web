@@ -5,6 +5,8 @@ import { useNavGuard } from '@/lib/NavGuardContext';
 import PatientsIcon from './icons/PatientsIcon';
 import TeamMembersIcon from './icons/TeamMembersIcon';
 import LeaderboardIcon from './icons/LeaderboardIcon';
+import ProgramsIcon from './icons/ProgramsIcon';
+import TeamsIcon from './icons/TeamsIcon';
 import PlanLibraryIcon from './icons/PlanLibraryIcon';
 import VideoLibraryIcon from './icons/VideoLibraryIcon';
 import ProfileIcon from './icons/ProfileIcon';
@@ -19,7 +21,11 @@ export default function PractitionerNav({ rightSlot, isEmployer = false }: { rig
 
   const NAV_ITEMS = [
     { href: '/plans',         label: isEmployer ? 'Team Members' : 'Patients',    Icon: isEmployer ? TeamMembersIcon : PatientsIcon },
-    ...(isEmployer ? [{ href: '/leaderboard', label: 'Leaderboard', Icon: LeaderboardIcon }] : []),
+    ...(isEmployer ? [
+      { href: '/programs',    label: 'Programs',    Icon: ProgramsIcon    },
+      { href: '/teams',       label: 'Teams',       Icon: TeamsIcon       },
+      { href: '/leaderboard', label: 'Leaderboard', Icon: LeaderboardIcon },
+    ] : []),
     { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
     { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
     { href: '/profile',       label: 'Profile',       Icon: ProfileIcon },
