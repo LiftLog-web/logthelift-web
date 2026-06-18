@@ -24,8 +24,8 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
     : `Your practitioner wants to track your workout progress and send you personalized training plans through LiftLog.`;
 
   const linkStep = isEmployer
-    ? `Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong>`
-    : `Go to <strong style="color:#fff;">Stats → Link to Practitioner</strong>`;
+    ? `Go to <strong style="color:#fff;">Settings → Link to Practitioner or Employer</strong>`
+    : `Go to <strong style="color:#fff;">Settings → Link to Practitioner or Employer</strong>`;
 
   const footer = isEmployer
     ? `Sent on behalf of <strong style="color:rgba(255,255,255,0.6);">${escapeHtml(senderName)}</strong> via LiftLog. If you were not expecting this, you can safely ignore it.`
