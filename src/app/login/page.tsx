@@ -81,20 +81,26 @@ export default function LoginPage() {
       return;
     }
 
-    const supabase = getSupabase();
-    const { data, error: err } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: name } },
-    });
+    try {
+      const supabase = getSupabase();
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { display_name: name } },
+      });
 
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
-    }
+      if (err) {
+        setError(err.message);
+        setLoading(false);
+        return;
+      }
 
-    if (data.user) {
+      if (!data.user) {
+        setError('This email is already registered. Please sign in instead.');
+        setLoading(false);
+        return;
+      }
+
       const profileRow: Record<string, unknown> = {
         id:           data.user.id,
         display_name: name,
@@ -110,16 +116,22 @@ export default function LoginPage() {
       await supabase.from('profiles').upsert(profileRow);
 
       if (role === 'business') {
-        await fetch('/api/business-application', {
+        const res = await fetch('/api/business-application', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ name, email, companyName: companyName.trim(), businessType }),
         });
+        if (!res.ok) {
+          console.error('business-application API error:', await res.text());
+        }
         router.push('/pending');
         return;
       } else {
         setSuccess('Account created! Check your email to confirm your address, then sign in.');
       }
+    } catch (ex) {
+      console.error('handleSignUp error:', ex);
+      setError('Something went wrong. Please try again.');
     }
 
     setLoading(false);
