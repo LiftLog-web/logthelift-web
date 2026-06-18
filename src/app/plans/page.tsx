@@ -792,7 +792,11 @@ export default function PlansPage() {
               </button>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 24px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 24px' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', letterSpacing: 1 }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
 
             {/* Section 2: Invite by Email */}
             <div>
