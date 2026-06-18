@@ -199,8 +199,8 @@ export default function LoginPage() {
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
                       border:      `1px solid ${role === r.value ? r.color : 'var(--border-strong)'}`,
-                      background:  role === r.value ? `${r.color}22` : 'transparent',
-                      color:       role === r.value ? r.color : 'var(--text-muted)',
+                      background:  role === r.value ? r.color : 'transparent',
+                      color:       role === r.value ? '#0f1117' : 'var(--text-muted)',
                       fontWeight:  700, fontSize: 12, cursor: 'pointer',
                     }}
                   >
@@ -235,8 +235,8 @@ export default function LoginPage() {
                         style={{
                           flex: 1, padding: '10px 0', borderRadius: 10,
                           border:     `1px solid ${businessType === bt.value ? YELLOW : 'var(--border-strong)'}`,
-                          background: businessType === bt.value ? `${YELLOW}22` : 'transparent',
-                          color:      businessType === bt.value ? YELLOW : 'var(--text-muted)',
+                          background: businessType === bt.value ? YELLOW : 'transparent',
+                          color:      businessType === bt.value ? '#0f1117' : 'var(--text-muted)',
                           fontWeight: 700, fontSize: 12, cursor: 'pointer',
                         }}
                       >
