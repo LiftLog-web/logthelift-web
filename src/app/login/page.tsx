@@ -89,6 +89,8 @@ export default function LoginPage() {
         options: { data: { display_name: name } },
       });
 
+      console.log('[signUp] data.user:', data?.user?.id ?? 'NULL', '| error:', err?.message ?? 'none');
+
       if (err) {
         setError(err.message);
         setLoading(false);
