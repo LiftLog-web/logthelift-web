@@ -115,7 +115,8 @@ export default function LoginPage() {
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ name, email, companyName: companyName.trim(), businessType }),
         });
-        setSuccess("Application submitted! We'll review your account and be in touch within 24 hours.");
+        router.push('/pending');
+        return;
       } else {
         setSuccess('Account created! Check your email to confirm your address, then sign in.');
       }
