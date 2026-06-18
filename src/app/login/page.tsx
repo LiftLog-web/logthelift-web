@@ -52,7 +52,7 @@ export default function LoginPage() {
       .eq('id', data.user.id)
       .single();
 
-    const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+    const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
     if (data.user.id === MASTER_ID) {
       router.push('/master/dashboard');
     } else if (profile?.is_gym_owner) {

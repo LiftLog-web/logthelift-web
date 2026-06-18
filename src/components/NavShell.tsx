@@ -6,7 +6,7 @@ import PractitionerNav from './PractitionerNav';
 import PatientNav from './PatientNav';
 import MasterNav from './MasterNav';
 
-const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 type NavRole = 'master' | 'pract' | 'patient' | null;
 
@@ -18,7 +18,6 @@ export default function NavShell() {
     const supabase = getSupabase();
 
     const resolveRole = async (session: { user: { id: string } } | null) => {
-      console.log('[NavShell] session uid:', session?.user?.id, '| MASTER_ID:', MASTER_ID);
       if (!session) {
         localStorage.removeItem('ll_pract');
         localStorage.removeItem('ll_patient');

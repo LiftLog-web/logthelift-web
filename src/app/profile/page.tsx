@@ -37,7 +37,7 @@ interface Patient {
 
 type PageState = 'loading' | 'ready' | 'unauthenticated';
 
-const MASTER_PRACTITIONER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+const MASTER_PRACTITIONER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 interface FeaturedStats {
   avg_effectiveness:     number | null;

@@ -8,7 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
-const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '';
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 interface Stats {
   avg_effectiveness:     number | null;
