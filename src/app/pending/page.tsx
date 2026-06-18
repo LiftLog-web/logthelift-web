@@ -3,15 +3,18 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const YELLOW = '#F9F295';
 
 export default function PendingPage() {
-  const [companyName, setCompanyName] = useState('');
+  const searchParams = useSearchParams();
+  const [companyName, setCompanyName] = useState(searchParams.get('company') ?? '');
 
   useEffect(() => {
+    if (companyName) return;
     getSupabase().auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
       const { data: prof } = await getSupabase()

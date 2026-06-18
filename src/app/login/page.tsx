@@ -116,19 +116,16 @@ export default function LoginPage() {
       await supabase.from('profiles').upsert(profileRow);
 
       if (role === 'business') {
-        const res = await fetch('/api/business-application', {
+        await fetch('/api/business-application', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ name, email, companyName: companyName.trim(), businessType }),
         });
-        if (!res.ok) {
-          console.error('business-application API error:', await res.text());
-        }
-        router.push('/pending');
+        window.location.href = '/pending?company=' + encodeURIComponent(companyName.trim());
         return;
-      } else {
-        setSuccess('Account created! Check your email to confirm your address, then sign in.');
       }
+
+      setSuccess('Account created! Check your email to confirm your address, then sign in.');
     } catch (ex) {
       console.error('handleSignUp error:', ex);
       setError('Something went wrong. Please try again.');
