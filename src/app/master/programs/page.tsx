@@ -196,6 +196,7 @@ export default function MasterProgramsPage() {
   const [ratings,       setRatings]       = useState<Record<string, ProgramRating>>({});
   const [trends,        setTrends]        = useState<Record<string, TrendRow[]>>({});
   const [loading,       setLoading]       = useState(true);
+  const [activeTab,     setActiveTab]     = useState<'programs' | 'analytics'>('programs');
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [jsonInput,     setJsonInput]     = useState('');
@@ -374,7 +375,26 @@ export default function MasterProgramsPage() {
           </button>
         </div>
 
-        {programs.length === 0 ? (
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+          {(['programs', 'analytics'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '10px 20px', fontSize: 14, fontWeight: 700,
+                color: activeTab === tab ? 'var(--text)' : 'var(--text-dim)',
+                borderBottom: `2px solid ${activeTab === tab ? TEAL : 'transparent'}`,
+                marginBottom: -1, transition: 'color 0.15s',
+              }}
+            >
+              {tab === 'programs' ? 'Programs' : 'Analytics'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'programs' && (programs.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '60px', textAlign: 'center' }}>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
               <svg width="72" height="72" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -412,83 +432,24 @@ export default function MasterProgramsPage() {
                   {p.template_description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 10px', lineHeight: 1.5 }}>{p.template_description}</p>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-
-                    {/* Clients launched */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 2 }}>
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
                       <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>{' '}
                       client{p.employer_count !== 1 ? 's' : ''} launched this program
                     </p>
-
-                    {/* Completion rate */}
                     {(() => {
                       const r = ratings[p.template_name];
-                      if (!r) return null;
-                      const completed = Number(r.completed_count ?? 0);
-                      const total     = Number(r.total_count ?? 0);
-                      if (total === 0) return null;
-                      const pct = Math.round((completed / total) * 100);
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 12 }}>
-                            <span style={{ fontWeight: 700, color: completed > 0 ? TEAL : 'var(--text-dim)' }}>{completed}/{total}</span>
-                            <span style={{ color: 'var(--text-dim)' }}> employees completed</span>
-                          </span>
-                          <div style={{ width: 72, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: TEAL, borderRadius: 2 }} />
-                          </div>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{pct}%</span>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Ratings */}
-                    {(() => {
-                      const r = ratings[p.template_name];
-                      if (!r || Number(r.rating_count) === 0) return (
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
-                      );
+                      if (!r || Number(r.rating_count) === 0) return null;
                       const eff = r.avg_effectiveness ?? r.avg_satisfaction;
                       const enj = r.avg_enjoyment;
                       return (
                         <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                          {eff != null && (
-                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>
-                          )}
-                          {enj != null && (
-                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>
-                          )}
+                          {eff != null && <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>}
+                          {enj != null && <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>}
                           <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                         </span>
                       );
                     })()}
-
-                    {/* Weekly engagement chart */}
-                    {(() => {
-                      const trendData = (trends[p.template_name] ?? [])
-                        .filter(w => w.week_number >= 1 && w.week_number <= 8)
-                        .sort((a, b) => a.week_number - b.week_number);
-                      if (trendData.length === 0) return null;
-                      const maxCount = Math.max(...trendData.map(w => Number(w.workout_count)), 1);
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 4 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Workouts / Week</span>
-                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
-                            {trendData.map(week => {
-                              const barHeight = Math.max(4, (Number(week.workout_count) / maxCount) * 36);
-                              return (
-                                <div key={week.week_number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                  <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>{week.workout_count}</span>
-                                  <div style={{ width: 22, height: barHeight, background: TEAL, borderRadius: 3, opacity: 0.75 }} />
-                                  <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>W{week.week_number}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
@@ -505,6 +466,90 @@ export default function MasterProgramsPage() {
               </div>
             ))}
           </div>
+        ))}
+
+        {activeTab === 'analytics' && (
+          programs.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '60px 0', fontSize: 15 }}>No programs yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {programs.map(p => {
+                const r = ratings[p.template_name];
+                const completed = Number(r?.completed_count ?? 0);
+                const total = Number(r?.total_count ?? 0);
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                const trendData = (trends[p.template_name] ?? [])
+                  .filter(w => w.week_number >= 1 && w.week_number <= 8)
+                  .sort((a, b) => a.week_number - b.week_number);
+                const maxCount = Math.max(...trendData.map(w => Number(w.workout_count)), 1);
+                const hasData = total > 0 || (r != null && Number(r.rating_count) > 0) || trendData.length > 0;
+                return (
+                  <div key={p.template_id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: hasData ? 18 : 6, flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{p.template_name}</h2>
+                      {p.featured_duration_days && (
+                        <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>
+                          {p.featured_duration_days}d program
+                        </span>
+                      )}
+                    </div>
+                    {!hasData ? (
+                      <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>No data yet — employees need to log workouts.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {total > 0 && (
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Completion</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 14 }}>
+                                <span style={{ fontWeight: 700, color: completed > 0 ? TEAL : 'var(--text-dim)' }}>{completed}/{total}</span>
+                                <span style={{ color: 'var(--text-dim)' }}> employees completed</span>
+                              </span>
+                              <div style={{ width: 120, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, background: TEAL, borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 700 }}>{pct}%</span>
+                            </div>
+                          </div>
+                        )}
+                        {r != null && Number(r.rating_count) > 0 && (
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Ratings</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                              {(r.avg_effectiveness ?? r.avg_satisfaction) != null && (
+                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14 }}>⭐ {r.avg_effectiveness ?? r.avg_satisfaction} / 5 Effectiveness</span>
+                              )}
+                              {r.avg_enjoyment != null && (
+                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14 }}>⭐ {r.avg_enjoyment} / 5 Enjoyment</span>
+                              )}
+                              <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
+                            </div>
+                          </div>
+                        )}
+                        {trendData.length > 0 && (
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Workouts / Week</span>
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                              {trendData.map(week => {
+                                const barHeight = Math.max(6, (Number(week.workout_count) / maxCount) * 56);
+                                return (
+                                  <div key={week.week_number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1 }}>{week.workout_count}</span>
+                                    <div style={{ width: 28, height: barHeight, background: TEAL, borderRadius: 4, opacity: 0.8 }} />
+                                    <span style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1 }}>W{week.week_number}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </main>
 
