@@ -73,6 +73,7 @@ export default function ProgramsPage() {
   const [launchDone,        setLaunchDone]        = useState(false);
   const [employeeCount,     setEmployeeCount]     = useState(0);
   const [previewTpl,        setPreviewTpl]        = useState<FeaturedTemplate | null>(null);
+  const [removingProgId,    setRemovingProgId]    = useState<string | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -138,6 +139,26 @@ export default function ProgramsPage() {
       totalWorkouts: teamTotals[t.id] ?? 0,
       memberCount: teamMembers[t.id]?.size ?? 0,
     })).sort((a, b) => b.totalWorkouts - a.totalWorkouts));
+  }
+
+  async function handleRemoveProgram(prog: EmployerProgram) {
+    if (!confirm(`End "${prog.name}" early? This will remove it from your active programs.`)) return;
+    setRemovingProgId(prog.id);
+    const sb = getSupabase();
+    const { error } = await sb.from('employer_programs').delete().eq('id', prog.id);
+    if (error) { alert('Could not remove program: ' + error.message); setRemovingProgId(null); return; }
+    setActivePrograms(prev => {
+      const next = prev.filter(p => p.id !== prog.id);
+      if (lbProgramId === prog.id && next.length > 0) {
+        setLbProgramId(next[0].id);
+        if (teams.length > 0) loadLeaderboard(sb, userId, next[0], teams);
+      } else if (next.length === 0) {
+        setLbProgramId(null);
+        setLeaderboard([]);
+      }
+      return next;
+    });
+    setRemovingProgId(null);
   }
 
   async function switchLbProgram(progId: string) {
@@ -228,9 +249,18 @@ export default function ProgramsPage() {
                     <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 3px' }}>{prog.name}</h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 13 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
                   </div>
-                  <div style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}40`, borderRadius: 12, padding: '10px 18px', textAlign: 'center', flexShrink: 0 }}>
-                    <p style={{ fontSize: 24, fontWeight: 800, color: TEAL, margin: 0, lineHeight: 1 }}>{daysRemaining(prog.ends_at)}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0', fontWeight: 600 }}>days left</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <div style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}40`, borderRadius: 12, padding: '10px 18px', textAlign: 'center' }}>
+                      <p style={{ fontSize: 24, fontWeight: 800, color: TEAL, margin: 0, lineHeight: 1 }}>{daysRemaining(prog.ends_at)}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0', fontWeight: 600 }}>days left</p>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveProgram(prog)}
+                      disabled={removingProgId === prog.id}
+                      style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: removingProgId === prog.id ? 'not-allowed' : 'pointer', opacity: removingProgId === prog.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {removingProgId === prog.id ? 'Ending…' : 'End Program'}
+                    </button>
                   </div>
                 </div>
               ))}
