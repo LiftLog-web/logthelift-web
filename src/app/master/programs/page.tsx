@@ -169,6 +169,12 @@ export default function MasterProgramsPage() {
     });
   }, [router]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowCreate(false); }
+    if (showCreate) window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showCreate]);
+
   // Auto-parse JSON as it's typed/pasted
   useEffect(() => {
     if (!jsonInput.trim()) { setPreview(null); setParseError(''); return; }
@@ -293,7 +299,19 @@ export default function MasterProgramsPage() {
 
         {programs.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '60px', textAlign: 'center' }}>
-            <p style={{ fontSize: 32, marginBottom: 12 }}>📋</p>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+              <svg width="72" height="72" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="56" height="56" rx="14" fill="#1EDBA820" />
+                {/* clipboard body */}
+                <rect x="14" y="16" width="28" height="28" rx="3" stroke="#1EDBA8" strokeWidth="2" />
+                {/* clip at top */}
+                <rect x="22" y="12" width="12" height="7" rx="2" stroke="#1EDBA8" strokeWidth="2" />
+                {/* lines */}
+                <line x1="19" y1="26" x2="37" y2="26" stroke="#1EDBA8" strokeWidth="2" strokeLinecap="round" />
+                <line x1="19" y1="32" x2="37" y2="32" stroke="#1EDBA8" strokeWidth="2" strokeLinecap="round" />
+                <line x1="19" y1="38" x2="29" y2="38" stroke="#1EDBA8" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 24 }}>
               No featured programs yet. Click "New Featured Program" to create one with AI.
             </p>
