@@ -409,12 +409,12 @@ export default function MasterProgramsPage() {
                       const eff = r.avg_effectiveness ?? r.avg_satisfaction;
                       const enj = r.avg_enjoyment;
                       return (
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                           {eff != null && (
-                            <span>⭐ <strong style={{ color: 'var(--text)' }}>{eff}</strong><span style={{ color: 'var(--text-dim)' }}>/5</span> Effectiveness</span>
+                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff}<span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>/5</span> Effectiveness</span>
                           )}
                           {enj != null && (
-                            <span>⭐ <strong style={{ color: 'var(--text)' }}>{enj}</strong><span style={{ color: 'var(--text-dim)' }}>/5</span> Enjoyment</span>
+                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj}<span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>/5</span> Enjoyment</span>
                           )}
                           <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{r.rating_count !== 1 ? 's' : ''})</span>
                         </span>
