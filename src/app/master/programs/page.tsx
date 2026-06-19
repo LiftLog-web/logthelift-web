@@ -453,10 +453,10 @@ export default function MasterProgramsPage() {
                       return (
                         <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                           {eff != null && (
-                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff}/5 Effectiveness</span>
+                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>
                           )}
                           {enj != null && (
-                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj}/5 Enjoyment</span>
+                            <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>
                           )}
                           <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                         </span>
