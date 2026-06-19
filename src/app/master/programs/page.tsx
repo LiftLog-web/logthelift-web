@@ -154,8 +154,13 @@ Each exercise object:
   "id": "ex1",
   "exercise": { "id": "ex1", "name": "Exercise Name", "muscleGroup": "Core", "equipment": "Bodyweight", "type": "weighted" },
   "sets": [ { "id": "set1", "weight": 0, "reps": 10, "unit": "kg" } ],
-  "practitionerNotes": "Brief coaching cue"
+  "practitionerNotes": "1–2 sentence form cue. Modification: easier/seated/low-impact alternative for those with physical limitations."
 }
+
+── PRACTITIONER NOTES RULES ──
+Every exercise MUST have practitionerNotes with exactly two parts:
+1. Form cue: 1–2 sentences on how to do the movement correctly (posture, breathing, range of motion).
+2. Modification line starting with "Modification:" — a simpler or seated/stationary version for employees who are injured, elderly, or otherwise unable to do the standard movement.
 
 ── SET FORMAT ──
 Rep-based:  { "id": "...", "reps": 10, "weight": 0, "unit": "kg" }
