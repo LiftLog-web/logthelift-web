@@ -49,7 +49,7 @@ function exCount(tpl: FeaturedTemplate) {
 function setLabel(s: any): string {
   if (s.isSplit)        return `${s.leftReps ?? s.leftDuration ?? '?'} per side`;
   if (s.duration)       return `${s.duration}s hold`;
-  if (s.cardioduration) return `${s.cardioduration}min cardio`;
+  if (s.cardioduration) return `${s.cardioduration}s cardio`;
   const w = s.weight && s.weight > 0 ? ` @ ${s.weight}${s.unit ?? 'kg'}` : '';
   return `${s.reps ?? '?'} reps${w}`;
 }

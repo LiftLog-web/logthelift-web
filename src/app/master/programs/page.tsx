@@ -49,7 +49,11 @@ function parseExercises(rawExercises: any[]): any[] {
     const isSplitName =
       PER_SIDE_NAMES.some(n => nameLC.includes(n)) ||
       ['per side','each side','single leg','single arm','single-leg','single-arm'].some(p => nameLC.includes(p) || notesLC.includes(p));
-    const exType = forceReps ? 'weighted' : String(ex.exercise?.type ?? 'weighted');
+    const rawType = forceReps ? 'weighted' : String(ex.exercise?.type ?? 'weighted');
+    // Desk-friendly cardio: has cardioduration but no treadmill fields → store as duration (seconds)
+    const isDesktopCardio = rawType === 'cardio' && Array.isArray(ex.sets) &&
+      ex.sets.length > 0 && ex.sets.every((s: any) => s.cardioduration != null && !(s.speed > 0) && !(s.distance > 0) && !(s.incline > 0));
+    const exType = isDesktopCardio ? 'duration' : rawType;
     const sets = Array.isArray(ex.sets) ? ex.sets.map((s: any) => {
       const base: any = { ...s, id: crypto.randomUUID() };
       const split = base.isSplit || isSplitName;
@@ -57,6 +61,12 @@ function parseExercises(rawExercises: any[]): any[] {
         base.isSplit = true;
         if (base.leftReps === undefined && base.reps !== undefined) { base.leftReps = base.reps; base.rightReps = base.reps; delete base.reps; }
         if (exType === 'duration' && base.leftDuration === undefined && base.duration !== undefined) { base.leftDuration = base.duration; base.rightDuration = base.duration; delete base.duration; }
+      }
+      if (isDesktopCardio && base.cardioduration != null) {
+        base.duration = base.cardioduration;
+        if (base.rest != null && base.rest > 0) base.restSeconds = base.rest;
+        delete base.cardioduration; delete base.cardioSeconds;
+        delete base.speed; delete base.incline; delete base.distance; delete base.rest;
       }
       if (exType === 'weighted' && base.duration !== undefined && base.reps === undefined && base.leftReps === undefined) {
         if (split) { base.leftReps = 10; base.rightReps = 10; } else { base.reps = 10; }
@@ -67,7 +77,11 @@ function parseExercises(rawExercises: any[]): any[] {
       }
       return base;
     }) : [];
-    const exercise = forceReps && ex.exercise ? { ...ex.exercise, type: 'weighted' } : ex.exercise;
+    const exercise = forceReps && ex.exercise
+      ? { ...ex.exercise, type: 'weighted' }
+      : isDesktopCardio && ex.exercise
+        ? { ...ex.exercise, type: 'duration' }
+        : ex.exercise;
     return { ...ex, id: crypto.randomUUID(), sets, exercise, practitionerNotes: ex.practitionerNotes ?? ex.notes ?? '' };
   });
 }
