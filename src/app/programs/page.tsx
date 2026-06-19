@@ -200,6 +200,7 @@ export default function ProgramsPage() {
     const newProgs: EmployerProgram[] = [];
     for (const tpl of tolaunch) {
       if (employees.length > 0) {
+        await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
         const { error: plansErr } = await sb.from('workout_plans').insert(
           employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: tpl.exercises, created_at: now, updated_at: now }))
         );
@@ -249,6 +250,7 @@ export default function ProgramsPage() {
     if (linksErr) { setLaunchError('Could not load employees: ' + linksErr.message); setLaunching(false); return; }
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
     if (employees.length > 0) {
+      await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
       const { error: plansErr } = await sb.from('workout_plans').insert(
         employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: launchModal.exercises, created_at: now, updated_at: now }))
       );

@@ -475,7 +475,7 @@ export default function PlansPage() {
         ) : (
           <>
             {/* ── Needs Attention ── */}
-            {!loadingActivity && (
+            {!isEmployer && !loadingActivity && (
               <div style={{ marginBottom: 28, marginTop: 24, border: `1px solid ${AMBER}40`, borderRadius: 16, overflow: 'hidden' }}>
                 {/* Header */}
                 <div style={{ background: `${AMBER}12`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
