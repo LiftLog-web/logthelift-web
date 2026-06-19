@@ -74,6 +74,8 @@ export default function ProgramsPage() {
   const [employeeCount,     setEmployeeCount]     = useState(0);
   const [previewTpl,        setPreviewTpl]        = useState<FeaturedTemplate | null>(null);
   const [removingProgId,    setRemovingProgId]    = useState<string | null>(null);
+  const [selectedTplIds,    setSelectedTplIds]    = useState<string[]>([]);
+  const [multiLaunch,       setMultiLaunch]       = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -106,10 +108,10 @@ export default function ProgramsPage() {
     });
   }, []);
 
-  // Escape key for both modals
+  // Escape key for all modals
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); }
+      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -168,6 +170,48 @@ export default function ProgramsPage() {
       const sb = getSupabase();
       await loadLeaderboard(sb, userId, prog, teams);
     }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedTplIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function openMultiLaunch() {
+    const today = new Date().toISOString().slice(0, 10);
+    const d = new Date(); d.setDate(d.getDate() + 29);
+    setLaunchStart(today); setLaunchEnd(d.toISOString().slice(0, 10));
+    setLaunchError(''); setLaunchDone(false);
+    setMultiLaunch(true);
+  }
+
+  async function handleMultiLaunch() {
+    if (!launchStart || !launchEnd) { setLaunchError('Please set a start and end date.'); return; }
+    if (launchStart >= launchEnd)   { setLaunchError('End date must be after start date.'); return; }
+    setLaunching(true); setLaunchError('');
+    const sb  = getSupabase();
+    const now = new Date().toISOString();
+    const { data: links, error: linksErr } = await sb.from('patient_links').select('patient_id').eq('practitioner_id', userId);
+    if (linksErr) { setLaunchError('Could not load employees: ' + linksErr.message); setLaunching(false); return; }
+    const employees = (links ?? []).map((l: any) => l.patient_id as string);
+    const tolaunch  = featuredTemplates.filter(t => selectedTplIds.includes(t.id) && !activePrograms.some(p => p.plan_template_id === t.id));
+    const newProgs: EmployerProgram[] = [];
+    for (const tpl of tolaunch) {
+      if (employees.length > 0) {
+        const { error: plansErr } = await sb.from('workout_plans').insert(
+          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: tpl.exercises, created_at: now, updated_at: now }))
+        );
+        if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
+      }
+      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: launchStart, ends_at: launchEnd }).select('id, plan_template_id, name, started_at, ends_at').single();
+      if (progErr) { setLaunchError(`Could not save "${tpl.name}": ` + progErr.message); setLaunching(false); return; }
+      newProgs.push(progData as EmployerProgram);
+    }
+    if (newProgs.length > 0) {
+      setActivePrograms(prev => [...newProgs, ...prev]);
+      if (teams.length > 0) { setLbProgramId(newProgs[0].id); await loadLeaderboard(sb, userId, newProgs[0], teams); }
+    }
+    setLaunchDone(true); setLaunching(false);
+    setTimeout(() => { setMultiLaunch(false); setSelectedTplIds([]); }, 1400);
   }
 
   function openLaunchModal(tpl: FeaturedTemplate) {
@@ -280,21 +324,41 @@ export default function ProgramsPage() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
               {featuredTemplates.map(tpl => {
-                const isActive = activePrograms.some(p => p.plan_template_id === tpl.id);
-                const count    = exCount(tpl);
+                const isActive   = activePrograms.some(p => p.plan_template_id === tpl.id);
+                const isSelected = selectedTplIds.includes(tpl.id);
+                const count      = exCount(tpl);
                 return (
                   <div
                     key={tpl.id}
                     onClick={() => setPreviewTpl(tpl)}
                     style={{
-                      background: 'var(--card)', border: `1px solid ${isActive ? TEAL + '60' : 'var(--border)'}`,
+                      position: 'relative',
+                      background: 'var(--card)',
+                      border: `1.5px solid ${isSelected ? TEAL : isActive ? TEAL + '60' : 'var(--border)'}`,
                       borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 14,
                       cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 0 0 2px ${TEAL}40`)}
                     onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                    {/* Checkbox — top-right corner, only for non-active templates */}
+                    {!isActive && (
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
+                        title={isSelected ? 'Deselect' : 'Select for bulk launch'}
+                        style={{
+                          position: 'absolute', top: 14, right: 14,
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: isSelected ? 'none' : '2px solid var(--border-strong)',
+                          background: isSelected ? TEAL : 'var(--card-alt)',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, zIndex: 1, padding: 0,
+                        }}
+                      >
+                        {isSelected && <span style={{ color: '#0f1117', fontSize: 12, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                      </button>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, paddingRight: !isActive ? 28 : 0 }}>
                       <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0, lineHeight: 1.3 }}>{tpl.name}</h3>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         {count > 0 && <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{count} ex</span>}
@@ -305,6 +369,13 @@ export default function ProgramsPage() {
                     {isActive ? (
                       <div style={{ background: `${TEAL}15`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL }}>
                         Currently Running ✓
+                      </div>
+                    ) : isSelected ? (
+                      <div
+                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
+                        style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}50`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL, cursor: 'pointer' }}
+                      >
+                        ✓ Selected — click to remove
                       </div>
                     ) : (
                       <button
@@ -320,6 +391,13 @@ export default function ProgramsPage() {
             </div>
           )}
         </div>
+
+        {/* Bulk-launch hint when nothing selected yet */}
+        {selectedTplIds.length === 0 && featuredTemplates.some(t => !activePrograms.some(p => p.plan_template_id === t.id)) && (
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '-24px 0 32px', textAlign: 'center' }}>
+            Tip: check the circle on multiple cards to launch them all at once
+          </p>
+        )}
 
         {/* Team Leaderboard */}
         {activePrograms.length > 0 && teams.length > 0 && (
@@ -398,6 +476,86 @@ export default function ProgramsPage() {
           </div>
         )}
       </main>
+
+      {/* Sticky bulk-launch bar */}
+      {selectedTplIds.length > 0 && (
+        <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', zIndex: 150, pointerEvents: 'none' }}>
+          <div style={{ background: 'var(--modal-bg)', border: `2px solid ${TEAL}`, borderRadius: 20, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 40px rgba(0,0,0,0.5)', pointerEvents: 'all', whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>
+              {selectedTplIds.length} program{selectedTplIds.length > 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={() => setSelectedTplIds([])}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', padding: '2px 6px', borderRadius: 6 }}
+            >
+              Clear
+            </button>
+            <button
+              onClick={openMultiLaunch}
+              style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 12, padding: '10px 22px', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
+            >
+              Launch {selectedTplIds.length} Program{selectedTplIds.length > 1 ? 's' : ''} →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-launch Modal */}
+      {multiLaunch && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setMultiLaunch(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 300 }}
+        >
+          <div style={{ width: '100%', maxWidth: 500, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>Launch Programs</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>All selected programs will share the same dates.</p>
+
+            {/* Selected program list */}
+            <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 20, overflow: 'hidden' }}>
+              {featuredTemplates.filter(t => selectedTplIds.includes(t.id)).map((tpl, i, arr) => (
+                <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{tpl.name}</span>
+                  {activePrograms.some(p => p.plan_template_id === tpl.id) && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: TEAL, background: `${TEAL}15`, borderRadius: 999, padding: '2px 9px' }}>Already running</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Start Date</label>
+                <input type="date" value={launchStart} onChange={e => setLaunchStart(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date</label>
+                <input type="date" value={launchEnd} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
+              </div>
+              {employeeCount > 0 && (
+                <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                  Each program will be assigned to all <strong style={{ color: 'var(--text)' }}>{employeeCount} linked employee{employeeCount !== 1 ? 's' : ''}</strong>.
+                </div>
+              )}
+              {employeeCount === 0 && (
+                <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B' }}>
+                  No linked employees found. Invite employees via your Profile page before launching.
+                </div>
+              )}
+              {launchError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{launchError}</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button onClick={() => setMultiLaunch(false)} disabled={launching} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                <button
+                  onClick={handleMultiLaunch}
+                  disabled={launching || launchDone || employeeCount === 0}
+                  style={{ flex: 2, background: launchDone ? TEAL : PURPLE, color: launchDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: (launching || launchDone || employeeCount === 0) ? 'not-allowed' : 'pointer', opacity: (launching || employeeCount === 0) ? 0.6 : 1, transition: 'background 0.2s' }}
+                >
+                  {launchDone ? `✓ ${selectedTplIds.length} Program${selectedTplIds.length > 1 ? 's' : ''} Launched!` : launching ? 'Launching…' : `Launch ${selectedTplIds.filter(id => !activePrograms.some(p => p.plan_template_id === id)).length} Program${selectedTplIds.filter(id => !activePrograms.some(p => p.plan_template_id === id)).length !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {previewTpl && (
