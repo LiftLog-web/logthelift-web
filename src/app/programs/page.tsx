@@ -421,26 +421,56 @@ export default function ProgramsPage() {
 
             {/* Exercise list */}
             <div style={{ maxHeight: '50vh', overflowY: 'auto', padding: '6px 0' }}>
-              {Array.isArray(previewTpl.exercises) && previewTpl.exercises.map((ex: any, i: number) => (
-                <div key={ex.id ?? i} style={{ padding: '14px 28px', borderBottom: i < previewTpl.exercises.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{ex.exercise?.name ?? 'Exercise'}</span>
-                    {ex.exercise?.muscleGroup && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>
-                        {ex.exercise.muscleGroup}
-                      </span>
+              {(() => {
+                const flat: any[] = Array.isArray(previewTpl.exercises)
+                  ? previewTpl.exercises
+                  : (previewTpl.exercises?.days ?? []).flatMap((d: any) => d.exercises ?? []);
+                const days: { label: string; exercises: any[] }[] | null =
+                  !Array.isArray(previewTpl.exercises) && previewTpl.exercises?.days
+                    ? previewTpl.exercises.days
+                    : null;
+                if (days) {
+                  return days.map((day: any, di: number) => (
+                    <div key={day.id ?? di}>
+                      <div style={{ padding: '10px 28px 6px', background: 'var(--card-alt)', borderTop: di > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{day.label ?? `Day ${di + 1}`}</span>
+                      </div>
+                      {(day.exercises ?? []).map((ex: any, i: number) => (
+                        <div key={ex.id ?? i} style={{ padding: '12px 28px', borderBottom: i < (day.exercises?.length ?? 0) - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 3 }}>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>{ex.exercise?.name ?? 'Exercise'}</span>
+                            {ex.exercise?.muscleGroup && (
+                              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>{ex.exercise.muscleGroup}</span>
+                            )}
+                          </div>
+                          {Array.isArray(ex.sets) && ex.sets.length > 0 && (
+                            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''} · {setLabel(ex.sets[0])}</p>
+                          )}
+                          {ex.practitionerNotes && (
+                            <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '3px 0 0', fontStyle: 'italic', lineHeight: 1.4 }}>{ex.practitionerNotes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                }
+                return flat.map((ex: any, i: number) => (
+                  <div key={ex.id ?? i} style={{ padding: '14px 28px', borderBottom: i < flat.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>{ex.exercise?.name ?? 'Exercise'}</span>
+                      {ex.exercise?.muscleGroup && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>{ex.exercise.muscleGroup}</span>
+                      )}
+                    </div>
+                    {Array.isArray(ex.sets) && ex.sets.length > 0 && (
+                      <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''} · {setLabel(ex.sets[0])}</p>
+                    )}
+                    {ex.practitionerNotes && (
+                      <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '4px 0 0', fontStyle: 'italic', lineHeight: 1.4 }}>{ex.practitionerNotes}</p>
                     )}
                   </div>
-                  {Array.isArray(ex.sets) && ex.sets.length > 0 && (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
-                      {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''} · {setLabel(ex.sets[0])}
-                    </p>
-                  )}
-                  {ex.practitionerNotes && (
-                    <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: '4px 0 0', fontStyle: 'italic', lineHeight: 1.4 }}>{ex.practitionerNotes}</p>
-                  )}
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             {/* Footer */}

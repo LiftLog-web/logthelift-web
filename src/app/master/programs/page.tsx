@@ -82,14 +82,28 @@ function countExercises(parsed: any): number {
   return 0;
 }
 
-function flattenExercises(parsed: any): any[] {
-  if (Array.isArray(parsed.exercises)) return parseExercises(parsed.exercises);
+function structureExercises(parsed: any): any {
+  // Flat exercises array → keep as flat array (simple single-session plan)
+  if (Array.isArray(parsed.exercises)) {
+    return parseExercises(parsed.exercises);
+  }
+  // Days structure → convert to mobile-expected { days, frequencyPerWeek } format
   if (Array.isArray(parsed.days)) {
-    const all: any[] = [];
-    for (const day of parsed.days)
-      for (const sess of (Array.isArray(day.sessions) ? day.sessions : []))
-        if (Array.isArray(sess.exercises)) all.push(...parseExercises(sess.exercises));
-    return all;
+    const days = parsed.days.map((day: any, idx: number) => {
+      let exercises: any[] = [];
+      if (Array.isArray(day.sessions)) {
+        for (const sess of day.sessions)
+          if (Array.isArray(sess.exercises)) exercises.push(...parseExercises(sess.exercises));
+      } else if (Array.isArray(day.exercises)) {
+        exercises = parseExercises(day.exercises);
+      }
+      return {
+        id:       day.id ?? crypto.randomUUID(),
+        label:    day.name ?? day.label ?? `Day ${idx + 1}`,
+        exercises,
+      };
+    });
+    return { days, frequencyPerWeek: days.length };
   }
   return [];
 }
@@ -234,13 +248,27 @@ export default function MasterProgramsPage() {
     }
   }
 
+  async function handleDelete(p: Program) {
+    if (!confirm(`Delete "${p.template_name}"? This cannot be undone.`)) return;
+    const sb = getSupabase();
+    const { error } = await sb.from('plan_templates').delete().eq('id', p.template_id);
+    if (error) {
+      alert(error.message.includes('foreign key') || error.message.includes('restrict')
+        ? `Cannot delete — ${p.employer_count} employer(s) have launched this program.`
+        : 'Delete failed: ' + error.message);
+      return;
+    }
+    setPrograms(prev => prev.filter(x => x.template_id !== p.template_id));
+  }
+
   async function handleCreate() {
     if (!preview) { setParseError('Paste or drop the AI JSON first.'); return; }
     const name = overrideName.trim();
     if (!name) { setParseError('Program name cannot be empty.'); return; }
     setCreating(true);
-    const exercises = flattenExercises(preview.raw);
-    if (exercises.length === 0) { setParseError('No exercises found in the JSON.'); setCreating(false); return; }
+    const exercises = structureExercises(preview.raw);
+    const isEmpty = Array.isArray(exercises) ? exercises.length === 0 : !exercises?.days?.some((d: any) => d.exercises?.length > 0);
+    if (isEmpty) { setParseError('No exercises found in the JSON.'); setCreating(false); return; }
     const dur = parseInt(overrideDur, 10);
     const sb = getSupabase();
     const { data, error } = await sb
@@ -340,9 +368,17 @@ export default function MasterProgramsPage() {
                     client{p.employer_count !== 1 ? 's' : ''} launched this program
                   </p>
                 </div>
-                <a href={`/plans/library/${p.template_id}`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  Edit Template
-                </a>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <a href={`/plans/library/${p.template_id}`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    Edit Template
+                  </a>
+                  <button
+                    onClick={() => handleDelete(p)}
+                    style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
