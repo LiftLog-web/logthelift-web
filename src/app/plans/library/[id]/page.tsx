@@ -140,7 +140,7 @@ function parseExercise(e: any): TemplateExercise {
       }
       return base;
     }),
-    notes: e.notes ?? '',
+    notes: e.notes ?? e.practitionerNotes ?? '',
     weeks: (e.weeks ?? []).map((w: any) => ({
       ...w,
       sets: (w.sets ?? []).map((s: any) => { const { rest: _r, ...s2 } = s; return s2; }),
