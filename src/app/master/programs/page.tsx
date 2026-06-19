@@ -423,7 +423,7 @@ export default function MasterProgramsPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                  <a href={`/plans/library/${p.template_id}`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  <a href={`/plans/library/${p.template_id}?returnTo=/master/programs`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                     Edit Template
                   </a>
                   <button

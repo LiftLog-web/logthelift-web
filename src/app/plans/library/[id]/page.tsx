@@ -163,6 +163,7 @@ export default function TemplateEditorPage() {
   const templateId = params.id as string;
   // Tracks whether this template was just created (never saved by the user)
   const isNewRef = useRef(searchParams.get('new') === '1');
+  const returnTo = searchParams.get('returnTo') ?? '/plans/library';
 
   const [authed,      setAuthed]      = useState(false);
   const [loading,     setLoading]     = useState(true);
@@ -677,7 +678,7 @@ export default function TemplateEditorPage() {
     if (error) { alert('Could not save: ' + error.message); return; }
     isDirtyRef.current = false;
     isNewRef.current = false;
-    router.push('/plans/library');
+    router.push(returnTo);
   };
 
   // ── Assign to Patient ─────────────────────────────────────────────────────
@@ -903,12 +904,14 @@ export default function TemplateEditorPage() {
       {/* Sub-header */}
       <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          <a href="/plans/library" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Library</a>
+          <a href={returnTo} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+            {returnTo === '/master/programs' ? 'Programs' : 'Library'}
+          </a>
           {' / Edit'}
         </span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
-            onClick={() => guardedNavigate('/plans/library')}
+            onClick={() => guardedNavigate(returnTo)}
             style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', color: 'var(--btn-red-text)', borderRadius: 10, padding: '8px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
             Cancel
