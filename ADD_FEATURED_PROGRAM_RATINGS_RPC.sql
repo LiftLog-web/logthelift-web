@@ -1,7 +1,7 @@
 -- Run this in the Supabase SQL editor (replaces previous version).
--- Finds employees via employer_programs → patient_links (same approach as
--- get_featured_program_stats) so it works regardless of whether the mobile
--- app stored a UUID or the fallback 'plan' string in synced_workouts.data.planId.
+-- Filters synced_workouts by each employer_programs date range so that
+-- workouts are only attributed to the program that was active when they
+-- were logged — preventing all programs from sharing the same pool of ratings.
 
 CREATE OR REPLACE FUNCTION get_featured_program_ratings(p_practitioner_id UUID)
 RETURNS TABLE(
@@ -31,6 +31,8 @@ BEGIN
   JOIN employer_programs  ep ON ep.plan_template_id = pt.id
   JOIN patient_links      pl ON pl.practitioner_id  = ep.employer_id
   JOIN synced_workouts    sw ON sw.user_id           = pl.patient_id
+                            AND sw.date::date       >= ep.started_at
+                            AND sw.date::date       <= ep.ends_at
   CROSS JOIN LATERAL (
     SELECT
       NULLIF(COALESCE(
