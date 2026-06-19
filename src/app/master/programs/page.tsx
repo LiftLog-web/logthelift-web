@@ -18,6 +18,14 @@ interface Program {
   employer_count:         number;
 }
 
+interface ProgramRating {
+  plan_name:         string;
+  avg_effectiveness: number | null;
+  avg_enjoyment:     number | null;
+  avg_satisfaction:  number | null;
+  rating_count:      number;
+}
+
 interface ParsedPreview {
   name:          string;
   description:   string;
@@ -177,6 +185,7 @@ RIGHT: { "isSplit": true, "leftReps": 8, "rightReps": 8, "weight": 0, "unit": "k
 export default function MasterProgramsPage() {
   const router = useRouter();
   const [programs,      setPrograms]      = useState<Program[]>([]);
+  const [ratings,       setRatings]       = useState<Record<string, ProgramRating>>({});
   const [loading,       setLoading]       = useState(true);
 
   const [showCreate,    setShowCreate]    = useState(false);
@@ -195,8 +204,14 @@ export default function MasterProgramsPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session || data.session.user.id !== MASTER_ID) { router.push('/login'); return; }
-      const { data: rows } = await sb.rpc('get_master_programs', { p_practitioner_id: MASTER_ID });
+      const [{ data: rows }, { data: ratingRows }] = await Promise.all([
+        sb.rpc('get_master_programs', { p_practitioner_id: MASTER_ID }),
+        sb.rpc('get_featured_program_ratings', { p_practitioner_id: MASTER_ID }),
+      ]);
       setPrograms((rows as Program[]) ?? []);
+      const ratingMap: Record<string, ProgramRating> = {};
+      for (const r of (ratingRows as ProgramRating[]) ?? []) ratingMap[r.plan_name] = r;
+      setRatings(ratingMap);
       setLoading(false);
     });
   }, [router]);
@@ -381,10 +396,31 @@ export default function MasterProgramsPage() {
                   {p.template_description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 10px', lineHeight: 1.5 }}>{p.template_description}</p>
                   )}
-                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
-                    <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>{' '}
-                    client{p.employer_count !== 1 ? 's' : ''} launched this program
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 2 }}>
+                    <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
+                      <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>{' '}
+                      client{p.employer_count !== 1 ? 's' : ''} launched this program
+                    </p>
+                    {(() => {
+                      const r = ratings[p.template_name];
+                      if (!r || r.rating_count === 0) return (
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
+                      );
+                      const eff = r.avg_effectiveness ?? r.avg_satisfaction;
+                      const enj = r.avg_enjoyment;
+                      return (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {eff != null && (
+                            <span>⭐ <strong style={{ color: 'var(--text)' }}>{eff}</strong><span style={{ color: 'var(--text-dim)' }}>/5</span> effectiveness</span>
+                          )}
+                          {enj != null && (
+                            <span>🎯 <strong style={{ color: 'var(--text)' }}>{enj}</strong><span style={{ color: 'var(--text-dim)' }}>/5</span> enjoyment</span>
+                          )}
+                          <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{r.rating_count !== 1 ? 's' : ''})</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   <a href={`/plans/library/${p.template_id}`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
