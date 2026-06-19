@@ -24,6 +24,14 @@ interface ProgramRating {
   avg_enjoyment:     number | null;
   avg_satisfaction:  number | null;
   rating_count:      number;
+  completed_count:   number;
+  total_count:       number;
+}
+
+interface TrendRow {
+  plan_name:     string;
+  week_number:   number;
+  workout_count: number;
 }
 
 interface ParsedPreview {
@@ -186,6 +194,7 @@ export default function MasterProgramsPage() {
   const router = useRouter();
   const [programs,      setPrograms]      = useState<Program[]>([]);
   const [ratings,       setRatings]       = useState<Record<string, ProgramRating>>({});
+  const [trends,        setTrends]        = useState<Record<string, TrendRow[]>>({});
   const [loading,       setLoading]       = useState(true);
 
   const [showCreate,    setShowCreate]    = useState(false);
@@ -204,14 +213,21 @@ export default function MasterProgramsPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session || data.session.user.id !== MASTER_ID) { router.push('/login'); return; }
-      const [{ data: rows }, { data: ratingRows }] = await Promise.all([
+      const [{ data: rows }, { data: ratingRows }, { data: trendRows }] = await Promise.all([
         sb.rpc('get_master_programs', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_featured_program_ratings', { p_practitioner_id: MASTER_ID }),
+        sb.rpc('get_program_engagement_trend', { p_practitioner_id: MASTER_ID }),
       ]);
       setPrograms((rows as Program[]) ?? []);
       const ratingMap: Record<string, ProgramRating> = {};
       for (const r of (ratingRows as ProgramRating[]) ?? []) ratingMap[r.plan_name] = r;
       setRatings(ratingMap);
+      const trendMap: Record<string, TrendRow[]> = {};
+      for (const t of (trendRows as TrendRow[]) ?? []) {
+        if (!trendMap[t.plan_name]) trendMap[t.plan_name] = [];
+        trendMap[t.plan_name].push(t);
+      }
+      setTrends(trendMap);
       setLoading(false);
     });
   }, [router]);
@@ -396,30 +412,83 @@ export default function MasterProgramsPage() {
                   {p.template_description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 10px', lineHeight: 1.5 }}>{p.template_description}</p>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 2 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
+
+                    {/* Clients launched */}
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
                       <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>{' '}
                       client{p.employer_count !== 1 ? 's' : ''} launched this program
                     </p>
+
+                    {/* Completion rate */}
                     {(() => {
                       const r = ratings[p.template_name];
-                      if (!r || r.rating_count === 0) return (
+                      if (!r) return null;
+                      const completed = Number(r.completed_count ?? 0);
+                      const total     = Number(r.total_count ?? 0);
+                      if (total === 0) return null;
+                      const pct = Math.round((completed / total) * 100);
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12 }}>
+                            <span style={{ fontWeight: 700, color: completed > 0 ? TEAL : 'var(--text-dim)' }}>{completed}/{total}</span>
+                            <span style={{ color: 'var(--text-dim)' }}> employees completed</span>
+                          </span>
+                          <div style={{ width: 72, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: TEAL, borderRadius: 2 }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{pct}%</span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Ratings */}
+                    {(() => {
+                      const r = ratings[p.template_name];
+                      if (!r || Number(r.rating_count) === 0) return (
                         <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
                       );
                       const eff = r.avg_effectiveness ?? r.avg_satisfaction;
                       const enj = r.avg_enjoyment;
                       return (
-                        <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                           {eff != null && (
                             <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff}/5 Effectiveness</span>
                           )}
                           {enj != null && (
                             <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj}/5 Enjoyment</span>
                           )}
-                          <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{r.rating_count !== 1 ? 's' : ''})</span>
+                          <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                         </span>
                       );
                     })()}
+
+                    {/* Weekly engagement chart */}
+                    {(() => {
+                      const trendData = (trends[p.template_name] ?? [])
+                        .filter(w => w.week_number >= 1 && w.week_number <= 8)
+                        .sort((a, b) => a.week_number - b.week_number);
+                      if (trendData.length === 0) return null;
+                      const maxCount = Math.max(...trendData.map(w => Number(w.workout_count)), 1);
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Workouts / Week</span>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+                            {trendData.map(week => {
+                              const barHeight = Math.max(4, (Number(week.workout_count) / maxCount) * 36);
+                              return (
+                                <div key={week.week_number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                  <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>{week.workout_count}</span>
+                                  <div style={{ width: 22, height: barHeight, background: TEAL, borderRadius: 3, opacity: 0.75 }} />
+                                  <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>W{week.week_number}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
