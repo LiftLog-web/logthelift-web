@@ -138,6 +138,9 @@ function parseExercise(e: any): TemplateExercise {
           delete base.speed; delete base.incline; delete base.distance;
         }
       }
+      if (base.isSplit && base.reps == null) {
+        base.reps = base.leftReps ?? base.rightReps ?? 0;
+      }
       return base;
     }),
     notes: e.notes ?? e.practitionerNotes ?? '',
