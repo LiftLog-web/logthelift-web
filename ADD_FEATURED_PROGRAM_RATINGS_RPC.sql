@@ -1,6 +1,7 @@
--- Run this in the Supabase SQL editor.
--- Returns aggregate ratings for each featured program template by joining
--- synced_workouts → workout_plans → plan_templates (SECURITY DEFINER bypasses RLS).
+-- Run this in the Supabase SQL editor (replaces previous version).
+-- Finds employees via employer_programs → patient_links (same approach as
+-- get_featured_program_stats) so it works regardless of whether the mobile
+-- app stored a UUID or the fallback 'plan' string in synced_workouts.data.planId.
 
 CREATE OR REPLACE FUNCTION get_featured_program_ratings(p_practitioner_id UUID)
 RETURNS TABLE(
@@ -21,20 +22,25 @@ BEGIN
 
   RETURN QUERY
   SELECT
-    pt.name::TEXT                                                              AS plan_name,
-    ROUND(AVG(NULLIF(sw.data->>'effectivenessRating', '')::numeric), 1)       AS avg_effectiveness,
-    ROUND(AVG(NULLIF(sw.data->>'enjoymentRating',     '')::numeric), 1)       AS avg_enjoyment,
-    ROUND(AVG(NULLIF(sw.data->>'satisfactionRating',  '')::numeric), 1)       AS avg_satisfaction,
-    COUNT(*) FILTER (
-      WHERE (sw.data->>'effectivenessRating') IS NOT NULL
-         OR (sw.data->>'enjoymentRating')     IS NOT NULL
-         OR (sw.data->>'satisfactionRating')  IS NOT NULL
-    )                                                                          AS rating_count
-  FROM synced_workouts sw
-  JOIN workout_plans   wp ON wp.id::text = sw.data->>'planId'
-  JOIN plan_templates  pt ON pt.name = wp.name
-                          AND pt.practitioner_id = p_practitioner_id
-                          AND pt.is_featured = true
+    pt.name::TEXT                                                        AS plan_name,
+    ROUND(AVG(r.eff) FILTER (WHERE r.eff IS NOT NULL), 1)               AS avg_effectiveness,
+    ROUND(AVG(r.enj) FILTER (WHERE r.enj IS NOT NULL), 1)               AS avg_enjoyment,
+    NULL::NUMERIC                                                        AS avg_satisfaction,
+    COUNT(*) FILTER (WHERE r.eff IS NOT NULL OR r.enj IS NOT NULL)      AS rating_count
+  FROM plan_templates pt
+  JOIN employer_programs  ep ON ep.plan_template_id = pt.id
+  JOIN patient_links      pl ON pl.practitioner_id  = ep.employer_id
+  JOIN synced_workouts    sw ON sw.user_id           = pl.patient_id
+  CROSS JOIN LATERAL (
+    SELECT
+      NULLIF(COALESCE(
+        NULLIF((sw.data->>'effectivenessRating')::numeric, 0),
+        NULLIF((sw.data->>'satisfactionRating')::numeric,  0)
+      ), 0) AS eff,
+      NULLIF((sw.data->>'enjoymentRating')::numeric, 0)                 AS enj
+  ) AS r
+  WHERE pt.practitioner_id = p_practitioner_id
+    AND pt.is_featured      = true
   GROUP BY pt.name;
 END;
 $$;
