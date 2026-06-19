@@ -129,8 +129,16 @@ function parseExercise(e: any): TemplateExercise {
     id: e.id ?? uid(),
     exercise: e.exercise,
     sets: (e.sets ?? [defaultSet(e.exercise)]).map((s: any) => {
-      const { rest: _r, ...rest } = s;
-      return rest;
+      const { rest: _r, ...base } = s;
+      if (base.seconds == null) {
+        if (base.duration != null) { base.seconds = base.duration; delete base.duration; }
+        else if (base.cardioduration != null || base.cardioSeconds != null) {
+          base.seconds = (base.cardioduration ?? 0) * 60 + (base.cardioSeconds ?? 0);
+          delete base.cardioduration; delete base.cardioSeconds;
+          delete base.speed; delete base.incline; delete base.distance;
+        }
+      }
+      return base;
     }),
     notes: e.notes ?? '',
     weeks: (e.weeks ?? []).map((w: any) => ({

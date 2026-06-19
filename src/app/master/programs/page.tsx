@@ -64,9 +64,8 @@ function parseExercises(rawExercises: any[]): any[] {
       }
       if (isDesktopCardio && base.cardioduration != null) {
         base.duration = base.cardioduration;
-        if (base.rest != null && base.rest > 0) base.restSeconds = base.rest;
         delete base.cardioduration; delete base.cardioSeconds;
-        delete base.speed; delete base.incline; delete base.distance; delete base.rest;
+        delete base.speed; delete base.incline; delete base.distance;
       }
       if (exType === 'weighted' && base.duration !== undefined && base.reps === undefined && base.leftReps === undefined) {
         if (split) { base.leftReps = 10; base.rightReps = 10; } else { base.reps = 10; }
