@@ -439,7 +439,9 @@ export default function MasterProgramsPage() {
                     </p>
                     {(() => {
                       const r = ratings[p.template_name];
-                      if (!r || Number(r.rating_count) === 0) return null;
+                      if (!r || Number(r.rating_count) === 0) return (
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
+                      );
                       const eff = r.avg_effectiveness ?? r.avg_satisfaction;
                       const enj = r.avg_enjoyment;
                       return (
