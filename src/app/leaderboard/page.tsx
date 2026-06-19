@@ -180,28 +180,14 @@ export default function LeaderboardPage() {
       }));
       setEmployees(empList);
 
-      const { data: plans } = await supabase
-        .from('workout_plans')
-        .select('id, patient_id')
-        .eq('practitioner_id', user.id);
-
-      const ptPlanIds = new Set((plans ?? []).map((p: any) => p.id));
-      const patientIds = empList.map(e => e.id);
-
       const { data: workouts } = await supabase
-        .from('synced_workouts')
-        .select('user_id, date, data')
-        .in('user_id', patientIds);
+        .rpc('get_employer_leaderboard_workouts', { p_employer_id: user.id });
 
       const dateMap: Record<string, string[]> = {};
       for (const emp of empList) dateMap[emp.id] = [];
 
       for (const w of workouts ?? []) {
-        const planId = w.data?.planId;
-        if (!planId) continue;
-        if (ptPlanIds.has(planId)) {
-          dateMap[w.user_id]?.push(w.date);
-        }
+        dateMap[w.user_id]?.push(w.date);
       }
 
       setAllDates(dateMap);
