@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-const resend   = new Resend(process.env.RESEND_API_KEY);
-const APP_URL  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.com';
-const FROM     = process.env.NOTIFY_FROM_EMAIL   ?? 'programs@logthelift.com';
-const MASTER   = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID!;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.com';
+const FROM    = process.env.NOTIFY_FROM_EMAIL   ?? 'programs@logthelift.com';
+const MASTER  = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID!;
 
 function sb() {
   return createClient(
@@ -55,6 +54,7 @@ export async function GET(req: NextRequest) {
 
   if (empErr) return NextResponse.json({ error: empErr.message }, { status: 500 });
 
+  const resend = new Resend(process.env.RESEND_API_KEY);
   let sent = 0, failed = 0;
 
   for (const employer of (employers ?? [])) {
