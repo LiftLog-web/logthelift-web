@@ -39,6 +39,12 @@ interface LeaderboardRow {
   teamId: string; teamName: string; totalWorkouts: number; memberCount: number;
 }
 
+interface ProgramRating {
+  avg_effectiveness: number | null;
+  avg_enjoyment:     number | null;
+  rating_count:      number;
+}
+
 function daysRemaining(endsAt: string) {
   const end = new Date(endsAt); end.setHours(23, 59, 59, 999);
   return Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000));
@@ -92,6 +98,7 @@ export default function ProgramsPage() {
   const [removingProgId,         setRemovingProgId]         = useState<string | null>(null);
   const [selectedTplIds,         setSelectedTplIds]         = useState<string[]>([]);
   const [multiLaunch,            setMultiLaunch]            = useState(false);
+  const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
 
   useEffect(() => {
     const sb = getSupabase();
@@ -145,6 +152,20 @@ export default function ProgramsPage() {
         await loadLeaderboard(sb, uid, first, teamsRes.data as Team[]);
       }
       setLoading(false);
+
+      // Fetch aggregate ratings for this employer's employees (non-blocking)
+      sb.rpc('get_employer_program_ratings', { p_employer_id: uid }).then(({ data: ratingsData }) => {
+        if (!ratingsData) return;
+        const map: Record<string, ProgramRating> = {};
+        for (const r of ratingsData as any[]) {
+          map[r.plan_template_id] = {
+            avg_effectiveness: r.avg_effectiveness ? Number(r.avg_effectiveness) : null,
+            avg_enjoyment:     r.avg_enjoyment     ? Number(r.avg_enjoyment)     : null,
+            rating_count:      Number(r.rating_count),
+          };
+        }
+        setProgramRatings(map);
+      });
     });
   }, []);
 
@@ -351,6 +372,39 @@ export default function ProgramsPage() {
           </div>
         )}
 
+        {/* Auto-expiry reminder */}
+        {(() => {
+          const expiring = activePrograms.find(p => { const d = daysRemaining(p.ends_at); return d > 0 && d <= 3; });
+          const hasUnlaunched = availableNowTemplates.some(t => !activePrograms.some(p => p.plan_template_id === t.id));
+          if (!expiring) return null;
+          const days = daysRemaining(expiring.ends_at);
+          return (
+            <div style={{ background: `${AMBER}12`, border: `1.5px solid ${AMBER}50`, borderRadius: 16, padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>⏰</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 2px', color: AMBER }}>
+                  {expiring.name} ends in {days} day{days !== 1 ? 's' : ''}
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                  {hasUnlaunched
+                    ? 'New programs are available — scroll down to pick your next one.'
+                    : comingSoonTemplates.length > 0
+                      ? `Next month's programs are coming soon — scroll down to preview them.`
+                      : 'Contact your administrator for next month\'s programs.'}
+                </p>
+              </div>
+              {hasUnlaunched && (
+                <button
+                  onClick={() => { const el = document.getElementById('available-now'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                  style={{ background: AMBER, color: '#0f1117', border: 'none', borderRadius: 10, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  Browse →
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Team Leaderboard */}
         {activePrograms.length > 0 && teams.length > 0 && (
           <div style={{ marginBottom: 48 }}>
@@ -430,7 +484,7 @@ export default function ProgramsPage() {
 
         {/* Available Now */}
         {availableNowTemplates.length > 0 && (
-          <div style={{ marginBottom: 40 }}>
+          <div id="available-now" style={{ marginBottom: 40 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: TEAL, display: 'inline-block', flexShrink: 0 }} />
               <p style={{ fontSize: 11, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
@@ -575,15 +629,42 @@ export default function ProgramsPage() {
               <div style={{ flex: 1, height: 1, background: AMBER + '30' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pastPrograms.map(prog => (
-                <div key={prog.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: 0.75 }}>
-                  <div>
-                    <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{prog.name}</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
+              {pastPrograms.map(prog => {
+                const rating = programRatings[prog.plan_template_id] ?? null;
+                return (
+                  <div key={prog.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', opacity: 0.82 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{prog.name}</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      {rating && rating.rating_count > 0 ? (
+                        <>
+                          {rating.avg_effectiveness !== null && (
+                            <div style={{ textAlign: 'center' }}>
+                              <p style={{ fontSize: 15, fontWeight: 800, color: TEAL, margin: 0, lineHeight: 1 }}>{rating.avg_effectiveness.toFixed(1)}</p>
+                              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0', fontWeight: 600 }}>effectiveness</p>
+                            </div>
+                          )}
+                          {rating.avg_enjoyment !== null && (
+                            <div style={{ textAlign: 'center' }}>
+                              <p style={{ fontSize: 15, fontWeight: 800, color: PURPLE, margin: 0, lineHeight: 1 }}>{rating.avg_enjoyment.toFixed(1)}</p>
+                              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0', fontWeight: 600 }}>enjoyment</p>
+                            </div>
+                          )}
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-muted)', margin: 0, lineHeight: 1 }}>{rating.rating_count}</p>
+                            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0', fontWeight: 600 }}>{rating.rating_count === 1 ? 'rating' : 'ratings'}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
