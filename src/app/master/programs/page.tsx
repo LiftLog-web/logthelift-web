@@ -8,14 +8,17 @@ import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
+const AMBER  = '#F59E0B';
 const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 interface Program {
-  template_id:            string;
-  template_name:          string;
-  template_description:   string | null;
-  featured_duration_days: number | null;
-  employer_count:         number;
+  template_id:             string;
+  template_name:           string;
+  template_description:    string | null;
+  featured_duration_days:  number | null;
+  employer_count:          number;
+  catalog_available_from:  string | null;
+  catalog_available_until: string | null;
 }
 
 interface ProgramRating {
@@ -197,6 +200,8 @@ export default function MasterProgramsPage() {
   const [trends,        setTrends]        = useState<Record<string, TrendRow[]>>({});
   const [loading,       setLoading]       = useState(true);
   const [activeTab,     setActiveTab]     = useState<'programs' | 'analytics'>('programs');
+  const [availEdits,    setAvailEdits]    = useState<Record<string, { from: string; until: string }>>({});
+  const [savingAvailId, setSavingAvailId] = useState<string | null>(null);
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [jsonInput,     setJsonInput]     = useState('');
@@ -335,14 +340,51 @@ export default function MasterProgramsPage() {
       .single();
     if (error) { setParseError('Could not save: ' + error.message); setCreating(false); return; }
     setPrograms(prev => [{
-      template_id:            (data as any).id,
-      template_name:          (data as any).name,
-      template_description:   (data as any).description ?? null,
-      featured_duration_days: (data as any).featured_duration_days ?? null,
-      employer_count:         0,
+      template_id:             (data as any).id,
+      template_name:           (data as any).name,
+      template_description:    (data as any).description ?? null,
+      featured_duration_days:  (data as any).featured_duration_days ?? null,
+      employer_count:          0,
+      catalog_available_from:  null,
+      catalog_available_until: null,
     }, ...prev]);
     setShowCreate(false);
     setCreating(false);
+  }
+
+  async function handleSaveAvailability(p: Program) {
+    const edit = availEdits[p.template_id];
+    if (!edit) return;
+    if (!edit.from || !edit.until) { alert('Both a start date and end date are required.'); return; }
+    if (edit.from >= edit.until) { alert('The start date must be before the end date.'); return; }
+    setSavingAvailId(p.template_id);
+    const sb = getSupabase();
+    const { error } = await sb.from('plan_templates').update({
+      catalog_available_from:  edit.from,
+      catalog_available_until: edit.until,
+    }).eq('id', p.template_id);
+    if (error) { alert('Save failed: ' + error.message); setSavingAvailId(null); return; }
+    setPrograms(prev => prev.map(x => x.template_id === p.template_id
+      ? { ...x, catalog_available_from: edit.from, catalog_available_until: edit.until }
+      : x));
+    setAvailEdits(prev => { const n = { ...prev }; delete n[p.template_id]; return n; });
+    setSavingAvailId(null);
+  }
+
+  async function handleClearAvailability(p: Program) {
+    if (!confirm(`Remove catalog dates from "${p.template_name}"? It will become a draft and disappear from the employer catalog.`)) return;
+    setSavingAvailId(p.template_id);
+    const sb = getSupabase();
+    const { error } = await sb.from('plan_templates').update({
+      catalog_available_from:  null,
+      catalog_available_until: null,
+    }).eq('id', p.template_id);
+    if (error) { alert('Clear failed: ' + error.message); setSavingAvailId(null); return; }
+    setPrograms(prev => prev.map(x => x.template_id === p.template_id
+      ? { ...x, catalog_available_from: null, catalog_available_until: null }
+      : x));
+    setAvailEdits(prev => { const n = { ...prev }; delete n[p.template_id]; return n; });
+    setSavingAvailId(null);
   }
 
   if (loading) {
@@ -416,59 +458,140 @@ export default function MasterProgramsPage() {
               + New Featured Program
             </button>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {programs.map(p => (
-              <div key={p.template_id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{p.template_name}</h2>
-                    {p.featured_duration_days && (
-                      <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>
-                        {p.featured_duration_days}d program
-                      </span>
-                    )}
+        ) : (() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const fmtD  = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+            function getStatus(p: Program): 'live' | 'scheduled' | 'draft' | 'past' {
+              if (!p.catalog_available_from) return 'draft';
+              if (p.catalog_available_from > today) return 'scheduled';
+              if (!p.catalog_available_until || p.catalog_available_until >= today) return 'live';
+              return 'past';
+            }
+
+            const live      = programs.filter(p => getStatus(p) === 'live');
+            const scheduled = programs.filter(p => getStatus(p) === 'scheduled');
+            const drafts    = programs.filter(p => getStatus(p) === 'draft');
+            const past      = programs.filter(p => getStatus(p) === 'past');
+
+            function ProgramCard({ p }: { p: Program }) {
+              const status    = getStatus(p);
+              const r         = ratings[p.template_name];
+              const hasR      = r != null && Number(r.rating_count) > 0;
+              const eff       = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
+              const enj       = hasR ? r.avg_enjoyment : null;
+              const editFrom  = availEdits[p.template_id]?.from  ?? p.catalog_available_from  ?? '';
+              const editUntil = availEdits[p.template_id]?.until ?? p.catalog_available_until ?? '';
+              const isDirty   = availEdits[p.template_id] !== undefined;
+              const isSaving  = savingAvailId === p.template_id;
+              const border    = status === 'live' ? `${TEAL}50` : status === 'scheduled' ? `${PURPLE}40` : status === 'past' ? `${AMBER}30` : 'var(--border)';
+              const dateInStyle: React.CSSProperties = { background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' };
+              return (
+                <div style={{ background: 'var(--card)', border: `1px solid ${border}`, borderRadius: 16, padding: '20px 24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
+                      <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{p.template_name}</h2>
+                      {p.featured_duration_days && (
+                        <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{p.featured_duration_days}d</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <a href={`/plans/library/${p.template_id}?returnTo=/master/programs`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '7px 14px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Edit Template</a>
+                      <button onClick={() => handleDelete(p)} style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '7px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                    </div>
                   </div>
                   {p.template_description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 10px', lineHeight: 1.5 }}>{p.template_description}</p>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 2 }}>
-                    <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
-                      <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>{' '}
-                      client{p.employer_count !== 1 ? 's' : ''} launched this program
-                    </p>
-                    {(() => {
-                      const r = ratings[p.template_name];
-                      if (!r || Number(r.rating_count) === 0) return (
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
-                      );
-                      const eff = r.avg_effectiveness ?? r.avg_satisfaction;
-                      const enj = r.avg_enjoyment;
-                      return (
-                        <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                          {eff != null && <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>}
-                          {enj != null && <span style={{ color: 'var(--text)', fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>}
-                          <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
-                        </span>
-                      );
-                    })()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+                      <span style={{ fontWeight: 700, color: p.employer_count > 0 ? PURPLE : 'var(--text-dim)' }}>{p.employer_count}</span>
+                      {' '}client{p.employer_count !== 1 ? 's' : ''} {status === 'live' ? 'currently running' : status === 'past' ? 'ran this' : 'launched this'}
+                    </span>
+                    {hasR ? (
+                      <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {eff != null && <span style={{ fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>}
+                        {enj != null && <span style={{ fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>}
+                        <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{p.employer_count > 0 ? 'No ratings yet' : 'No data yet'}</span>
+                    )}
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Catalog Window</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>From</span>
+                        <input type="date" value={editFrom}
+                          onChange={e => setAvailEdits(prev => ({ ...prev, [p.template_id]: { from: e.target.value, until: editUntil } }))}
+                          style={dateInStyle} />
+                      </div>
+                      <span style={{ color: 'var(--text-dim)', fontSize: 14 }}>→</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Until</span>
+                        <input type="date" value={editUntil}
+                          onChange={e => setAvailEdits(prev => ({ ...prev, [p.template_id]: { from: editFrom, until: e.target.value } }))}
+                          style={dateInStyle} />
+                      </div>
+                      {isDirty && (
+                        <button onClick={() => handleSaveAvailability(p)} disabled={isSaving}
+                          style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}>
+                          {isSaving ? 'Saving…' : 'Save'}
+                        </button>
+                      )}
+                      {!isDirty && p.catalog_available_from && (
+                        <button onClick={() => handleClearAvailability(p)} disabled={isSaving}
+                          style={{ background: 'none', border: '1px solid var(--border-strong)', color: 'var(--text-dim)', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>
+                          Clear Dates
+                        </button>
+                      )}
+                    </div>
+                    {status === 'draft' && <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0' }}>Set dates above to publish to the employer catalog.</p>}
+                    {status === 'scheduled' && p.catalog_available_from && (
+                      <p style={{ fontSize: 12, color: PURPLE, margin: '8px 0 0', fontWeight: 600 }}>
+                        Goes live {fmtD(p.catalog_available_from)} — {Math.max(0, Math.ceil((new Date(p.catalog_available_from + 'T12:00:00').getTime() - Date.now()) / 86400000))} days from now
+                      </p>
+                    )}
+                    {status === 'live' && p.catalog_available_until && (
+                      <p style={{ fontSize: 12, color: TEAL, margin: '8px 0 0', fontWeight: 600 }}>
+                        Visible to employers until {fmtD(p.catalog_available_until)}
+                      </p>
+                    )}
+                    {status === 'past' && p.catalog_available_until && (
+                      <p style={{ fontSize: 12, color: AMBER, margin: '8px 0 0' }}>Window closed {fmtD(p.catalog_available_until)}</p>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                  <a href={`/plans/library/${p.template_id}?returnTo=/master/programs`} style={{ background: 'none', border: `1.5px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                    Edit Template
-                  </a>
-                  <button
-                    onClick={() => handleDelete(p)}
-                    style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    Delete
-                  </button>
+              );
+            }
+
+            function Section({ label, color, dot, items }: { label: string; color: string; dot: boolean; items: Program[] }) {
+              if (items.length === 0) return null;
+              return (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    {dot && <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />}
+                    <span style={{ fontSize: 12, fontWeight: 800, color, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{label} ({items.length})</span>
+                    <div style={{ flex: 1, height: 1, background: color + '30' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {items.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                  </div>
                 </div>
+              );
+            }
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
+                <Section label="Live"      color={TEAL}            dot={true}  items={live} />
+                <Section label="Scheduled" color={PURPLE}          dot={true}  items={scheduled} />
+                <Section label="Drafts"    color="var(--text-dim)" dot={false} items={drafts} />
+                <Section label="Past"      color={AMBER}           dot={false} items={past} />
               </div>
-            ))}
-          </div>
-        ))}
+            );
+          })()
+        )}
 
         {activeTab === 'analytics' && (
           programs.length === 0 ? (

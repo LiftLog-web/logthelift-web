@@ -8,9 +8,12 @@ import { getSupabase } from '@/lib/supabase';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
+const AMBER  = '#F59E0B';
 const GOLD   = '#FFD700';
 const SILVER = '#94A3B8';
 const BRONZE = '#CD7F32';
+
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 interface FeaturedTemplate {
   id: string;
@@ -18,6 +21,8 @@ interface FeaturedTemplate {
   description: string | null;
   featured_duration_days: number | null;
   exercises: any;
+  catalog_available_from:  string | null;
+  catalog_available_until: string | null;
 }
 
 interface EmployerProgram {
@@ -56,29 +61,37 @@ function setLabel(s: any): string {
   const w = s.weight && s.weight > 0 ? ` @ ${s.weight}${s.unit ?? 'kg'}` : '';
   return `${s.reps ?? '?'} reps${w}`;
 }
+function maxEndDate(start: string, durationDays: number | null): string {
+  const d = new Date(start + 'T00:00:00');
+  const days = durationDays ? Math.min(durationDays - 1, 29) : 29;
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function ProgramsPage() {
   const router = useRouter();
-  const [authed,            setAuthed]            = useState(false);
-  const [userId,            setUserId]            = useState('');
-  const [companyName,       setCompanyName]       = useState('');
-  const [featuredTemplates, setFeaturedTemplates] = useState<FeaturedTemplate[]>([]);
-  const [activePrograms,    setActivePrograms]    = useState<EmployerProgram[]>([]);
-  const [teams,             setTeams]             = useState<Team[]>([]);
-  const [leaderboard,       setLeaderboard]       = useState<LeaderboardRow[]>([]);
-  const [lbProgramId,       setLbProgramId]       = useState<string | null>(null);
-  const [loading,           setLoading]           = useState(true);
-  const [launchModal,       setLaunchModal]       = useState<FeaturedTemplate | null>(null);
-  const [launchStart,       setLaunchStart]       = useState('');
-  const [launchEnd,         setLaunchEnd]         = useState('');
-  const [launching,         setLaunching]         = useState(false);
-  const [launchError,       setLaunchError]       = useState('');
-  const [launchDone,        setLaunchDone]        = useState(false);
-  const [employeeCount,     setEmployeeCount]     = useState(0);
-  const [previewTpl,        setPreviewTpl]        = useState<FeaturedTemplate | null>(null);
-  const [removingProgId,    setRemovingProgId]    = useState<string | null>(null);
-  const [selectedTplIds,    setSelectedTplIds]    = useState<string[]>([]);
-  const [multiLaunch,       setMultiLaunch]       = useState(false);
+  const [authed,                 setAuthed]                 = useState(false);
+  const [userId,                 setUserId]                 = useState('');
+  const [companyName,            setCompanyName]            = useState('');
+  const [availableNowTemplates,  setAvailableNowTemplates]  = useState<FeaturedTemplate[]>([]);
+  const [comingSoonTemplates,    setComingSoonTemplates]    = useState<FeaturedTemplate[]>([]);
+  const [activePrograms,         setActivePrograms]         = useState<EmployerProgram[]>([]);
+  const [pastPrograms,           setPastPrograms]           = useState<EmployerProgram[]>([]);
+  const [teams,                  setTeams]                  = useState<Team[]>([]);
+  const [leaderboard,            setLeaderboard]            = useState<LeaderboardRow[]>([]);
+  const [lbProgramId,            setLbProgramId]            = useState<string | null>(null);
+  const [loading,                setLoading]                = useState(true);
+  const [launchModal,            setLaunchModal]            = useState<FeaturedTemplate | null>(null);
+  const [launchStart,            setLaunchStart]            = useState('');
+  const [launchEnd,              setLaunchEnd]              = useState('');
+  const [launching,              setLaunching]              = useState(false);
+  const [launchError,            setLaunchError]            = useState('');
+  const [launchDone,             setLaunchDone]             = useState(false);
+  const [employeeCount,          setEmployeeCount]          = useState(0);
+  const [previewTpl,             setPreviewTpl]             = useState<FeaturedTemplate | null>(null);
+  const [removingProgId,         setRemovingProgId]         = useState<string | null>(null);
+  const [selectedTplIds,         setSelectedTplIds]         = useState<string[]>([]);
+  const [multiLaunch,            setMultiLaunch]            = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -86,24 +99,48 @@ export default function ProgramsPage() {
       if (!data.session) { router.push('/login'); return; }
       const { data: prof } = await sb.from('profiles').select('role, is_employer, company_name').eq('id', data.session.user.id).single();
       if (!prof || !(prof as any).is_employer) { router.push('/plans'); return; }
-      const uid = data.session.user.id;
+      const uid   = data.session.user.id;
+      const today = new Date().toISOString().slice(0, 10);
+      const d45   = new Date(); d45.setDate(d45.getDate() + 45);
+      const future45 = d45.toISOString().slice(0, 10);
+
       setUserId(uid);
       setCompanyName((prof as any).company_name ?? '');
       setAuthed(true);
-      const today = new Date().toISOString().slice(0, 10);
+
       const [templatesRes, programsRes, teamsRes, linkCountRes] = await Promise.all([
-        sb.from('plan_templates').select('id, name, description, featured_duration_days, exercises').eq('practitioner_id', process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c').eq('is_featured', true).order('name'),
-        sb.from('employer_programs').select('id, plan_template_id, name, started_at, ends_at').eq('employer_id', uid).gte('ends_at', today).order('started_at', { ascending: false }),
+        sb.from('plan_templates')
+          .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
+          .eq('practitioner_id', MASTER_ID)
+          .eq('is_featured', true)
+          .not('catalog_available_from', 'is', null)
+          .lte('catalog_available_from', future45)
+          .order('catalog_available_from'),
+        sb.from('employer_programs')
+          .select('id, plan_template_id, name, started_at, ends_at')
+          .eq('employer_id', uid)
+          .order('started_at', { ascending: false }),
         sb.from('employer_teams').select('id, name').eq('employer_id', uid).order('name'),
         sb.from('patient_links').select('patient_id', { count: 'exact', head: true }).eq('practitioner_id', uid),
       ]);
-      setFeaturedTemplates((templatesRes.data as FeaturedTemplate[]) ?? []);
+
+      // Exclude expired templates (until < today) — keep nulls (no expiry set)
+      const allTemplates = ((templatesRes.data ?? []) as FeaturedTemplate[]).filter(
+        t => !t.catalog_available_until || t.catalog_available_until >= today
+      );
+      setAvailableNowTemplates(allTemplates.filter(t => t.catalog_available_from! <= today));
+      setComingSoonTemplates(allTemplates.filter(t => t.catalog_available_from! > today));
+
       const progs = (programsRes.data ?? []) as EmployerProgram[];
-      setActivePrograms(progs);
+      const active = progs.filter(p => p.ends_at >= today);
+      const past   = progs.filter(p => p.ends_at < today);
+      setActivePrograms(active);
+      setPastPrograms(past);
       setTeams((teamsRes.data as Team[]) ?? []);
       setEmployeeCount(linkCountRes.count ?? 0);
-      if (progs.length > 0 && teamsRes.data && teamsRes.data.length > 0) {
-        const first = progs[0];
+
+      if (active.length > 0 && teamsRes.data && teamsRes.data.length > 0) {
+        const first = active[0];
         setLbProgramId(first.id);
         await loadLeaderboard(sb, uid, first, teamsRes.data as Team[]);
       }
@@ -111,7 +148,6 @@ export default function ProgramsPage() {
     });
   }, []);
 
-  // Escape key for all modals
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); }
@@ -128,7 +164,7 @@ export default function ProgramsPage() {
     ]);
     const links  = (linksRes.data ?? []) as { patient_id: string; team_id: string }[];
     const wkouts = (workoutsRes.data ?? []) as { user_id: string }[];
-    const teamTotals: Record<string, number> = {};
+    const teamTotals: Record<string, number>     = {};
     const teamMembers: Record<string, Set<string>> = {};
     for (const l of links) {
       if (!teamMembers[l.team_id]) teamMembers[l.team_id] = new Set();
@@ -181,8 +217,8 @@ export default function ProgramsPage() {
 
   function openMultiLaunch() {
     const today = new Date().toISOString().slice(0, 10);
-    const d = new Date(); d.setDate(d.getDate() + 29);
-    setLaunchStart(today); setLaunchEnd(d.toISOString().slice(0, 10));
+    const end = maxEndDate(today, null);
+    setLaunchStart(today); setLaunchEnd(end);
     setLaunchError(''); setLaunchDone(false);
     setMultiLaunch(true);
   }
@@ -190,13 +226,15 @@ export default function ProgramsPage() {
   async function handleMultiLaunch() {
     if (!launchStart || !launchEnd) { setLaunchError('Please set a start and end date.'); return; }
     if (launchStart >= launchEnd)   { setLaunchError('End date must be after start date.'); return; }
+    const cap = maxEndDate(launchStart, null);
+    if (launchEnd > cap) { setLaunchError('Programs can run for a maximum of 30 days.'); return; }
     setLaunching(true); setLaunchError('');
     const sb  = getSupabase();
     const now = new Date().toISOString();
     const { data: links, error: linksErr } = await sb.from('patient_links').select('patient_id').eq('practitioner_id', userId);
     if (linksErr) { setLaunchError('Could not load employees: ' + linksErr.message); setLaunching(false); return; }
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
-    const tolaunch  = featuredTemplates.filter(t => selectedTplIds.includes(t.id) && !activePrograms.some(p => p.plan_template_id === t.id));
+    const tolaunch  = availableNowTemplates.filter(t => selectedTplIds.includes(t.id) && !activePrograms.some(p => p.plan_template_id === t.id));
     const newProgs: EmployerProgram[] = [];
     for (const tpl of tolaunch) {
       if (employees.length > 0) {
@@ -220,11 +258,7 @@ export default function ProgramsPage() {
 
   function openLaunchModal(tpl: FeaturedTemplate) {
     const today = new Date().toISOString().slice(0, 10);
-    let end = '';
-    if (tpl.featured_duration_days) {
-      const d = new Date(); d.setDate(d.getDate() + tpl.featured_duration_days - 1);
-      end = d.toISOString().slice(0, 10);
-    }
+    const end   = maxEndDate(today, tpl.featured_duration_days);
     setLaunchStart(today); setLaunchEnd(end);
     setLaunchError(''); setLaunchDone(false);
     setLaunchModal(tpl);
@@ -232,17 +266,15 @@ export default function ProgramsPage() {
 
   function handleStartChange(val: string) {
     setLaunchStart(val);
-    if (launchModal?.featured_duration_days) {
-      const d = new Date(val + 'T00:00:00');
-      d.setDate(d.getDate() + launchModal.featured_duration_days - 1);
-      setLaunchEnd(d.toISOString().slice(0, 10));
-    }
+    setLaunchEnd(maxEndDate(val, launchModal?.featured_duration_days ?? null));
   }
 
   async function handleLaunch() {
     if (!launchModal) return;
     if (!launchStart || !launchEnd) { setLaunchError('Please set a start and end date.'); return; }
     if (launchStart >= launchEnd)   { setLaunchError('End date must be after start date.'); return; }
+    const cap = maxEndDate(launchStart, null);
+    if (launchEnd > cap) { setLaunchError('Programs can run for a maximum of 30 days.'); return; }
     setLaunching(true); setLaunchError('');
     const sb  = getSupabase();
     const now = new Date().toISOString();
@@ -273,7 +305,9 @@ export default function ProgramsPage() {
 
   if (loading || !authed) return <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />;
 
-  const lbProgram = activePrograms.find(p => p.id === lbProgramId) ?? activePrograms[0] ?? null;
+  const today      = new Date().toISOString().slice(0, 10);
+  const lbProgram  = activePrograms.find(p => p.id === lbProgramId) ?? activePrograms[0] ?? null;
+  const allCatalog = [...availableNowTemplates, ...comingSoonTemplates];
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
@@ -285,7 +319,7 @@ export default function ProgramsPage() {
           <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 15 }}>Launch company-wide fitness programs for your employees.</p>
         </div>
 
-        {/* Active Programs Banner */}
+        {/* Active Programs */}
         {activePrograms.length > 0 && (
           <div style={{ marginBottom: 40 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
@@ -317,96 +351,9 @@ export default function ProgramsPage() {
           </div>
         )}
 
-        {/* Featured Programs Grid */}
-        <div style={{ marginBottom: 40 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
-            Featured Programs
-          </p>
-          {featuredTemplates.length === 0 ? (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '40px 24px', textAlign: 'center' }}>
-              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No featured programs available yet.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-              {featuredTemplates.map(tpl => {
-                const isActive   = activePrograms.some(p => p.plan_template_id === tpl.id);
-                const isSelected = selectedTplIds.includes(tpl.id);
-                const count      = exCount(tpl);
-                return (
-                  <div
-                    key={tpl.id}
-                    onClick={() => setPreviewTpl(tpl)}
-                    style={{
-                      position: 'relative',
-                      background: 'var(--card)',
-                      border: `1.5px solid ${isSelected ? TEAL : isActive ? TEAL + '60' : 'var(--border)'}`,
-                      borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 14,
-                      cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 0 0 2px ${TEAL}40`)}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                  >
-                    {/* Checkbox — top-right corner, only for non-active templates */}
-                    {!isActive && (
-                      <button
-                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
-                        title={isSelected ? 'Deselect' : 'Select for bulk launch'}
-                        style={{
-                          position: 'absolute', top: 14, right: 14,
-                          width: 22, height: 22, borderRadius: '50%',
-                          border: isSelected ? 'none' : '2px solid var(--border-strong)',
-                          background: isSelected ? TEAL : 'var(--card-alt)',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, zIndex: 1, padding: 0,
-                        }}
-                      >
-                        {isSelected && <span style={{ color: '#0f1117', fontSize: 12, fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                      </button>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, paddingRight: !isActive ? 28 : 0 }}>
-                      <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0, lineHeight: 1.3 }}>{tpl.name}</h3>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {count > 0 && <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{count} ex</span>}
-                        {tpl.featured_duration_days && <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{tpl.featured_duration_days}d</span>}
-                      </div>
-                    </div>
-                    {tpl.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0, lineHeight: 1.5 }}>{tpl.description}</p>}
-                    {isActive ? (
-                      <div style={{ background: `${TEAL}15`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL }}>
-                        Currently Running ✓
-                      </div>
-                    ) : isSelected ? (
-                      <div
-                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
-                        style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}50`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL, cursor: 'pointer' }}
-                      >
-                        ✓ Selected — click to remove
-                      </div>
-                    ) : (
-                      <button
-                        onClick={e => { e.stopPropagation(); openLaunchModal(tpl); }}
-                        style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', marginTop: 'auto' }}
-                      >
-                        Launch This Program
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Bulk-launch hint when nothing selected yet */}
-        {selectedTplIds.length === 0 && featuredTemplates.some(t => !activePrograms.some(p => p.plan_template_id === t.id)) && (
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '-24px 0 32px', textAlign: 'center' }}>
-            Tip: check the circle on multiple cards to launch them all at once
-          </p>
-        )}
-
         {/* Team Leaderboard */}
         {activePrograms.length > 0 && teams.length > 0 && (
-          <div>
+          <div style={{ marginBottom: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                 Team Leaderboard
@@ -435,7 +382,7 @@ export default function ProgramsPage() {
                 {leaderboard.length >= 3 && (
                   <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16, padding: '32px 24px 0', background: 'var(--card-alt)' }}>
                     {[leaderboard[1], leaderboard[0], leaderboard[2]].map((row, i) => {
-                      const rank = i === 1 ? 1 : i === 0 ? 2 : 3;
+                      const rank  = i === 1 ? 1 : i === 0 ? 2 : 3;
                       const color = rank === 1 ? GOLD : rank === 2 ? SILVER : BRONZE;
                       const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
                       const barH  = rank === 1 ? 80 : rank === 2 ? 56 : 44;
@@ -475,11 +422,172 @@ export default function ProgramsPage() {
         )}
 
         {activePrograms.length > 0 && teams.length === 0 && (
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', textAlign: 'center', marginBottom: 48 }}>
             <p style={{ color: 'var(--text-muted)', margin: '0 0 14px', fontSize: 14 }}>Create teams to unlock the leaderboard.</p>
             <button onClick={() => router.push('/teams')} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}>Set Up Teams →</button>
           </div>
         )}
+
+        {/* Available Now */}
+        {availableNowTemplates.length > 0 && (
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: TEAL, display: 'inline-block', flexShrink: 0 }} />
+              <p style={{ fontSize: 11, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                Available Now
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              {availableNowTemplates.map(tpl => {
+                const isActive   = activePrograms.some(p => p.plan_template_id === tpl.id);
+                const isSelected = selectedTplIds.includes(tpl.id);
+                const count      = exCount(tpl);
+                return (
+                  <div
+                    key={tpl.id}
+                    onClick={() => setPreviewTpl(tpl)}
+                    style={{
+                      position: 'relative',
+                      background: 'var(--card)',
+                      border: `1.5px solid ${isSelected ? TEAL : isActive ? TEAL + '60' : 'var(--border)'}`,
+                      borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 14,
+                      cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 0 0 2px ${TEAL}40`)}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                  >
+                    {!isActive && (
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
+                        title={isSelected ? 'Deselect' : 'Select for bulk launch'}
+                        style={{
+                          position: 'absolute', top: 14, right: 14,
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: isSelected ? 'none' : '2px solid var(--border-strong)',
+                          background: isSelected ? TEAL : 'var(--card-alt)',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, zIndex: 1, padding: 0,
+                        }}
+                      >
+                        {isSelected && <span style={{ color: '#0f1117', fontSize: 12, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                      </button>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, paddingRight: !isActive ? 28 : 0 }}>
+                      <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0, lineHeight: 1.3 }}>{tpl.name}</h3>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {count > 0 && <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{count} ex</span>}
+                        {tpl.featured_duration_days && <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{tpl.featured_duration_days}d</span>}
+                      </div>
+                    </div>
+                    {tpl.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0, lineHeight: 1.5 }}>{tpl.description}</p>}
+                    {tpl.catalog_available_until && (
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '-6px 0 0' }}>Available until {fmt(tpl.catalog_available_until)}</p>
+                    )}
+                    {isActive ? (
+                      <div style={{ background: `${TEAL}15`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL }}>
+                        Currently Running ✓
+                      </div>
+                    ) : isSelected ? (
+                      <div
+                        onClick={e => { e.stopPropagation(); toggleSelect(tpl.id); }}
+                        style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}50`, borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: TEAL, cursor: 'pointer' }}
+                      >
+                        ✓ Selected — click to remove
+                      </div>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); openLaunchModal(tpl); }}
+                        style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', marginTop: 'auto' }}
+                      >
+                        Launch This Program
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {selectedTplIds.length === 0 && availableNowTemplates.some(t => !activePrograms.some(p => p.plan_template_id === t.id)) && (
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '16px 0 0', textAlign: 'center' }}>
+                Tip: check the circle on multiple cards to launch them all at once
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Coming Next Month */}
+        {comingSoonTemplates.length > 0 && (
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: PURPLE, display: 'inline-block', flexShrink: 0 }} />
+              <p style={{ fontSize: 11, fontWeight: 700, color: PURPLE, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                Coming Soon
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              {comingSoonTemplates.map(tpl => {
+                const count = exCount(tpl);
+                const daysAway = Math.max(0, Math.ceil((new Date(tpl.catalog_available_from! + 'T12:00:00').getTime() - Date.now()) / 86400000));
+                return (
+                  <div
+                    key={tpl.id}
+                    onClick={() => setPreviewTpl(tpl)}
+                    style={{
+                      position: 'relative',
+                      background: 'var(--card)',
+                      border: `1.5px solid ${PURPLE}30`,
+                      borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 14,
+                      cursor: 'pointer', opacity: 0.85,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                      <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0, lineHeight: 1.3 }}>{tpl.name}</h3>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {count > 0 && <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{count} ex</span>}
+                        {tpl.featured_duration_days && <span style={{ background: `${PURPLE}20`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{tpl.featured_duration_days}d</span>}
+                      </div>
+                    </div>
+                    {tpl.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0, lineHeight: 1.5 }}>{tpl.description}</p>}
+                    <div style={{ background: `${PURPLE}12`, border: `1px solid ${PURPLE}30`, borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: PURPLE, margin: 0 }}>Available {fmt(tpl.catalog_available_from!)}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{daysAway} day{daysAway !== 1 ? 's' : ''} away</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* No programs at all */}
+        {availableNowTemplates.length === 0 && comingSoonTemplates.length === 0 && (
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '40px 24px', textAlign: 'center', marginBottom: 40 }}>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>No programs are available right now. Check back soon.</p>
+          </div>
+        )}
+
+        {/* Past Programs */}
+        {pastPrograms.length > 0 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: AMBER, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                Past Programs
+              </p>
+              <div style={{ flex: 1, height: 1, background: AMBER + '30' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {pastPrograms.map(prog => (
+                <div key={prog.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: 0.75 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{prog.name}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* Sticky bulk-launch bar */}
@@ -513,11 +621,10 @@ export default function ProgramsPage() {
         >
           <div style={{ width: '100%', maxWidth: 500, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36 }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>Launch Programs</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>All selected programs will share the same dates.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>All selected programs will share the same dates (max 30 days).</p>
 
-            {/* Selected program list */}
             <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 20, overflow: 'hidden' }}>
-              {featuredTemplates.filter(t => selectedTplIds.includes(t.id)).map((tpl, i, arr) => (
+              {availableNowTemplates.filter(t => selectedTplIds.includes(t.id)).map((tpl, i) => (
                 <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{tpl.name}</span>
                   {activePrograms.some(p => p.plan_template_id === tpl.id) && (
@@ -530,11 +637,11 @@ export default function ProgramsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Start Date</label>
-                <input type="date" value={launchStart} onChange={e => setLaunchStart(e.target.value)} style={inputStyle} />
+                <input type="date" value={launchStart} onChange={e => { setLaunchStart(e.target.value); setLaunchEnd(maxEndDate(e.target.value, null)); }} style={inputStyle} />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date</label>
-                <input type="date" value={launchEnd} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>(max 30 days)</span></label>
+                <input type="date" value={launchEnd} max={launchStart ? maxEndDate(launchStart, null) : undefined} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
               </div>
               {employeeCount > 0 && (
                 <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
@@ -641,13 +748,18 @@ export default function ProgramsPage() {
               <button onClick={() => setPreviewTpl(null)} style={{ flex: 1, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
                 Close
               </button>
-              {!activePrograms.some(p => p.plan_template_id === previewTpl.id) && (
+              {previewTpl.catalog_available_from && previewTpl.catalog_available_from <= today && !activePrograms.some(p => p.plan_template_id === previewTpl.id) && (
                 <button
                   onClick={() => { setPreviewTpl(null); openLaunchModal(previewTpl); }}
                   style={{ flex: 2, background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
                 >
                   Launch This Program
                 </button>
+              )}
+              {previewTpl.catalog_available_from && previewTpl.catalog_available_from > today && (
+                <div style={{ flex: 2, background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 10, padding: '11px 0', textAlign: 'center', fontSize: 13, fontWeight: 700, color: PURPLE }}>
+                  Available {fmt(previewTpl.catalog_available_from)}
+                </div>
               )}
             </div>
           </div>
@@ -680,8 +792,8 @@ export default function ProgramsPage() {
                 })()}
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date</label>
-                <input type="date" value={launchEnd} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>(max 30 days)</span></label>
+                <input type="date" value={launchEnd} max={launchStart ? maxEndDate(launchStart, null) : undefined} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
               </div>
               {employeeCount === 0 && (
                 <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B' }}>
