@@ -528,7 +528,15 @@ export default function MasterProgramsPage() {
                             </div>
                           </div>
                         )}
-                        {trendData.length > 0 && (
+                        {trendData.length === 1 && (
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Workouts / Week</span>
+                            <span style={{ fontSize: 14, color: 'var(--text-dim)' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{trendData[0].workout_count}</span> workout{Number(trendData[0].workout_count) !== 1 ? 's' : ''} in Week 1
+                            </span>
+                          </div>
+                        )}
+                        {trendData.length > 1 && (
                           <div>
                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Workouts / Week</span>
                             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
