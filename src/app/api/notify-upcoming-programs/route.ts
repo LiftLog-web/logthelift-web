@@ -22,25 +22,27 @@ export async function GET(req: NextRequest) {
   }
 
   const client = sb();
-  const today  = new Date().toISOString().slice(0, 10);
-  const d45    = new Date(); d45.setDate(d45.getDate() + 45);
-  const future = d45.toISOString().slice(0, 10);
+  const now        = new Date();
+  const nextMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const monthAfter = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+  const monthStart = nextMonth.toISOString().slice(0, 10);
+  const monthEnd   = monthAfter.toISOString().slice(0, 10);
 
-  // Fetch coming-soon programs (not yet live, within 45-day window)
+  // Fetch programs whose availability opens next calendar month
   const { data: tpls, error: tplErr } = await client
     .from('plan_templates')
     .select('id, name, description, featured_duration_days, catalog_available_from, catalog_available_until')
     .eq('practitioner_id', MASTER)
     .eq('is_featured', true)
     .not('catalog_available_from', 'is', null)
-    .gt('catalog_available_from', today)
-    .lte('catalog_available_from', future)
+    .gte('catalog_available_from', monthStart)
+    .lt('catalog_available_from', monthEnd)
     .order('catalog_available_from');
 
   if (tplErr) return NextResponse.json({ error: tplErr.message }, { status: 500 });
 
   const upcoming = (tpls ?? []).filter(
-    p => !p.catalog_available_until || p.catalog_available_until >= today,
+    p => !p.catalog_available_until || p.catalog_available_until >= monthStart,
   );
 
   if (upcoming.length === 0) {
