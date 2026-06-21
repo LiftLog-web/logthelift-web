@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import ScheduleModal from './ScheduleModal';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -200,7 +201,8 @@ export default function MasterProgramsPage() {
   const [trends,        setTrends]        = useState<Record<string, TrendRow[]>>({});
   const [loading,       setLoading]       = useState(true);
   const [activeTab,     setActiveTab]     = useState<'programs' | 'analytics'>('programs');
-  const [availEdits,    setAvailEdits]    = useState<Record<string, { from: string; until: string }>>({});
+  const [programSubTab, setProgramSubTab] = useState<'active' | 'future' | 'past'>('active');
+  const [scheduleModal, setScheduleModal] = useState<Program | null>(null);
   const [savingAvailId, setSavingAvailId] = useState<string | null>(null);
 
   const [showCreate,    setShowCreate]    = useState(false);
@@ -352,22 +354,18 @@ export default function MasterProgramsPage() {
     setCreating(false);
   }
 
-  async function handleSaveAvailability(p: Program) {
-    const edit = availEdits[p.template_id];
-    if (!edit) return;
-    if (!edit.from || !edit.until) { alert('Both a start date and end date are required.'); return; }
-    if (edit.from >= edit.until) { alert('The start date must be before the end date.'); return; }
+  async function handleSaveAvailability(p: Program, from: string, until: string) {
     setSavingAvailId(p.template_id);
     const sb = getSupabase();
     const { error } = await sb.from('plan_templates').update({
-      catalog_available_from:  edit.from,
-      catalog_available_until: edit.until,
+      catalog_available_from:  from,
+      catalog_available_until: until,
     }).eq('id', p.template_id);
     if (error) { alert('Save failed: ' + error.message); setSavingAvailId(null); return; }
     setPrograms(prev => prev.map(x => x.template_id === p.template_id
-      ? { ...x, catalog_available_from: edit.from, catalog_available_until: edit.until }
+      ? { ...x, catalog_available_from: from, catalog_available_until: until }
       : x));
-    setAvailEdits(prev => { const n = { ...prev }; delete n[p.template_id]; return n; });
+    setScheduleModal(null);
     setSavingAvailId(null);
   }
 
@@ -383,7 +381,6 @@ export default function MasterProgramsPage() {
     setPrograms(prev => prev.map(x => x.template_id === p.template_id
       ? { ...x, catalog_available_from: null, catalog_available_until: null }
       : x));
-    setAvailEdits(prev => { const n = { ...prev }; delete n[p.template_id]; return n; });
     setSavingAvailId(null);
   }
 
@@ -480,12 +477,8 @@ export default function MasterProgramsPage() {
               const hasR      = r != null && Number(r.rating_count) > 0;
               const eff       = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
               const enj       = hasR ? r.avg_enjoyment : null;
-              const editFrom  = availEdits[p.template_id]?.from  ?? p.catalog_available_from  ?? '';
-              const editUntil = availEdits[p.template_id]?.until ?? p.catalog_available_until ?? '';
-              const isDirty   = availEdits[p.template_id] !== undefined;
               const isSaving  = savingAvailId === p.template_id;
               const border    = status === 'live' ? `${TEAL}50` : status === 'scheduled' ? `${PURPLE}40` : status === 'past' ? `${AMBER}30` : 'var(--border)';
-              const dateInStyle: React.CSSProperties = { background: 'var(--input-bg)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' };
               return (
                 <div style={{ background: 'var(--card)', border: `1px solid ${border}`, borderRadius: 16, padding: '20px 24px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 6 }}>
@@ -518,77 +511,144 @@ export default function MasterProgramsPage() {
                       <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{p.employer_count > 0 ? 'No ratings yet' : 'No data yet'}</span>
                     )}
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Catalog Window</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>From</span>
-                        <input type="date" value={editFrom}
-                          onChange={e => setAvailEdits(prev => ({ ...prev, [p.template_id]: { from: e.target.value, until: editUntil } }))}
-                          style={dateInStyle} />
-                      </div>
-                      <span style={{ color: 'var(--text-dim)', fontSize: 14 }}>→</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Until</span>
-                        <input type="date" value={editUntil}
-                          onChange={e => setAvailEdits(prev => ({ ...prev, [p.template_id]: { from: editFrom, until: e.target.value } }))}
-                          style={dateInStyle} />
-                      </div>
-                      {isDirty && (
-                        <button onClick={() => handleSaveAvailability(p)} disabled={isSaving}
-                          style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}>
-                          {isSaving ? 'Saving…' : 'Save'}
-                        </button>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      {status === 'draft' && (
+                        <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Not scheduled — click Schedule to add to the employer catalog</p>
                       )}
-                      {!isDirty && p.catalog_available_from && (
-                        <button onClick={() => handleClearAvailability(p)} disabled={isSaving}
-                          style={{ background: 'none', border: '1px solid var(--border-strong)', color: 'var(--text-dim)', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>
-                          Clear Dates
+                      {status === 'scheduled' && p.catalog_available_from && (
+                        <p style={{ fontSize: 13, color: PURPLE, margin: 0, fontWeight: 600 }}>
+                          Scheduled {fmtD(p.catalog_available_from)} → {p.catalog_available_until ? fmtD(p.catalog_available_until) : '∞'}
+                          <span style={{ fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>
+                            ({Math.max(0, Math.ceil((new Date(p.catalog_available_from + 'T12:00:00').getTime() - Date.now()) / 86400000))} days away)
+                          </span>
+                        </p>
+                      )}
+                      {status === 'live' && (
+                        <p style={{ fontSize: 13, color: TEAL, margin: 0, fontWeight: 600 }}>
+                          Live{p.catalog_available_until ? ` until ${fmtD(p.catalog_available_until)}` : ''}
+                        </p>
+                      )}
+                      {status === 'past' && p.catalog_available_from && p.catalog_available_until && (
+                        <p style={{ fontSize: 13, color: AMBER, margin: 0 }}>
+                          Ran {fmtD(p.catalog_available_from)} → {fmtD(p.catalog_available_until)}
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setScheduleModal(p)}
+                        disabled={isSaving}
+                        style={{ background: status === 'draft' ? TEAL : 'none', color: status === 'draft' ? '#0f1117' : 'var(--text-dim)', border: status === 'draft' ? 'none' : '1px solid var(--border-strong)', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {status === 'draft' ? 'Schedule →' : 'Edit Schedule'}
+                      </button>
+                      {p.catalog_available_from && (
+                        <button
+                          onClick={() => handleClearAvailability(p)}
+                          disabled={isSaving}
+                          style={{ background: 'none', border: '1px solid var(--border-strong)', color: 'var(--text-dim)', borderRadius: 8, padding: '6px 10px', fontSize: 13, cursor: 'pointer' }}
+                        >
+                          Remove
                         </button>
                       )}
                     </div>
-                    {status === 'draft' && <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0' }}>Set dates above to publish to the employer catalog.</p>}
-                    {status === 'scheduled' && p.catalog_available_from && (
-                      <p style={{ fontSize: 12, color: PURPLE, margin: '8px 0 0', fontWeight: 600 }}>
-                        Goes live {fmtD(p.catalog_available_from)} — {Math.max(0, Math.ceil((new Date(p.catalog_available_from + 'T12:00:00').getTime() - Date.now()) / 86400000))} days from now
-                      </p>
-                    )}
-                    {status === 'live' && p.catalog_available_until && (
-                      <p style={{ fontSize: 12, color: TEAL, margin: '8px 0 0', fontWeight: 600 }}>
-                        Visible to employers until {fmtD(p.catalog_available_until)}
-                      </p>
-                    )}
-                    {status === 'past' && p.catalog_available_until && (
-                      <p style={{ fontSize: 12, color: AMBER, margin: '8px 0 0' }}>Window closed {fmtD(p.catalog_available_until)}</p>
-                    )}
                   </div>
                 </div>
               );
             }
 
-            function Section({ label, color, dot, items }: { label: string; color: string; dot: boolean; items: Program[] }) {
-              if (items.length === 0) return null;
-              return (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                    {dot && <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />}
-                    <span style={{ fontSize: 12, fontWeight: 800, color, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{label} ({items.length})</span>
-                    <div style={{ flex: 1, height: 1, background: color + '30' }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {items.map(p => <ProgramCard key={p.template_id} p={p} />)}
-                  </div>
-                </div>
-              );
+            const future = [...scheduled, ...drafts];
+
+            const pastByMonth: Record<string, Program[]> = {};
+            for (const p of past) {
+              const key = p.catalog_available_until?.slice(0, 7) ?? 'unknown';
+              (pastByMonth[key] ??= []).push(p);
             }
+            const pastMonthKeys = Object.keys(pastByMonth).sort().reverse();
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-                <Section label="Live"      color={TEAL}            dot={true}  items={live} />
-                <Section label="Scheduled" color={PURPLE}          dot={true}  items={scheduled} />
-                <Section label="Drafts"    color="var(--text-dim)" dot={false} items={drafts} />
-                <Section label="Past"      color={AMBER}           dot={false} items={past} />
-              </div>
+              <>
+                {/* Sub-tabs: Active | Future | Past */}
+                <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: 12, padding: 4, marginBottom: 24, gap: 4, width: 'fit-content' }}>
+                  {(['active', 'future', 'past'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setProgramSubTab(t)}
+                      style={{
+                        border: 'none', borderRadius: 9, padding: '8px 20px',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        background: programSubTab === t ? 'var(--card)' : 'transparent',
+                        color: programSubTab === t ? 'var(--text)' : 'var(--text-dim)',
+                        transition: 'background 0.15s', whiteSpace: 'nowrap' as const,
+                      }}
+                    >
+                      {t === 'active'
+                        ? `Active${live.length ? ` (${live.length})` : ''}`
+                        : t === 'future'
+                          ? `Future${future.length ? ` (${future.length})` : ''}`
+                          : `Past${past.length ? ` (${past.length})` : ''}`}
+                    </button>
+                  ))}
+                </div>
+
+                {programSubTab === 'active' && (
+                  live.length === 0
+                    ? <p style={{ color: 'var(--text-dim)', fontSize: 14, padding: '24px 0' }}>No programs are currently live.</p>
+                    : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{live.map(p => <ProgramCard key={p.template_id} p={p} />)}</div>
+                )}
+
+                {programSubTab === 'future' && (
+                  future.length === 0
+                    ? <p style={{ color: 'var(--text-dim)', fontSize: 14, padding: '24px 0' }}>No upcoming programs — create one above and schedule it.</p>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {scheduled.length > 0 && (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: PURPLE, display: 'inline-block', flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, fontWeight: 800, color: PURPLE, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Scheduled ({scheduled.length})</span>
+                            </div>
+                            {scheduled.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                          </>
+                        )}
+                        {drafts.length > 0 && (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: scheduled.length > 0 ? 16 : 0, marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Drafts ({drafts.length})</span>
+                            </div>
+                            {drafts.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                          </>
+                        )}
+                      </div>
+                    )
+                )}
+
+                {programSubTab === 'past' && (
+                  past.length === 0
+                    ? <p style={{ color: 'var(--text-dim)', fontSize: 14, padding: '24px 0' }}>No past programs yet.</p>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                        {pastMonthKeys.map(monthKey => {
+                          const label = monthKey === 'unknown'
+                            ? 'Unknown'
+                            : new Date(monthKey + '-01T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                          return (
+                            <div key={monthKey}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: AMBER, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{label}</span>
+                                <div style={{ flex: 1, height: 1, background: AMBER + '30' }} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {pastByMonth[monthKey].map(p => <ProgramCard key={p.template_id} p={p} />)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                )}
+              </>
             );
           })()
         )}
@@ -685,6 +745,17 @@ export default function MasterProgramsPage() {
           )
         )}
       </main>
+
+      {scheduleModal && (
+        <ScheduleModal
+          programName={scheduleModal.template_name}
+          currentFrom={scheduleModal.catalog_available_from}
+          currentUntil={scheduleModal.catalog_available_until}
+          saving={savingAvailId === scheduleModal.template_id}
+          onSave={(from, until) => handleSaveAvailability(scheduleModal, from, until)}
+          onClose={() => setScheduleModal(null)}
+        />
+      )}
 
       {showCreate && (
         <div
