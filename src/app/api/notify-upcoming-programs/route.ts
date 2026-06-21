@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.ca';
 const FROM    = process.env.NOTIFY_FROM_EMAIL   ?? 'programs@logthelift.com';
 const MASTER  = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID!;
 
@@ -18,10 +18,7 @@ export async function GET(req: NextRequest) {
   const auth   = req.headers.get('authorization') ?? '';
   const secret = (process.env.CRON_SECRET ?? '').trim();
   if (!secret || auth.trim() !== `Bearer ${secret}`) {
-    return NextResponse.json({
-      error: 'Unauthorized',
-      debug: { authLength: auth.length, secretLength: secret.length, secretSet: !!secret },
-    }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const client = sb();
