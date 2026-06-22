@@ -101,7 +101,8 @@ function parseExercises(rawExercises: any[]): any[] {
       : isDesktopCardio && ex.exercise
         ? { ...ex.exercise, type: 'duration' }
         : ex.exercise;
-    return { ...ex, id: crypto.randomUUID(), sets, exercise, practitionerNotes: ex.practitionerNotes ?? ex.notes ?? '' };
+    const effectiveNotes = ex.practitionerNotes || ex.notes || '';
+    return { ...ex, id: crypto.randomUUID(), sets, exercise, practitionerNotes: effectiveNotes, notes: effectiveNotes };
   });
 }
 
