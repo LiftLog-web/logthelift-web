@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { DayPicker } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
+import 'react-day-picker/style.css';
+import { addMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -67,11 +71,12 @@ function setLabel(s: any): string {
   const w = s.weight && s.weight > 0 ? ` @ ${s.weight}${s.unit ?? 'kg'}` : '';
   return `${s.reps ?? '?'} reps${w}`;
 }
-function maxEndDate(start: string, durationDays: number | null): string {
-  const d = new Date(start + 'T00:00:00');
-  const days = durationDays ? Math.min(durationDays - 1, 29) : 29;
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+
+function getMonthOptions(): Date[] {
+  const months: Date[] = [];
+  const base = new Date();
+  for (let i = 0; i <= 12; i++) months.push(startOfMonth(addMonths(base, i)));
+  return months;
 }
 
 export default function ProgramsPage() {
@@ -88,8 +93,6 @@ export default function ProgramsPage() {
   const [lbProgramId,            setLbProgramId]            = useState<string | null>(null);
   const [loading,                setLoading]                = useState(true);
   const [launchModal,            setLaunchModal]            = useState<FeaturedTemplate | null>(null);
-  const [launchStart,            setLaunchStart]            = useState('');
-  const [launchEnd,              setLaunchEnd]              = useState('');
   const [launching,              setLaunching]              = useState(false);
   const [launchError,            setLaunchError]            = useState('');
   const [launchDone,             setLaunchDone]             = useState(false);
@@ -99,6 +102,48 @@ export default function ProgramsPage() {
   const [selectedTplIds,         setSelectedTplIds]         = useState<string[]>([]);
   const [multiLaunch,            setMultiLaunch]            = useState(false);
   const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
+
+  // Date picker state (shared between single and multi-launch modals)
+  const [dateTab,        setDateTab]        = useState<'month' | 'custom'>('month');
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
+  const [range,          setRange]          = useState<DateRange | undefined>(undefined);
+
+  const monthOptions = getMonthOptions();
+
+  function toggleMonth(key: string) {
+    setSelectedMonths(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
+  function getMonthRange(): { from: string; until: string } | null {
+    if (selectedMonths.size === 0) return null;
+    const sorted = [...selectedMonths].sort();
+    return {
+      from:  format(startOfMonth(new Date(sorted[0] + '-01T12:00:00')), 'yyyy-MM-dd'),
+      until: format(endOfMonth(new Date(sorted[sorted.length - 1] + '-01T12:00:00')), 'yyyy-MM-dd'),
+    };
+  }
+
+  function getPickerDates(): { start: string; end: string } | null {
+    if (dateTab === 'month') {
+      const r = getMonthRange();
+      return r ? { start: r.from, end: r.until } : null;
+    }
+    if (!range?.from || !range?.to) return null;
+    return {
+      start: format(range.from, 'yyyy-MM-dd'),
+      end:   format(range.to,   'yyyy-MM-dd'),
+    };
+  }
+
+  function resetPicker() {
+    setDateTab('month');
+    setSelectedMonths(new Set());
+    setRange(undefined);
+  }
 
   useEffect(() => {
     const sb = getSupabase();
@@ -237,18 +282,16 @@ export default function ProgramsPage() {
   }
 
   function openMultiLaunch() {
-    const today = new Date().toISOString().slice(0, 10);
-    const end = maxEndDate(today, null);
-    setLaunchStart(today); setLaunchEnd(end);
+    resetPicker();
     setLaunchError(''); setLaunchDone(false);
     setMultiLaunch(true);
   }
 
   async function handleMultiLaunch() {
-    if (!launchStart || !launchEnd) { setLaunchError('Please set a start and end date.'); return; }
-    if (launchStart >= launchEnd)   { setLaunchError('End date must be after start date.'); return; }
-    const cap = maxEndDate(launchStart, null);
-    if (launchEnd > cap) { setLaunchError('Programs can run for a maximum of 30 days.'); return; }
+    const dates = getPickerDates();
+    if (!dates) { setLaunchError('Please select a date range.'); return; }
+    const { start, end } = dates;
+    if (start >= end) { setLaunchError('End date must be after start date.'); return; }
     setLaunching(true); setLaunchError('');
     const sb  = getSupabase();
     const now = new Date().toISOString();
@@ -265,7 +308,7 @@ export default function ProgramsPage() {
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
       }
-      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: launchStart, ends_at: launchEnd }).select('id, plan_template_id, name, started_at, ends_at').single();
+      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end }).select('id, plan_template_id, name, started_at, ends_at').single();
       if (progErr) { setLaunchError(`Could not save "${tpl.name}": ` + progErr.message); setLaunching(false); return; }
       newProgs.push(progData as EmployerProgram);
     }
@@ -278,24 +321,17 @@ export default function ProgramsPage() {
   }
 
   function openLaunchModal(tpl: FeaturedTemplate) {
-    const today = new Date().toISOString().slice(0, 10);
-    const end   = maxEndDate(today, tpl.featured_duration_days);
-    setLaunchStart(today); setLaunchEnd(end);
+    resetPicker();
     setLaunchError(''); setLaunchDone(false);
     setLaunchModal(tpl);
   }
 
-  function handleStartChange(val: string) {
-    setLaunchStart(val);
-    setLaunchEnd(maxEndDate(val, launchModal?.featured_duration_days ?? null));
-  }
-
   async function handleLaunch() {
     if (!launchModal) return;
-    if (!launchStart || !launchEnd) { setLaunchError('Please set a start and end date.'); return; }
-    if (launchStart >= launchEnd)   { setLaunchError('End date must be after start date.'); return; }
-    const cap = maxEndDate(launchStart, null);
-    if (launchEnd > cap) { setLaunchError('Programs can run for a maximum of 30 days.'); return; }
+    const dates = getPickerDates();
+    if (!dates) { setLaunchError('Please select a date range.'); return; }
+    const { start, end } = dates;
+    if (start >= end) { setLaunchError('End date must be after start date.'); return; }
     setLaunching(true); setLaunchError('');
     const sb  = getSupabase();
     const now = new Date().toISOString();
@@ -309,7 +345,7 @@ export default function ProgramsPage() {
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
-    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: launchStart, ends_at: launchEnd }).select('id, plan_template_id, name, started_at, ends_at').single();
+    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end }).select('id, plan_template_id, name, started_at, ends_at').single();
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
     const newProg = progData as EmployerProgram;
     setActivePrograms(prev => [newProg, ...prev]);
@@ -318,20 +354,105 @@ export default function ProgramsPage() {
     setTimeout(() => setLaunchModal(null), 1200);
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: 'var(--input-bg)', border: '1px solid var(--border-strong)',
-    borderRadius: 10, padding: '10px 14px', color: 'var(--text)',
-    fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box',
-  };
-
   if (loading || !authed) return <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />;
 
   const today      = new Date().toISOString().slice(0, 10);
   const lbProgram  = activePrograms.find(p => p.id === lbProgramId) ?? activePrograms[0] ?? null;
-  const allCatalog = [...availableNowTemplates, ...comingSoonTemplates];
+  const pickerDates = getPickerDates();
+
+  const DatePickerUI = (
+    <>
+      <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: 10, padding: 4, marginBottom: 16, gap: 4 }}>
+        {(['month', 'custom'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setDateTab(t)}
+            style={{
+              flex: 1, border: 'none', borderRadius: 8, padding: '8px 0',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              background: dateTab === t ? 'var(--card)' : 'transparent',
+              color: dateTab === t ? 'var(--text)' : 'var(--text-dim)',
+              transition: 'background 0.15s',
+            }}
+          >
+            {t === 'month' ? 'By Month' : 'Custom Range'}
+          </button>
+        ))}
+      </div>
+
+      {dateTab === 'month' && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+            {monthOptions.map(m => {
+              const key = format(m, 'yyyy-MM');
+              const sel = selectedMonths.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleMonth(key)}
+                  style={{
+                    border: `1.5px solid ${sel ? TEAL : 'var(--border-strong)'}`,
+                    borderRadius: 10, padding: '10px 6px',
+                    background: sel ? `${TEAL}18` : 'transparent',
+                    color: sel ? TEAL : 'var(--text-dim)',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {format(m, 'MMM yyyy')}
+                </button>
+              );
+            })}
+          </div>
+          {(() => {
+            const r = getMonthRange();
+            return r ? (
+              <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: TEAL, fontWeight: 600, marginBottom: 12 }}>
+                {format(new Date(r.from + 'T12:00:00'), 'MMM d')} → {format(new Date(r.until + 'T12:00:00'), 'MMM d, yyyy')}
+                {selectedMonths.size > 1 && (
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
+                    · {selectedMonths.size} month{selectedMonths.size !== 1 ? 's' : ''} selected
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div style={{ borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--text-dim)', border: '1px dashed var(--border-strong)', marginBottom: 12 }}>
+                Select one or more months above
+              </div>
+            );
+          })()}
+        </>
+      )}
+
+      {dateTab === 'custom' && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <DayPicker className="liftlog-rdp" mode="range" selected={range} onSelect={setRange} />
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
+      <style>{`
+        .liftlog-rdp {
+          --rdp-accent-color: ${TEAL};
+          --rdp-accent-background-color: ${TEAL}22;
+          color: var(--text);
+        }
+        .liftlog-rdp .rdp-month_caption_label { color: var(--text); font-weight: 700; }
+        .liftlog-rdp .rdp-nav button { color: var(--text-dim); }
+        .liftlog-rdp .rdp-weekday { color: var(--text-dim); font-size: 11px; }
+        .liftlog-rdp .rdp-day_button { color: var(--text); border-radius: 8px; }
+        .liftlog-rdp .rdp-day_button:hover:not([disabled]) { background: var(--border-strong) !important; }
+        .liftlog-rdp .rdp-range_middle { background: ${TEAL}18; }
+        .liftlog-rdp .rdp-selected .rdp-day_button { color: ${TEAL}; }
+        .liftlog-rdp .rdp-range_start .rdp-day_button,
+        .liftlog-rdp .rdp-range_end .rdp-day_button { background: ${TEAL} !important; color: #0f1117 !important; font-weight: 700; }
+        .liftlog-rdp .rdp-today .rdp-day_button { border: 1.5px solid ${TEAL}60; }
+        .liftlog-rdp .rdp-outside { opacity: 0.3; }
+      `}</style>
+
       <main style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 32px' }}>
 
         {/* Header */}
@@ -568,7 +689,7 @@ export default function ProgramsPage() {
           </div>
         )}
 
-        {/* Coming Next Month */}
+        {/* Coming Soon */}
         {comingSoonTemplates.length > 0 && (
           <div style={{ marginBottom: 40 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -700,9 +821,9 @@ export default function ProgramsPage() {
           onClick={e => { if (e.target === e.currentTarget) setMultiLaunch(false); }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 300 }}
         >
-          <div style={{ width: '100%', maxWidth: 500, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36 }}>
+          <div style={{ width: '100%', maxWidth: 500, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36, maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>Launch Programs</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>All selected programs will share the same dates (max 30 days).</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>All selected programs will share the same dates.</p>
 
             <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 20, overflow: 'hidden' }}>
               {availableNowTemplates.filter(t => selectedTplIds.includes(t.id)).map((tpl, i) => (
@@ -715,32 +836,25 @@ export default function ProgramsPage() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Start Date</label>
-                <input type="date" value={launchStart} onChange={e => { setLaunchStart(e.target.value); setLaunchEnd(maxEndDate(e.target.value, null)); }} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>(max 30 days)</span></label>
-                <input type="date" value={launchEnd} max={launchStart ? maxEndDate(launchStart, null) : undefined} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {DatePickerUI}
               {employeeCount > 0 && (
-                <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>
                   Each program will be assigned to all <strong style={{ color: 'var(--text)' }}>{employeeCount} linked employee{employeeCount !== 1 ? 's' : ''}</strong>.
                 </div>
               )}
               {employeeCount === 0 && (
-                <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B' }}>
+                <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B', marginBottom: 4 }}>
                   No linked employees found. Invite employees via your Profile page before launching.
                 </div>
               )}
               {launchError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{launchError}</p>}
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                 <button onClick={() => setMultiLaunch(false)} disabled={launching} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
                 <button
                   onClick={handleMultiLaunch}
-                  disabled={launching || launchDone || employeeCount === 0}
-                  style={{ flex: 2, background: launchDone ? TEAL : PURPLE, color: launchDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: (launching || launchDone || employeeCount === 0) ? 'not-allowed' : 'pointer', opacity: (launching || employeeCount === 0) ? 0.6 : 1, transition: 'background 0.2s' }}
+                  disabled={launching || launchDone || employeeCount === 0 || !pickerDates}
+                  style={{ flex: 2, background: launchDone ? TEAL : PURPLE, color: launchDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: (launching || launchDone || employeeCount === 0 || !pickerDates) ? 'not-allowed' : 'pointer', opacity: (launching || employeeCount === 0 || !pickerDates) ? 0.6 : 1, transition: 'background 0.2s' }}
                 >
                   {launchDone ? `✓ ${selectedTplIds.length} Program${selectedTplIds.length > 1 ? 's' : ''} Launched!` : launching ? 'Launching…' : `Launch ${selectedTplIds.filter(id => !activePrograms.some(p => p.plan_template_id === id)).length} Program${selectedTplIds.filter(id => !activePrograms.some(p => p.plan_template_id === id)).length !== 1 ? 's' : ''}`}
                 </button>
@@ -853,43 +967,29 @@ export default function ProgramsPage() {
           onClick={e => { if (e.target === e.currentTarget) setLaunchModal(null); }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 300 }}
         >
-          <div style={{ width: '100%', maxWidth: 480, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36 }}>
+          <div style={{ width: '100%', maxWidth: 480, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: 36, maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 6px' }}>Launch Program</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' }}>{launchModal.name}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Start Date</label>
-                <input type="date" value={launchStart} onChange={e => handleStartChange(e.target.value)} style={inputStyle} />
-                {(() => {
-                  const first = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-                  const ymd   = first.toISOString().slice(0, 10);
-                  const label = first.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                  return (
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>
-                      Recommended: <strong style={{ color: 'var(--text)' }}>{label}</strong>{' '}
-                      <button type="button" onClick={() => handleStartChange(ymd)} style={{ background: 'none', border: 'none', color: TEAL, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Use →</button>
-                    </p>
-                  );
-                })()}
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>End Date <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>(max 30 days)</span></label>
-                <input type="date" value={launchEnd} max={launchStart ? maxEndDate(launchStart, null) : undefined} onChange={e => setLaunchEnd(e.target.value)} style={inputStyle} />
-              </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>{launchModal.name}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {DatePickerUI}
               {employeeCount === 0 && (
-                <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B' }}>
+                <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B', marginBottom: 4 }}>
                   No linked employees found. Invite employees via your Profile page before launching.
                 </div>
               )}
               {employeeCount > 0 && (
-                <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>
                   This plan will be assigned to all <strong style={{ color: 'var(--text)' }}>{employeeCount} linked employee{employeeCount !== 1 ? 's' : ''}</strong>.
                 </div>
               )}
               {launchError && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{launchError}</p>}
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                 <button onClick={() => setLaunchModal(null)} disabled={launching} style={{ flex: 1, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleLaunch} disabled={launching || launchDone || employeeCount === 0} style={{ flex: 2, background: launchDone ? TEAL : PURPLE, color: launchDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: (launching || launchDone || employeeCount === 0) ? 'not-allowed' : 'pointer', opacity: (launching || employeeCount === 0) ? 0.6 : 1, transition: 'background 0.2s' }}>
+                <button
+                  onClick={handleLaunch}
+                  disabled={launching || launchDone || employeeCount === 0 || !pickerDates}
+                  style={{ flex: 2, background: launchDone ? TEAL : PURPLE, color: launchDone ? '#0f1117' : 'var(--text)', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: (launching || launchDone || employeeCount === 0 || !pickerDates) ? 'not-allowed' : 'pointer', opacity: (launching || employeeCount === 0 || !pickerDates) ? 0.6 : 1, transition: 'background 0.2s' }}
+                >
                   {launchDone ? '✓ Launched!' : launching ? 'Launching…' : 'Launch Program'}
                 </button>
               </div>
