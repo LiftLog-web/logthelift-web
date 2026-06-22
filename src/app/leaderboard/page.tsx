@@ -14,9 +14,23 @@ const BRONZE = '#CD7F32';
 
 type Period = '7d' | '1m' | '4m';
 
+interface Team {
+  id: string;
+  name: string;
+}
+
 interface Employee {
   id: string;
   name: string;
+  teamId: string | null;
+}
+
+interface TeamEntry {
+  team: Team;
+  totalWorkouts: number;
+  activeMembers: number;
+  totalMembers: number;
+  topPerformer: LeaderboardEntry | null;
 }
 
 interface LeaderboardEntry {
@@ -146,6 +160,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading]   = useState(true);
   const [period, setPeriod]     = useState<Period>('1m');
   const [companyName, setCompanyName] = useState('');
+  const [teams, setTeams]             = useState<Team[]>([]);
   const [employees, setEmployees]     = useState<Employee[]>([]);
   const [allDates, setAllDates]       = useState<Record<string, string[]>>({});
 
@@ -167,16 +182,18 @@ export default function LeaderboardPage() {
       }
       setCompanyName(prof.company_name ?? 'Your Company');
 
-      const { data: links } = await supabase
-        .from('patient_links')
-        .select('patient_id, profiles!patient_links_patient_id_fkey(display_name)')
-        .eq('practitioner_id', user.id);
+      const [{ data: links }, { data: teamsData }] = await Promise.all([
+        supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
+        supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
+      ]);
 
       if (!links || links.length === 0) { setLoading(false); return; }
+      setTeams((teamsData ?? []) as Team[]);
 
       const empList: Employee[] = links.map((l: any) => ({
         id: l.patient_id,
         name: l.profiles?.display_name ?? 'Unknown',
+        teamId: l.team_id ?? null,
       }));
       setEmployees(empList);
 
@@ -218,6 +235,20 @@ export default function LeaderboardPage() {
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
   const avgWorkouts    = useMemo(() => employees.length > 0 ? (totalWorkouts / employees.length).toFixed(1) : '0', [totalWorkouts, employees]);
   const topStreak      = useMemo(() => entries.reduce((best, e) => e.currentStreak > best.currentStreak ? e : best, entries[0] ?? null), [entries]);
+
+  const teamEntries = useMemo<TeamEntry[]>(() => {
+    if (!teams.length) return [];
+    return teams.map(team => {
+      const memberIds = new Set(employees.filter(e => e.teamId === team.id).map(e => e.id));
+      const memberEntries = entries.filter(e => memberIds.has(e.employee.id));
+      const totalWorkouts = memberEntries.reduce((s, e) => s + e.workoutCount, 0);
+      const activeMembers = memberEntries.filter(e => e.workoutCount > 0).length;
+      const topPerformer = memberEntries.length
+        ? [...memberEntries].sort((a, b) => b.workoutCount - a.workoutCount)[0]
+        : null;
+      return { team, totalWorkouts, activeMembers, totalMembers: memberIds.size, topPerformer };
+    }).sort((a, b) => b.totalWorkouts - a.totalWorkouts);
+  }, [teams, employees, entries]);
 
   const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months' };
 
@@ -299,6 +330,47 @@ export default function LeaderboardPage() {
             accent={GOLD}
           />
         </div>
+
+        {/* Team performance */}
+        {teamEntries.length > 0 && (
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+              Team Performance
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+              {teamEntries.map((te, idx) => {
+                const rankMedal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                const accentColor = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--border)';
+                return (
+                  <div key={te.team.id} style={{
+                    background: 'var(--card)',
+                    border: `1px solid ${idx < 3 ? accentColor + '66' : 'var(--border)'}`,
+                    borderRadius: 16,
+                    padding: '20px 22px',
+                    boxShadow: idx === 0 ? `0 0 20px ${GOLD}22` : '0 2px 8px #0002',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      {rankMedal && <span style={{ fontSize: 18 }}>{rankMedal}</span>}
+                      <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{te.team.name}</span>
+                    </div>
+                    <div style={{ fontSize: 36, fontWeight: 900, color: te.totalWorkouts > 0 ? TEAL : 'var(--text-muted)', lineHeight: 1, marginBottom: 6 }}>
+                      {te.totalWorkouts}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                      workouts this period
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span>{te.activeMembers} / {te.totalMembers} members active</span>
+                      {te.topPerformer && te.topPerformer.workoutCount > 0 && (
+                        <span style={{ color: PURPLE, fontWeight: 600 }}>⭐ {te.topPerformer.employee.name}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {entries.length === 0 ? (
           <div style={{

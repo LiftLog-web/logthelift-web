@@ -189,7 +189,7 @@ export default function TeamsPage() {
             const isEditing  = editingTeam?.id === team.id;
 
             return (
-              <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, overflow: 'hidden' }}>
+              <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
                 {/* Team header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: members.length > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                   {isEditing ? (
@@ -294,7 +294,7 @@ export default function TeamsPage() {
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
               Unassigned Employees ({unassigned.length})
             </p>
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
               {unassigned.map((emp, idx) => (
                 <div
                   key={emp.patientId}
