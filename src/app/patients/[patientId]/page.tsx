@@ -288,17 +288,22 @@ export default function PatientProgressPage() {
       setPatientName(patProf?.display_name ?? (employerFlag ? 'Employee' : 'Patient'));
       setPatientEmail(patProf?.email ?? '');
 
-      // Load workouts
-      const { data: rows } = await sb
-        .from('synced_workouts')
-        .select('data, date')
-        .eq('user_id', patientId)
-        .order('date', { ascending: false })
-        .limit(100);
+      // Load workouts + plans in parallel; employers only see their assigned-plan workouts
+      const [workoutResult, plansResult] = await Promise.all([
+        sb.from('synced_workouts').select('data, date').eq('user_id', patientId).order('date', { ascending: false }).limit(200),
+        sb.from('workout_plans').select('id, name, exercises').eq('patient_id', patientId).eq('practitioner_id', uid),
+      ]);
 
-      const logs: WorkoutLog[] = (rows ?? [])
+      const rawPlans = (plansResult.data ?? []) as Array<{ id: string; name: string; exercises: any }>;
+      const assignedPlanIds = new Set(rawPlans.map(p => p.id));
+
+      let logs: WorkoutLog[] = (workoutResult.data ?? [])
         .map((r: any) => r.data as WorkoutLog)
         .filter(Boolean);
+
+      if (employerFlag) {
+        logs = logs.filter(w => w.planId && assignedPlanIds.has(w.planId));
+      }
 
       setWorkouts(logs);
       const allWeekKeys = new Set(logs.map(w => getWeekStartDate(w.date)));
@@ -306,15 +311,8 @@ export default function PatientProgressPage() {
       const collapsed: Set<string> = storedCollapsed ? new Set(JSON.parse(storedCollapsed)) : new Set();
       setExpandedWeeks(new Set([...allWeekKeys].filter(k => !collapsed.has(k))));
 
-      // Load exercise demos for this patient's plans
-      const { data: plans } = await sb
-        .from('workout_plans')
-        .select('id, name, exercises')
-        .eq('patient_id', patientId)
-        .eq('practitioner_id', uid);
-
       // Store assigned plans for week editing
-      setAssignedPlans((plans ?? []).map((p: any) => ({
+      setAssignedPlans(rawPlans.map((p) => ({
         id: p.id,
         name: p.name ?? 'Untitled Plan',
         weeks: deriveWeekList(p.exercises),
@@ -323,7 +321,7 @@ export default function PatientProgressPage() {
       })));
 
       const exerciseNames = new Set<string>();
-      for (const plan of (plans ?? [])) {
+      for (const plan of rawPlans) {
         const exList: any[] = Array.isArray(plan.exercises)
           ? plan.exercises
           : (plan.exercises?.days ?? []).flatMap((d: any) => d.exercises ?? []);
