@@ -64,12 +64,35 @@ function exCount(tpl: FeaturedTemplate) {
 function setLabel(s: any): string {
   if (s.isSplit)        return `${s.leftReps ?? s.leftDuration ?? '?'} per side`;
   if (s.duration)       return `${s.duration}s hold`;
+  if (s.seconds)        return `${s.seconds}s hold`;
   if (s.cardioduration != null || s.cardioSeconds != null) {
     const m = s.cardioduration ?? 0; const sec = s.cardioSeconds ?? 0;
     return sec > 0 ? `${m}:${String(sec).padStart(2, '0')} min cardio` : `${m} min cardio`;
   }
   const w = s.weight && s.weight > 0 ? ` @ ${s.weight}${s.unit ?? 'kg'}` : '';
   return `${s.reps ?? '?'} reps${w}`;
+}
+
+function serializeExercisesForMobile(exercises: any): any {
+  if (!exercises) return exercises;
+  function cvtSet(s: any, exType: string): any {
+    if (exType !== 'duration') return s;
+    const { seconds, ...rest } = s;
+    return seconds != null ? { ...rest, duration: rest.duration ?? seconds } : s;
+  }
+  function cvtEx(ex: any): any {
+    const type = ex.exercise?.type;
+    return {
+      ...ex,
+      sets: (ex.sets ?? []).map((s: any) => cvtSet(s, type)),
+      weeks: (ex.weeks ?? []).map((w: any) => ({ ...w, sets: (w.sets ?? []).map((s: any) => cvtSet(s, type)) })),
+    };
+  }
+  if (Array.isArray(exercises)) return exercises.map(cvtEx);
+  if (exercises.days) {
+    return { ...exercises, days: exercises.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(cvtEx) })) };
+  }
+  return exercises;
 }
 
 function getMonthOptions(): Date[] {
@@ -305,7 +328,8 @@ export default function ProgramsPage() {
       if (employees.length > 0) {
         await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
         const { error: plansErr } = await sb.from('workout_plans').insert(
-          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: tpl.exercises, created_at: now, updated_at: now }))
+          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), created_at: now, updated_at: now }))
+
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
       }
@@ -342,7 +366,7 @@ export default function ProgramsPage() {
     if (employees.length > 0) {
       await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
       const { error: plansErr } = await sb.from('workout_plans').insert(
-        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: launchModal.exercises, created_at: now, updated_at: now }))
+        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), created_at: now, updated_at: now }))
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
