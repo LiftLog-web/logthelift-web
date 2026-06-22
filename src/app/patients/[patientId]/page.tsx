@@ -688,8 +688,10 @@ export default function PatientProgressPage() {
             { label: 'Total Workouts',    value: String(totalWorkouts),                                                       color: TEAL   },
             { label: 'Assigned Workouts',     value: String(withPlan.length),                                                     color: PURPLE },
             { label: 'Completion Rate',   value: completionRate !== null ? `${completionRate}%` : '—',                        color: PURPLE },
-            { label: 'Avg Effectiveness', value: '—', color: PURPLE, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={PURPLE} ratingKey="eff" /> : null },
-            { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
+            ...(!isEmployer ? [
+              { label: 'Avg Effectiveness', value: '—', color: PURPLE, node: avgEffectiveness !== null ? <StarRating rating={avgEffectiveness} color={PURPLE} ratingKey="eff" /> : null },
+              { label: 'Avg Enjoyment',     value: '—', color: TEAL,   node: avgEnjoyment !== null ? <StarRating rating={avgEnjoyment} color={TEAL} ratingKey="enj" /> : null },
+            ] : []),
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--card)', border: `1px solid var(--input-bg)`, borderRadius: 14, padding: '18px 20px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{s.label}</p>
@@ -952,7 +954,7 @@ export default function PatientProgressPage() {
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                       {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
                       {weekRate !== null ? ` · ${weekRate}% completion` : ''}
-                      {weekAvgRating !== null ? ` · ★ ${fmtRating(weekAvgRating)}` : ''}
+                      {!isEmployer && weekAvgRating !== null ? ` · ★ ${fmtRating(weekAvgRating)}` : ''}
                     </span>
                     <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
                   </button>
@@ -992,7 +994,7 @@ export default function PatientProgressPage() {
                               {w.duration > 0 && (
                                 <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{w.duration} min</span>
                               )}
-                              {(w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
+                              {!isEmployer && (w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
                                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 10, alignItems: 'center' }}>
                                   {(w.effectivenessRating ?? w.satisfactionRating) && (
                                     <span><span style={{ color: PURPLE, fontSize: 10, fontWeight: 800, marginRight: 3 }}>Effectiveness</span><span style={{ color: PURPLE }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
