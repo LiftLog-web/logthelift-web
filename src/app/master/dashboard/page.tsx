@@ -19,18 +19,40 @@ interface Stats {
   total_employee_count:  number;
 }
 
+interface UpcomingProgram {
+  id:                      string;
+  name:                    string;
+  catalog_available_from:  string;
+  catalog_available_until: string | null;
+  featured_duration_days:  number | null;
+}
+
 function StarDisplay({ value, color }: { value: number; color: string }) {
   const full  = Math.round(value);
   const stars = '★'.repeat(full) + '☆'.repeat(5 - full);
   return <span style={{ color, fontSize: 14 }}>{stars}</span>;
 }
 
+function fmtDate(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtMonth(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function isLive(p: UpcomingProgram): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return p.catalog_available_from <= today && (!p.catalog_available_until || p.catalog_available_until >= today);
+}
+
 export default function MasterDashboardPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail]             = useState('');
-  const [stats, setStats]             = useState<Stats | null>(null);
-  const [loading, setLoading]         = useState(true);
+  const [displayName, setDisplayName]         = useState('');
+  const [email, setEmail]                     = useState('');
+  const [stats, setStats]                     = useState<Stats | null>(null);
+  const [upcoming, setUpcoming]               = useState<UpcomingProgram[]>([]);
+  const [loading, setLoading]                 = useState(true);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -40,14 +62,26 @@ export default function MasterDashboardPage() {
         return;
       }
 
-      const [profResult, statsResult] = await Promise.all([
+      const today = new Date().toISOString().slice(0, 10);
+
+      const [profResult, statsResult, upcomingResult] = await Promise.all([
         sb.from('profiles').select('display_name, email').eq('id', MASTER_ID).single(),
         sb.rpc('get_featured_program_stats', { p_practitioner_id: MASTER_ID }),
+        sb
+          .from('plan_templates')
+          .select('id, name, catalog_available_from, catalog_available_until, featured_duration_days')
+          .eq('practitioner_id', MASTER_ID)
+          .eq('is_featured', true)
+          .not('catalog_available_from', 'is', null)
+          .gte('catalog_available_until', today)
+          .order('catalog_available_from', { ascending: true })
+          .limit(6),
       ]);
 
       setDisplayName((profResult.data as any)?.display_name ?? '');
       setEmail((profResult.data as any)?.email ?? '');
       setStats((statsResult.data as Stats[])?.[0] ?? null);
+      setUpcoming((upcomingResult.data as UpcomingProgram[]) ?? []);
       setLoading(false);
     });
   }, [router]);
@@ -135,17 +169,75 @@ export default function MasterDashboardPage() {
           </div>
         )}
 
-        {/* Quick links */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14, marginTop: 32 }}>
-          <a href="/master/clients" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px 24px', textDecoration: 'none', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>View Clients →</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>See all employers running your programs.</p>
-          </a>
-          <a href="/master/programs" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px 24px', textDecoration: 'none', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>Manage Programs →</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>View and edit your featured plan templates.</p>
-          </a>
+        {/* Program Schedule */}
+        <div style={{ marginTop: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Program Schedule</h2>
+            <a href="/master/programs" style={{ fontSize: 13, color: TEAL, textDecoration: 'none', fontWeight: 600 }}>
+              Manage →
+            </a>
+          </div>
+
+          {upcoming.length === 0 ? (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+              No programs scheduled. Head to Programs to set catalog dates.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {upcoming.map(p => {
+                const live = isLive(p);
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: 'var(--card)',
+                      border: `1px solid ${live ? TEAL + '40' : 'var(--border)'}`,
+                      borderRadius: 14,
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                    }}
+                  >
+                    {/* Status dot */}
+                    <div style={{
+                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                      background: live ? TEAL : 'var(--border-strong)',
+                      boxShadow: live ? `0 0 6px ${TEAL}80` : 'none',
+                    }} />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, margin: '0 0 3px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p.name}
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                        {fmtDate(p.catalog_available_from)}
+                        {p.catalog_available_until && ` → ${fmtDate(p.catalog_available_until)}`}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {p.featured_duration_days && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: PURPLE, background: PURPLE + '18', borderRadius: 999, padding: '2px 8px' }}>
+                          {p.featured_duration_days}d
+                        </span>
+                      )}
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '3px 10px',
+                        background: live ? TEAL + '18' : `${TEAL}08`,
+                        color: live ? TEAL : 'var(--text-dim)',
+                        border: `1px solid ${live ? TEAL + '40' : 'var(--border-strong)'}`,
+                      }}>
+                        {live ? 'LIVE' : fmtMonth(p.catalog_available_from)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+
       </main>
     </div>
   );
