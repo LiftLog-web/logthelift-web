@@ -254,6 +254,7 @@ export default function ProgramsPage() {
     const sb = getSupabase();
     const { error } = await sb.from('employer_programs').delete().eq('id', prog.id);
     if (error) { alert('Could not remove program: ' + error.message); setRemovingProgId(null); return; }
+    await sb.from('workout_plans').delete().eq('practitioner_id', userId).eq('name', prog.name);
     setActivePrograms(prev => {
       const next = prev.filter(p => p.id !== prog.id);
       if (lbProgramId === prog.id && next.length > 0) {
