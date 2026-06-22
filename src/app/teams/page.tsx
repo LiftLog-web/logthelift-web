@@ -34,6 +34,15 @@ export default function TeamsPage() {
   const [savingEdit,   setSavingEdit]   = useState(false);
   const [deletingId,   setDeletingId]   = useState<string | null>(null);
   const [savingMove,   setSavingMove]   = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (!(e.target as Element).closest('[data-dropdown]')) setOpenDropdown(null);
+    }
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -228,20 +237,44 @@ export default function TeamsPage() {
                 {/* Members */}
                 {members.length > 0 && (
                   <div style={{ padding: '16px 24px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {members.map(emp => (
-                      <div key={emp.patientId} style={{ display: 'flex', alignItems: 'center', gap: 8, background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 999, padding: '6px 14px' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{emp.displayName}</span>
-                        <select
-                          value={emp.teamId ?? ''}
-                          onChange={e => handleMoveEmployee(emp.patientId, e.target.value || null)}
-                          disabled={savingMove === emp.patientId}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', outline: 'none' }}
-                        >
-                          <option value="">— Remove from team</option>
-                          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                      </div>
-                    ))}
+                    {members.map(emp => {
+                      const dropId = `member-${emp.patientId}`;
+                      return (
+                        <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 999, padding: '6px 14px' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{emp.displayName}</span>
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
+                            disabled={savingMove === emp.patientId}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+                          >
+                            {savingMove === emp.patientId ? '…' : '▾'}
+                          </button>
+                          {openDropdown === dropId && (
+                            <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                              <button
+                                onClick={() => { handleMoveEmployee(emp.patientId, null); setOpenDropdown(null); }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                Remove from team
+                              </button>
+                              {teams.filter(t => t.id !== emp.teamId).map(t => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
+                                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                >
+                                  Move to {t.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -269,15 +302,31 @@ export default function TeamsPage() {
                 >
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{emp.displayName}</span>
                   {teams.length > 0 ? (
-                    <select
-                      value=""
-                      onChange={e => { if (e.target.value) handleMoveEmployee(emp.patientId, e.target.value); }}
-                      disabled={savingMove === emp.patientId}
-                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, cursor: 'pointer', outline: 'none' }}
-                    >
-                      <option value="">Add to team…</option>
-                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
+                    <div data-dropdown style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === emp.patientId ? null : emp.patientId)}
+                        disabled={savingMove === emp.patientId}
+                        style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                      >
+                        {savingMove === emp.patientId ? 'Moving…' : 'Add to team…'}
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>▾</span>
+                      </button>
+                      {openDropdown === emp.patientId && (
+                        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                          {teams.map((t, ti) => (
+                            <button
+                              key={t.id}
+                              onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              {t.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Create a team above first</span>
                   )}

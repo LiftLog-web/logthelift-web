@@ -62,6 +62,7 @@ export default function ProfilePage() {
   const [sessionToken, setSessionToken] = useState('');
 
   const [featuredStats, setFeaturedStats] = useState<FeaturedStats | null>(null);
+  const [employerTeams, setEmployerTeams] = useState<{ id: string; name: string; memberCount: number }[]>([]);
 
   // Invite code state
   const [inviteCode, setInviteCode]   = useState<{ code: string; expires_at: string } | null>(null);
@@ -112,12 +113,27 @@ export default function ProfilePage() {
         const pts = (links ?? []).map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles).filter(Boolean);
         setPractitioners(pts);
       } else {
-        const { data: links } = await supabase
-          .from('patient_links')
-          .select('profiles:patient_id(id, display_name, email)')
-          .eq('practitioner_id', userId);
-        const pats = (links ?? []).map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles).filter(Boolean);
+        const [linksRes, teamsRes] = await Promise.all([
+          supabase
+            .from('patient_links')
+            .select('profiles:patient_id(id, display_name, email), team_id')
+            .eq('practitioner_id', userId),
+          prof.is_employer
+            ? supabase.from('employer_teams').select('id, name').eq('employer_id', userId).order('name')
+            : Promise.resolve({ data: [] }),
+        ]);
+        const links = linksRes.data ?? [];
+        const pats = links.map((l: any) => Array.isArray(l.profiles) ? l.profiles[0] : l.profiles).filter(Boolean);
         setPatients(pats);
+
+        if (prof.is_employer) {
+          const teamCounts: Record<string, number> = {};
+          for (const l of links) {
+            const tid = (l as any).team_id;
+            if (tid) teamCounts[tid] = (teamCounts[tid] ?? 0) + 1;
+          }
+          setEmployerTeams(((teamsRes as any).data ?? []).map((t: any) => ({ id: t.id, name: t.name, memberCount: teamCounts[t.id] ?? 0 })));
+        }
 
         // Load active invite code
         const { data: codeData } = await supabase
@@ -273,7 +289,7 @@ export default function ProfilePage() {
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : (isPractitioner ? '🩺' : '🏋️')}
+              : (isEmployer ? '🏢' : isPractitioner ? '🩺' : '🏋️')}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -338,6 +354,40 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* My Teams (employer only) */}
+        {isEmployer && (
+          <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+            <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>My Teams ({employerTeams.length})</h2>
+              <a href="/teams" style={{ fontSize: 13, color: TEAL, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Manage →</a>
+            </div>
+            {employerTeams.length === 0 ? (
+              <div style={{ padding: '32px 28px', textAlign: 'center' }}>
+                <p style={{ color: 'var(--text-dim)', fontSize: 14, margin: '0 0 16px' }}>No teams yet. Create teams to organize employees for the leaderboard.</p>
+                <a href="/teams" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>Set Up Teams</a>
+              </div>
+            ) : (
+              <div>
+                {employerTeams.map((team, i) => (
+                  <a
+                    key={team.id}
+                    href="/teams"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', color: 'inherit', transition: 'background 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${PURPLE}18`, border: `1px solid ${PURPLE}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>👥</div>
+                      <span style={{ fontWeight: 600, fontSize: 15 }}>{team.name}</span>
+                    </div>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{team.memberCount} member{team.memberCount !== 1 ? 's' : ''}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Master practitioner program metrics */}
         {profile?.id === MASTER_PRACTITIONER_ID && (
