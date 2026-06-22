@@ -667,6 +667,25 @@ export default function TemplateEditorPage() {
       exercises: d.exercises.map(({ skippedWeeks: _skip, ...rest }) => rest as TemplateExercise),
     }));
 
+  // Convert web-internal 'seconds' field → 'duration' for duration-type exercises so the mobile
+  // app can read the field it expects (WorkoutSet.duration). Applied before any DB write.
+  const serializeForMobile = (rawDays: TemplateDay[]): any[] =>
+    rawDays.map(d => ({
+      ...d,
+      exercises: d.exercises.map(({ skippedWeeks: _skip, ...ex }) => ({
+        ...ex,
+        sets: ex.sets.map(({ seconds, ...s }: WorkoutSet) =>
+          ex.exercise.type === 'duration' && seconds != null ? { ...s, duration: seconds } : { ...s, ...(seconds != null ? { seconds } : {}) }
+        ),
+        weeks: ex.weeks?.map((w: WeekData) => ({
+          ...w,
+          sets: (w.sets ?? []).map(({ seconds, ...s }: WorkoutSet) =>
+            ex.exercise.type === 'duration' && seconds != null ? { ...s, duration: seconds } : { ...s, ...(seconds != null ? { seconds } : {}) }
+          ),
+        })),
+      })),
+    }));
+
   const handleSave = async () => {
     if (!name.trim()) { alert('Please give this template a name.'); return; }
     setSaving(true);
@@ -716,7 +735,7 @@ export default function TemplateEditorPage() {
     isNewRef.current = false;
     // Create one patient plan per selected patient from template (strip web-only fields)
     const now = new Date().toISOString();
-    const exercisesPayload = { frequencyPerWeek, days: stripSkippedWeeks(days) };
+    const exercisesPayload = { frequencyPerWeek, days: serializeForMobile(days) };
     const selectedIds = Array.from(assignSelectedIds);
     const { error } = await sb.from('workout_plans').insert(selectedIds.map(patientId => ({
       practitioner_id: userId,
