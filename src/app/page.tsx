@@ -68,24 +68,6 @@ export default function Home() {
             style={{ border: '1px solid var(--border)', color: 'var(--text)' }}>
             Sign In / Sign Up
           </a>
-          <a
-            href="https://apps.apple.com/app/id6762567982"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-semibold px-4 py-2 rounded-full"
-            style={{ backgroundColor: TEAL, color: '#0f1117' }}
-          >
-            App Store
-          </a>
-          <a
-            href="https://play.google.com/store/apps/details?id=com.logthelift.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-semibold px-4 py-2 rounded-full"
-            style={{ backgroundColor: YELLOW, color: '#0f1117' }}
-          >
-            Google Play
-          </a>
         </div>
       </nav>
 

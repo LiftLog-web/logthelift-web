@@ -40,7 +40,7 @@ function buildPTInviteHtml(gymName: string, ptName: string): string {
         Download on the App Store (iOS)
       </a>
       <a href="https://play.google.com/store/apps/details?id=com.logthelift.app"
-         style="display:block;background:rgba(255,255,255,0.08);color:#fff;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;border:1px solid rgba(255,255,255,0.15);margin-bottom:12px;">
+         style="display:block;background:#F9F295;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;margin-bottom:12px;">
         Download on Google Play (Android)
       </a>
 

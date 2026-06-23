@@ -334,7 +334,7 @@ export default function ProfilePage() {
                     App Store
                   </a>
                   <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
-                    style={{ border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                    style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
                     Google Play
                   </a>
                 </div>
@@ -601,7 +601,7 @@ export default function ProfilePage() {
               App Store
             </a>
             <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
-              style={{ border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+              style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
               Google Play
             </a>
           </div>

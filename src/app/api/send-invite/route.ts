@@ -21,7 +21,7 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
 
   const body = isEmployer
     ? `<strong style="color:#fff;">${escapeHtml(senderName)}</strong> wants to invite you to LiftLog to promote a healthy work environment and help you incorporate stretching and mobility into your work day. Your personalized office wellness plan will be waiting for you once you sign up.`
-    : `Your practitioner wants to track your workout progress and send you personalized training plans through LiftLog.`;
+    : `You've been invited to LiftLog to track your fitness progress and stay connected with your team.`;
 
   const linkStep = isEmployer
     ? `Go to <strong style="color:#fff;">Settings → Link to Practitioner or Employer</strong>`
@@ -62,7 +62,7 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
         Download on the App Store (iOS)
       </a>
       <a href="https://play.google.com/store/apps/details?id=com.logthelift.app"
-         style="display:block;background:rgba(255,255,255,0.08);color:#fff;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;border:1px solid rgba(255,255,255,0.15);">
+         style="display:block;background:#F9F295;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;">
         Download on Google Play (Android)
       </a>
 
