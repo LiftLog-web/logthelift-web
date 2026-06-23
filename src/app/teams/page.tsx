@@ -124,7 +124,16 @@ export default function TeamsPage() {
   async function handleMoveEmployee(patientId: string, newTeamId: string | null) {
     setSavingMove(patientId);
     const sb = getSupabase();
-    await sb.from('patient_links').update({ team_id: newTeamId }).eq('practitioner_id', userId).eq('patient_id', patientId);
+    const { error } = await sb
+      .from('patient_links')
+      .update({ team_id: newTeamId })
+      .eq('practitioner_id', userId)
+      .eq('patient_id', patientId);
+    if (error) {
+      alert('Could not update team: ' + error.message);
+      setSavingMove(null);
+      return;
+    }
     setEmployees(prev => prev.map(e => e.patientId === patientId ? { ...e, teamId: newTeamId } : e));
     setSavingMove(null);
   }
