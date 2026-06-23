@@ -182,9 +182,10 @@ export default function LeaderboardPage() {
       }
       setCompanyName(prof.company_name ?? 'Your Company');
 
-      const [{ data: links }, { data: teamsData }] = await Promise.all([
+      const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
         supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
         supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
+        supabase.from('workout_plans').select('id').eq('practitioner_id', user.id),
       ]);
 
       if (!links || links.length === 0) { setLoading(false); return; }
@@ -197,13 +198,21 @@ export default function LeaderboardPage() {
       }));
       setEmployees(empList);
 
-      const { data: workouts } = await supabase
-        .rpc('get_employer_leaderboard_workouts', { p_employer_id: user.id });
+      const planIds = (planRows ?? []).map((p: any) => p.id as string);
+      let workouts: { user_id: string; date: string }[] = [];
+      if (planIds.length > 0 && empList.length > 0) {
+        const { data } = await supabase
+          .from('synced_workouts')
+          .select('user_id, date')
+          .in('user_id', empList.map(e => e.id))
+          .filter('data->>planId', 'in', `(${planIds.join(',')})`);
+        workouts = data ?? [];
+      }
 
       const dateMap: Record<string, string[]> = {};
       for (const emp of empList) dateMap[emp.id] = [];
 
-      for (const w of workouts ?? []) {
+      for (const w of workouts) {
         dateMap[w.user_id]?.push(w.date);
       }
 

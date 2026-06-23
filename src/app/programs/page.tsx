@@ -246,10 +246,26 @@ export default function ProgramsPage() {
   }, []);
 
   async function loadLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, prog: EmployerProgram, teamList: Team[]) {
-    const allLinks = (await sb.from('patient_links').select('patient_id').eq('practitioner_id', uid)).data ?? [];
+    const [allLinksRes, planIdsRes] = await Promise.all([
+      sb.from('patient_links').select('patient_id').eq('practitioner_id', uid),
+      sb.from('workout_plans').select('id').eq('practitioner_id', uid),
+    ]);
+    const allLinks = (allLinksRes.data ?? []) as { patient_id: string }[];
+    const planIds  = (planIdsRes.data ?? []).map((p: any) => p.id as string);
+
+    if (allLinks.length === 0 || planIds.length === 0) {
+      setLeaderboard(teamList.map(t => ({ teamId: t.id, teamName: t.name, totalWorkouts: 0, memberCount: 0 })));
+      return;
+    }
+
     const [linksRes, workoutsRes] = await Promise.all([
       sb.from('patient_links').select('patient_id, team_id').eq('practitioner_id', uid).not('team_id', 'is', null),
-      sb.from('synced_workouts').select('user_id, date').in('user_id', allLinks.map((l: any) => l.patient_id)).gte('date', prog.started_at).lte('date', prog.ends_at),
+      sb.from('synced_workouts')
+        .select('user_id, date')
+        .in('user_id', allLinks.map((l: any) => l.patient_id))
+        .gte('date', prog.started_at)
+        .lte('date', prog.ends_at)
+        .filter('data->>planId', 'in', `(${planIds.join(',')})`),
     ]);
     const links  = (linksRes.data ?? []) as { patient_id: string; team_id: string }[];
     const wkouts = (workoutsRes.data ?? []) as { user_id: string }[];
