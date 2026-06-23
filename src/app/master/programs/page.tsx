@@ -102,7 +102,7 @@ function parseExercises(rawExercises: any[]): any[] {
         ? { ...ex.exercise, type: 'duration' }
         : ex.exercise;
     const effectiveNotes = ex.practitionerNotes || ex.notes || '';
-    return { ...ex, id: crypto.randomUUID(), sets, exercise, practitionerNotes: effectiveNotes, notes: effectiveNotes };
+    return { ...ex, id: crypto.randomUUID(), sets, exercise, practitionerNotes: effectiveNotes, notes: '' };
   });
 }
 
