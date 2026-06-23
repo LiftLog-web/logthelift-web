@@ -26,8 +26,10 @@ export default function PractitionerNav({ rightSlot, isEmployer = false }: { rig
       { href: '/teams',       label: 'Teams',       Icon: TeamsIcon       },
       { href: '/leaderboard', label: 'Leaderboard', Icon: LeaderboardIcon },
     ] : []),
-    { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
-    { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
+    ...(!isEmployer ? [
+      { href: '/plans/library', label: 'Plan Library',  Icon: PlanLibraryIcon },
+      { href: '/media-library', label: 'Video Library', Icon: VideoLibraryIcon },
+    ] : []),
     { href: '/profile',       label: 'Profile',       Icon: ProfileIcon },
   ];
 
