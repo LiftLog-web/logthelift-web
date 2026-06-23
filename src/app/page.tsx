@@ -82,7 +82,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-semibold px-4 py-2 rounded-full"
-            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+            style={{ backgroundColor: YELLOW, color: '#0f1117' }}
           >
             Google Play
           </a>
@@ -119,16 +119,9 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             className="px-8 py-3 rounded-full font-bold text-lg shadow-lg"
-            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+            style={{ backgroundColor: YELLOW, color: '#0f1117' }}
           >
             Google Play
-          </a>
-          <a
-            href="#for-businesses"
-            className="px-8 py-3 rounded-full font-bold text-lg transition-colors"
-            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
-          >
-            For Businesses →
           </a>
         </div>
       </section>
@@ -208,7 +201,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             className="px-10 py-4 rounded-full font-bold text-lg shadow-xl"
-            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+            style={{ backgroundColor: YELLOW, color: '#0f1117' }}
           >
             Google Play
           </a>
