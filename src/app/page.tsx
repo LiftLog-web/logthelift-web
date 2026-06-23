@@ -75,7 +75,16 @@ export default function Home() {
             className="text-sm font-semibold px-4 py-2 rounded-full"
             style={{ backgroundColor: TEAL, color: '#0f1117' }}
           >
-            Download App
+            App Store
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold px-4 py-2 rounded-full"
+            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+          >
+            Google Play
           </a>
         </div>
       </nav>
@@ -103,7 +112,16 @@ export default function Home() {
             className="px-8 py-3 rounded-full font-bold text-lg shadow-lg"
             style={{ backgroundColor: TEAL, color: '#0f1117' }}
           >
-            Download on App Store
+            App Store
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-8 py-3 rounded-full font-bold text-lg shadow-lg"
+            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+          >
+            Google Play
           </a>
           <a
             href="#for-businesses"
@@ -173,17 +191,28 @@ export default function Home() {
       <section className="px-6 py-20 flex flex-col items-center gap-6 text-center">
         <h2 className="text-4xl font-extrabold">Ready to get started?</h2>
         <p className="max-w-md" style={{ color: 'var(--text-muted)' }}>
-          Download LiftLog free on the App Store and start tracking your first workout today.
+          Download LiftLog free on the App Store or Google Play and start tracking your first workout today.
         </p>
-        <a
-          href="https://apps.apple.com/app/id6762567982"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-10 py-4 rounded-full font-bold text-lg shadow-xl"
-          style={{ backgroundColor: TEAL, color: '#0f1117' }}
-        >
-          Download Free
-        </a>
+        <div className="flex gap-4 flex-wrap justify-center">
+          <a
+            href="https://apps.apple.com/app/id6762567982"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-10 py-4 rounded-full font-bold text-lg shadow-xl"
+            style={{ backgroundColor: TEAL, color: '#0f1117' }}
+          >
+            App Store
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-10 py-4 rounded-full font-bold text-lg shadow-xl"
+            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+          >
+            Google Play
+          </a>
+        </div>
       </section>
 
       {/* Footer */}

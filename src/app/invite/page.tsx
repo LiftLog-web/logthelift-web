@@ -121,7 +121,14 @@ export default function InvitePage() {
               className="w-full py-3 rounded-xl font-bold text-[#0f1117] text-center"
               style={{ backgroundColor: '#5fcfbf' }}
             >
-              Open LiftLog App
+              Open on App Store (iOS)
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+              className="w-full py-3 rounded-xl font-bold text-center"
+              style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+            >
+              Open on Google Play (Android)
             </a>
           </>
         )}
@@ -138,7 +145,14 @@ export default function InvitePage() {
               className="w-full py-3 rounded-xl font-bold text-[#0f1117] text-center"
               style={{ backgroundColor: '#5fcfbf' }}
             >
-              Open LiftLog App
+              Open on App Store (iOS)
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+              className="w-full py-3 rounded-xl font-bold text-center"
+              style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+            >
+              Open on Google Play (Android)
             </a>
           </>
         )}

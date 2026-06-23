@@ -30,14 +30,18 @@ function buildPTInviteHtml(gymName: string, ptName: string): string {
 
       <p style="color:rgba(255,255,255,0.6);font-size:14px;font-weight:600;margin:0 0 12px;">How to get started:</p>
       <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2.2;margin:0 0 28px;padding-left:20px;">
-        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store</li>
+        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store or Google Play</li>
         <li>Create your account and select <strong style="color:#fff;">Practitioner</strong> as your role</li>
         <li>Contact <strong style="color:#fff;">${escapeHtml(gymName)}</strong> to be linked to their gym on the platform</li>
       </ol>
 
       <a href="https://apps.apple.com/app/id6762567982"
          style="display:block;background:#5fcfbf;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;margin-bottom:12px;">
-        Download LiftLog on the App Store
+        Download on the App Store (iOS)
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+         style="display:block;background:rgba(255,255,255,0.08);color:#fff;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;border:1px solid rgba(255,255,255,0.15);margin-bottom:12px;">
+        Download on Google Play (Android)
       </a>
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">

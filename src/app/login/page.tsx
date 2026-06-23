@@ -290,7 +290,9 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, marginTop: 24, marginBottom: 0 }}>
           New to LiftLog?{' '}
-          <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer" style={{ color: TEAL }}>Download the app</a>
+          <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer" style={{ color: TEAL }}>App Store</a>
+          {' · '}
+          <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer" style={{ color: TEAL }}>Google Play</a>
         </p>
       </div>
     </div>

@@ -328,10 +328,16 @@ export default function ProfilePage() {
                   : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
               </p>
               {!isPractitioner && (
-                <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
-                  style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
-                  Open LiftLog App
-                </a>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
+                    style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                    App Store
+                  </a>
+                  <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                    Google Play
+                  </a>
+                </div>
               )}
             </div>
           ) : (
@@ -589,10 +595,16 @@ export default function ProfilePage() {
             <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Full experience on mobile</p>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>Log workouts, track progress, and connect with your team on the LiftLog app.</p>
           </div>
-          <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
-            Download on iOS
-          </a>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+              App Store
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
+              style={{ border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+              Google Play
+            </a>
+          </div>
         </div>
 
       </main>

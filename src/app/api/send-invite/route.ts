@@ -59,11 +59,12 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
 
       <a href="https://apps.apple.com/app/id6762567982"
          style="display:block;background:#5fcfbf;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;margin-bottom:12px;">
-        Download LiftLog on iPhone (App Store)
+        Download on the App Store (iOS)
       </a>
-      <p style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;margin:0 0 4px;">
-        Android version coming soon to Google Play.
-      </p>
+      <a href="https://play.google.com/store/apps/details?id=com.logthelift.app"
+         style="display:block;background:rgba(255,255,255,0.08);color:#fff;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;border:1px solid rgba(255,255,255,0.15);">
+        Download on Google Play (Android)
+      </a>
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
         <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">${footer}</p>
