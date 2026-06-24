@@ -13,9 +13,6 @@ import { addMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
 const AMBER  = '#F59E0B';
-const GOLD   = '#FFD700';
-const SILVER = '#94A3B8';
-const BRONZE = '#CD7F32';
 
 const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID || '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
@@ -35,16 +32,6 @@ interface EmployerProgram {
   name: string;
   started_at: string;
   ends_at: string;
-}
-
-interface Team { id: string; name: string; }
-
-interface LeaderboardRow {
-  teamId: string; teamName: string; totalWorkouts: number; memberCount: number;
-}
-
-interface IndividualRow {
-  userId: string; name: string; totalWorkouts: number; teamName: string | null;
 }
 
 interface ProgramRating {
@@ -115,11 +102,6 @@ export default function ProgramsPage() {
   const [comingSoonTemplates,    setComingSoonTemplates]    = useState<FeaturedTemplate[]>([]);
   const [activePrograms,         setActivePrograms]         = useState<EmployerProgram[]>([]);
   const [pastPrograms,           setPastPrograms]           = useState<EmployerProgram[]>([]);
-  const [teams,                  setTeams]                  = useState<Team[]>([]);
-  const [leaderboard,            setLeaderboard]            = useState<LeaderboardRow[]>([]);
-  const [lbProgramId,            setLbProgramId]            = useState<string | null>(null);
-  const [lbDropdownOpen,         setLbDropdownOpen]         = useState(false);
-  const lbDropdownRef = useRef<HTMLDivElement>(null);
   const [loading,                setLoading]                = useState(true);
   const [launchModal,            setLaunchModal]            = useState<FeaturedTemplate | null>(null);
   const [launching,              setLaunching]              = useState(false);
@@ -132,8 +114,6 @@ export default function ProgramsPage() {
   const [multiLaunch,            setMultiLaunch]            = useState(false);
   const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
   const [programEngagement,      setProgramEngagement]      = useState<Record<string, number>>({});
-  const [lbView,                 setLbView]                 = useState<'team' | 'individual'>('team');
-  const [individualLeaderboard,  setIndividualLeaderboard]  = useState<IndividualRow[]>([]);
   const [relaunchLoading,        setRelaunchLoading]        = useState<string | null>(null);
 
   // Date picker state (shared between single and multi-launch modals)
@@ -193,7 +173,7 @@ export default function ProgramsPage() {
       setCompanyName((prof as any).company_name ?? '');
       setAuthed(true);
 
-      const [templatesRes, programsRes, teamsRes, linkCountRes] = await Promise.all([
+      const [templatesRes, programsRes] = await Promise.all([
         sb.from('plan_templates')
           .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
           .eq('practitioner_id', MASTER_ID)
@@ -205,8 +185,6 @@ export default function ProgramsPage() {
           .select('id, plan_template_id, name, started_at, ends_at')
           .eq('employer_id', uid)
           .order('started_at', { ascending: false }),
-        sb.from('employer_teams').select('id, name').eq('employer_id', uid).order('name'),
-        sb.from('patient_links').select('patient_id', { count: 'exact', head: true }).eq('practitioner_id', uid),
       ]);
 
       // Exclude expired templates (until < today) — keep nulls (no expiry set)
@@ -221,19 +199,6 @@ export default function ProgramsPage() {
       const past   = progs.filter(p => p.ends_at < today);
       setActivePrograms(active);
       setPastPrograms(past);
-      setTeams((teamsRes.data as Team[]) ?? []);
-      setEmployeeCount(linkCountRes.count ?? 0);
-
-      if (active.length > 0) {
-        const first = active[0];
-        setLbProgramId(first.id);
-        if (teamsRes.data && teamsRes.data.length > 0) {
-          await loadLeaderboard(sb, uid, first, teamsRes.data as Team[]);
-        } else if ((linkCountRes.count ?? 0) > 0) {
-          setLbView('individual');
-          await loadIndividualLeaderboard(sb, uid, first, []);
-        }
-      }
       setLoading(false);
 
       // Fetch aggregate ratings for this employer's employees (non-blocking)
@@ -277,102 +242,11 @@ export default function ProgramsPage() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); setLbDropdownOpen(false); }
-    }
-    function onMouseDown(e: MouseEvent) {
-      if (lbDropdownRef.current && !lbDropdownRef.current.contains(e.target as Node)) setLbDropdownOpen(false);
+      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); }
     }
     window.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onMouseDown);
-    return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onMouseDown); };
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  async function loadLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, prog: EmployerProgram, teamList: Team[]) {
-    const [allLinksRes, planIdsRes] = await Promise.all([
-      sb.from('patient_links').select('patient_id').eq('practitioner_id', uid),
-      sb.from('workout_plans').select('id').eq('practitioner_id', uid),
-    ]);
-    const allLinks = (allLinksRes.data ?? []) as { patient_id: string }[];
-    const planIds  = (planIdsRes.data ?? []).map((p: any) => p.id as string);
-
-    if (allLinks.length === 0 || planIds.length === 0) {
-      setLeaderboard(teamList.map(t => ({ teamId: t.id, teamName: t.name, totalWorkouts: 0, memberCount: 0 })));
-      return;
-    }
-
-    const [linksRes, workoutsRes] = await Promise.all([
-      sb.from('patient_links').select('patient_id, team_id').eq('practitioner_id', uid).not('team_id', 'is', null),
-      sb.from('synced_workouts')
-        .select('user_id, date')
-        .in('user_id', allLinks.map((l: any) => l.patient_id))
-        .gte('date', prog.started_at)
-        .lte('date', prog.ends_at)
-        .filter('data->>planId', 'in', `(${planIds.join(',')})`),
-    ]);
-    const links  = (linksRes.data ?? []) as { patient_id: string; team_id: string }[];
-    const wkouts = (workoutsRes.data ?? []) as { user_id: string }[];
-    const teamTotals: Record<string, number>     = {};
-    const teamMembers: Record<string, Set<string>> = {};
-    for (const l of links) {
-      if (!teamMembers[l.team_id]) teamMembers[l.team_id] = new Set();
-      teamMembers[l.team_id].add(l.patient_id);
-    }
-    for (const w of wkouts) {
-      const link = links.find(l => l.patient_id === w.user_id);
-      if (!link) continue;
-      teamTotals[link.team_id] = (teamTotals[link.team_id] ?? 0) + 1;
-    }
-    setLeaderboard(teamList.map(t => ({
-      teamId: t.id, teamName: t.name,
-      totalWorkouts: teamTotals[t.id] ?? 0,
-      memberCount: teamMembers[t.id]?.size ?? 0,
-    })).sort((a, b) => b.totalWorkouts - a.totalWorkouts));
-  }
-
-  async function loadAllLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, progs: EmployerProgram[], teamList: Team[]) {
-    if (!progs.length) return;
-    const startedAt = progs.reduce((min, p) => p.started_at < min ? p.started_at : min, progs[0].started_at);
-    const endsAt    = progs.reduce((max, p) => p.ends_at   > max ? p.ends_at   : max, progs[0].ends_at);
-    await loadLeaderboard(sb, uid, { id: '__all__', plan_template_id: '', name: 'All Programs', started_at: startedAt, ends_at: endsAt }, teamList);
-  }
-
-  async function loadIndividualLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, prog: EmployerProgram, teamList: Team[]) {
-    const [linksRes, planIdsRes] = await Promise.all([
-      sb.from('patient_links').select('patient_id, team_id').eq('practitioner_id', uid),
-      sb.from('workout_plans').select('id').eq('practitioner_id', uid),
-    ]);
-    const links    = (linksRes.data ?? []) as { patient_id: string; team_id: string | null }[];
-    const planIds  = (planIdsRes.data ?? []).map((p: any) => p.id as string);
-    const patientIds = links.map(l => l.patient_id);
-    if (!patientIds.length) { setIndividualLeaderboard([]); return; }
-    const [wkRes, profilesRes] = await Promise.all([
-      planIds.length > 0
-        ? sb.from('synced_workouts').select('user_id').in('user_id', patientIds).gte('date', prog.started_at).lte('date', prog.ends_at).filter('data->>planId', 'in', `(${planIds.join(',')})`)
-        : Promise.resolve({ data: [] as any[], error: null }),
-      sb.from('profiles').select('id, display_name').in('id', patientIds),
-    ]);
-    const counts: Record<string, number> = {};
-    for (const w of (wkRes.data ?? []) as { user_id: string }[]) counts[w.user_id] = (counts[w.user_id] ?? 0) + 1;
-    const nameMap: Record<string, string> = {};
-    for (const p of (profilesRes.data ?? []) as { id: string; display_name: string | null }[]) nameMap[p.id] = p.display_name ?? 'Employee';
-    const teamNameMap: Record<string, string> = {};
-    for (const t of teamList) teamNameMap[t.id] = t.name;
-    setIndividualLeaderboard(
-      links.map(l => ({
-        userId: l.patient_id,
-        name: nameMap[l.patient_id] ?? 'Employee',
-        totalWorkouts: counts[l.patient_id] ?? 0,
-        teamName: l.team_id ? (teamNameMap[l.team_id] ?? null) : null,
-      })).sort((a, b) => b.totalWorkouts - a.totalWorkouts)
-    );
-  }
-
-  async function loadAllIndividualLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, progs: EmployerProgram[], teamList: Team[]) {
-    if (!progs.length) return;
-    const startedAt = progs.reduce((min, p) => p.started_at < min ? p.started_at : min, progs[0].started_at);
-    const endsAt    = progs.reduce((max, p) => p.ends_at   > max ? p.ends_at   : max, progs[0].ends_at);
-    await loadIndividualLeaderboard(sb, uid, { id: '__all__', plan_template_id: '', name: 'All Programs', started_at: startedAt, ends_at: endsAt }, teamList);
-  }
 
   async function handleRemoveProgram(prog: EmployerProgram) {
     if (!confirm(`End "${prog.name}" early? This will remove it from your active programs.`)) return;
@@ -381,63 +255,8 @@ export default function ProgramsPage() {
     const { error } = await sb.from('employer_programs').delete().eq('id', prog.id);
     if (error) { alert('Could not remove program: ' + error.message); setRemovingProgId(null); return; }
     await sb.from('workout_plans').delete().eq('practitioner_id', userId).eq('name', prog.name);
-    setActivePrograms(prev => {
-      const next = prev.filter(p => p.id !== prog.id);
-      if ((lbProgramId === prog.id || lbProgramId === '__all__') && next.length > 0) {
-        setLbProgramId(next[0].id);
-        if (lbView === 'individual') {
-          loadIndividualLeaderboard(sb, userId, next[0], teams);
-        } else if (teams.length > 0) {
-          loadLeaderboard(sb, userId, next[0], teams);
-        }
-      } else if (next.length === 0) {
-        setLbProgramId(null);
-        setLeaderboard([]);
-        setIndividualLeaderboard([]);
-      }
-      return next;
-    });
+    setActivePrograms(prev => prev.filter(p => p.id !== prog.id));
     setRemovingProgId(null);
-  }
-
-  async function switchLbProgram(progId: string) {
-    setLbProgramId(progId);
-    const sb = getSupabase();
-    if (lbView === 'individual') {
-      if (progId === '__all__') {
-        await loadAllIndividualLeaderboard(sb, userId, activePrograms, teams);
-      } else {
-        const prog = activePrograms.find(p => p.id === progId);
-        if (prog) await loadIndividualLeaderboard(sb, userId, prog, teams);
-      }
-    } else {
-      if (progId === '__all__') {
-        if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
-      } else {
-        const prog = activePrograms.find(p => p.id === progId);
-        if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
-      }
-    }
-  }
-
-  async function switchLbView(view: 'team' | 'individual') {
-    setLbView(view);
-    const sb = getSupabase();
-    if (view === 'individual') {
-      if (lbProgramId === '__all__') {
-        await loadAllIndividualLeaderboard(sb, userId, activePrograms, teams);
-      } else {
-        const prog = activePrograms.find(p => p.id === lbProgramId);
-        if (prog) await loadIndividualLeaderboard(sb, userId, prog, teams);
-      }
-    } else {
-      if (lbProgramId === '__all__') {
-        if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
-      } else {
-        const prog = activePrograms.find(p => p.id === lbProgramId);
-        if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
-      }
-    }
   }
 
   async function handleRelaunch(prog: EmployerProgram) {
@@ -490,7 +309,6 @@ export default function ProgramsPage() {
     }
     if (newProgs.length > 0) {
       setActivePrograms(prev => [...newProgs, ...prev]);
-      if (teams.length > 0) { setLbProgramId(newProgs[0].id); await loadLeaderboard(sb, userId, newProgs[0], teams); }
     }
     setLaunchDone(true); setLaunching(false);
     setTimeout(() => { setMultiLaunch(false); setSelectedTplIds([]); }, 1400);
@@ -525,7 +343,6 @@ export default function ProgramsPage() {
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
     const newProg = progData as EmployerProgram;
     setActivePrograms(prev => [newProg, ...prev]);
-    if (teams.length > 0) { setLbProgramId(newProg.id); await loadLeaderboard(sb, userId, newProg, teams); }
     setLaunchDone(true); setLaunching(false);
     setTimeout(() => setLaunchModal(null), 1200);
   }
@@ -533,7 +350,6 @@ export default function ProgramsPage() {
   if (loading || !authed) return <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />;
 
   const today      = new Date().toISOString().slice(0, 10);
-  const lbProgram  = activePrograms.find(p => p.id === lbProgramId) ?? activePrograms[0] ?? null;
   const pickerDates = getPickerDates();
 
   const DatePickerUI = (
@@ -706,180 +522,6 @@ export default function ProgramsPage() {
             </div>
           );
         })()}
-
-        {/* Leaderboard */}
-        {activePrograms.length > 0 && (teams.length > 0 || employeeCount > 0) && (
-          <div style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
-                Leaderboard
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {teams.length > 0 && (
-                  <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: 3 }}>
-                    {(['team', 'individual'] as const).map(v => (
-                      <button
-                        key={v}
-                        onClick={() => switchLbView(v)}
-                        style={{
-                          border: 'none', borderRadius: 6, padding: '4px 10px',
-                          fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                          background: lbView === v ? TEAL : 'transparent',
-                          color: lbView === v ? '#0f1117' : 'var(--text-dim)',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        {v === 'team' ? 'Teams' : 'Individual'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {activePrograms.length > 1 && (
-                  <div ref={lbDropdownRef} style={{ position: 'relative' }}>
-                    <button
-                      onClick={() => setLbDropdownOpen(o => !o)}
-                      style={{
-                        background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8,
-                        padding: '6px 12px', color: 'var(--text)', fontSize: 13, fontWeight: 600,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, outline: 'none',
-                      }}
-                    >
-                      {lbProgramId === '__all__' ? 'All Programs' : (activePrograms.find(p => p.id === lbProgramId)?.name ?? 'Select…')}
-                      <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>▼</span>
-                    </button>
-                    {lbDropdownOpen && (
-                      <div style={{
-                        position: 'absolute', top: 'calc(100% + 4px)', right: 0,
-                        background: 'var(--modal-bg)', border: '1px solid var(--border-strong)',
-                        borderRadius: 10, overflow: 'hidden', zIndex: 50, minWidth: 220,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                      }}>
-                        <button
-                          onClick={() => { switchLbProgram('__all__'); setLbDropdownOpen(false); }}
-                          style={{
-                            display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
-                            background: lbProgramId === '__all__' ? `${TEAL}18` : 'transparent',
-                            color: lbProgramId === '__all__' ? TEAL : 'var(--text)',
-                            border: 'none', fontSize: 13, fontWeight: lbProgramId === '__all__' ? 700 : 500, cursor: 'pointer',
-                          }}
-                        >
-                          All Programs
-                        </button>
-                        {activePrograms.map(p => (
-                          <button
-                            key={p.id}
-                            onClick={() => { switchLbProgram(p.id); setLbDropdownOpen(false); }}
-                            style={{
-                              display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
-                              background: lbProgramId === p.id ? `${TEAL}18` : 'transparent',
-                              color: lbProgramId === p.id ? TEAL : 'var(--text)',
-                              border: 'none', borderTop: '1px solid var(--border-subtle)',
-                              fontSize: 13, fontWeight: lbProgramId === p.id ? 700 : 500, cursor: 'pointer',
-                            }}
-                          >
-                            {p.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            {lbProgramId === '__all__' ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>All active programs combined</p>
-            ) : lbProgram ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-                {lbProgram.name} · {fmt(lbProgram.started_at)} — {fmt(lbProgram.ends_at)}
-              </p>
-            ) : null}
-            {lbView === 'team' ? (
-              leaderboard.every(r => r.totalWorkouts === 0) ? (
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
-                  <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No workouts logged yet. Leaderboard fills in as employees log sessions.</p>
-                </div>
-              ) : (
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-                  {leaderboard.length >= 3 && (
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16, padding: '32px 24px 0', background: 'var(--card-alt)' }}>
-                      {[leaderboard[1], leaderboard[0], leaderboard[2]].map((row, i) => {
-                        const rank  = i === 1 ? 1 : i === 0 ? 2 : 3;
-                        const color = rank === 1 ? GOLD : rank === 2 ? SILVER : BRONZE;
-                        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
-                        const barH  = rank === 1 ? 80 : rank === 2 ? 56 : 44;
-                        return (
-                          <div key={row.teamId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                            {rank === 1 && <div style={{ fontSize: 22 }}>👑</div>}
-                            <div style={{ fontWeight: 800, fontSize: rank === 1 ? 15 : 13, textAlign: 'center', maxWidth: 110 }}>{row.teamName}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{row.totalWorkouts} workout{row.totalWorkouts !== 1 ? 's' : ''}</div>
-                            <div style={{ width: rank === 1 ? 110 : 88, height: barH, background: `linear-gradient(180deg,${color}33 0%,${color}11 100%)`, border: `1px solid ${color}44`, borderBottom: 'none', borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{medal}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--card-alt)', borderTop: '1px solid var(--border)' }}>
-                        {['Rank', 'Team', 'Workouts', 'Members'].map(h => (
-                          <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaderboard.map((row, idx) => (
-                        <tr key={row.teamId} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--text-dim)' }}>#{idx + 1}</td>
-                          <td style={{ padding: '14px 20px', fontSize: 15, fontWeight: 700 }}>{row.teamName}</td>
-                          <td style={{ padding: '14px 20px', fontSize: 14, color: TEAL, fontWeight: 700 }}>{row.totalWorkouts}</td>
-                          <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-muted)' }}>{row.memberCount}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            ) : (
-              individualLeaderboard.length === 0 ? (
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
-                  <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No employees found. Invite employees via your Profile page.</p>
-                </div>
-              ) : (
-                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--card-alt)', borderBottom: '1px solid var(--border)' }}>
-                        {['Rank', 'Employee', ...(teams.length > 0 ? ['Team'] : []), 'Workouts'].map(h => (
-                          <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {individualLeaderboard.map((row, idx) => (
-                        <tr key={row.userId} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--text-dim)' }}>
-                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                          </td>
-                          <td style={{ padding: '14px 20px', fontSize: 15, fontWeight: 700 }}>{row.name}</td>
-                          {teams.length > 0 && (
-                            <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-muted)' }}>{row.teamName ?? '—'}</td>
-                          )}
-                          <td style={{ padding: '14px 20px', fontSize: 14, color: TEAL, fontWeight: 700 }}>{row.totalWorkouts}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            )}
-            {teams.length === 0 && (
-              <div style={{ marginTop: 14, background: `${PURPLE}10`, border: `1px solid ${PURPLE}30`, borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                <p style={{ color: 'var(--text-dim)', margin: 0, fontSize: 13 }}>Create teams to unlock the Team Leaderboard.</p>
-                <button onClick={() => router.push('/teams')} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 8, padding: '7px 16px', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Set Up Teams →</button>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Available Now */}
         {availableNowTemplates.length > 0 && (

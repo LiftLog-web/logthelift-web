@@ -159,6 +159,7 @@ export default function LeaderboardPage() {
   const router = useRouter();
   const [loading, setLoading]   = useState(true);
   const [period, setPeriod]     = useState<Period>('1m');
+  const [lbView, setLbView]     = useState<'team' | 'individual'>('individual');
   const [companyName, setCompanyName] = useState('');
   const [teams, setTeams]             = useState<Team[]>([]);
   const [employees, setEmployees]     = useState<Employee[]>([]);
@@ -261,8 +262,7 @@ export default function LeaderboardPage() {
 
   const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months' };
 
-  const top3    = entries.slice(0, 3);
-  const restRows = entries.slice(3);
+  const top3 = entries.slice(0, 3);
 
   if (loading) {
     return (
@@ -297,7 +297,7 @@ export default function LeaderboardPage() {
           <div style={{ fontSize: 52 }}>🏆</div>
           <div>
             <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: '-0.02em', background: `linear-gradient(135deg, ${TEAL}, ${PURPLE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Team Leaderboard
+              Leaderboard
             </div>
             <div style={{ fontSize: 16, color: 'var(--text-muted)', marginTop: 6 }}>{companyName}</div>
           </div>
@@ -325,6 +325,28 @@ export default function LeaderboardPage() {
               </button>
             ))}
           </div>
+
+          {/* Teams / Individual toggle — only when teams exist */}
+          {teams.length > 0 && (
+            <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
+              {(['individual', 'team'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setLbView(v)}
+                  style={{
+                    border: 'none', borderRadius: 7, padding: '6px 18px',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    background: lbView === v ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'transparent',
+                    color: lbView === v ? '#fff' : 'var(--text-muted)',
+                    transition: 'all 0.2s',
+                    boxShadow: lbView === v ? `0 2px 10px ${TEAL}44` : 'none',
+                  }}
+                >
+                  {v === 'team' ? 'Teams' : 'Individual'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stat cards */}
@@ -340,8 +362,16 @@ export default function LeaderboardPage() {
           />
         </div>
 
+        {/* Set Up Teams nudge */}
+        {teams.length === 0 && (
+          <div style={{ marginBottom: 28, background: `${PURPLE}10`, border: `1px solid ${PURPLE}30`, borderRadius: 14, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <p style={{ color: 'var(--text-dim)', margin: 0, fontSize: 13 }}>Create teams to unlock team-vs-team competition on this leaderboard.</p>
+            <a href="/teams" style={{ background: PURPLE, color: '#fff', borderRadius: 8, padding: '7px 16px', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>Set Up Teams →</a>
+          </div>
+        )}
+
         {/* Team performance */}
-        {teamEntries.length > 0 && (
+        {lbView === 'team' && teamEntries.length > 0 && (
           <div style={{ marginBottom: 40 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
               Team Performance
@@ -381,104 +411,106 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {entries.length === 0 ? (
-          <div style={{
-            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20,
-            padding: '60px 40px', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No workout data yet</div>
-            <div style={{ color: 'var(--text-muted)' }}>Once team members start logging office workouts, they'll appear here.</div>
-          </div>
-        ) : (
-          <>
-            {/* Podium */}
-            {top3.length >= 2 && (
-              <div style={{
-                background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 24,
-                padding: '40px 40px 0', marginBottom: 24,
-                boxShadow: '0 4px 24px #0002',
-              }}>
-                <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 32 }}>
-                  Top Performers
-                </div>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}>
-                  {top3[1] && <PodiumBlock entry={top3[1]} rank={2} height={90} />}
-                  {top3[0] && <PodiumBlock entry={top3[0]} rank={1} height={130} />}
-                  {top3[2] && <PodiumBlock entry={top3[2]} rank={3} height={65} />}
-                </div>
-              </div>
-            )}
-
-            {/* Full table */}
+        {lbView === 'individual' && (
+          entries.length === 0 ? (
             <div style={{
               background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20,
-              overflow: 'hidden', boxShadow: '0 2px 12px #0002',
+              padding: '60px 40px', textAlign: 'center',
             }}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '60px 1fr 140px 140px 140px',
-                padding: '12px 24px',
-                borderBottom: '1px solid var(--border)',
-                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>
-                <div>Rank</div>
-                <div>Team Member</div>
-                <div style={{ textAlign: 'center' }}>Workouts</div>
-                <div style={{ textAlign: 'center' }}>Active Streak</div>
-                <div style={{ textAlign: 'center' }}>Last Active</div>
-              </div>
-
-              {entries.map((entry, idx) => {
-                const rank     = idx + 1;
-                const medalEl  = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
-                const isTop    = rank <= 3;
-                const rowAccent = rank === 1 ? `${GOLD}18` : rank === 2 ? `${SILVER}12` : rank === 3 ? `${BRONZE}12` : 'transparent';
-
-                return (
-                  <div
-                    key={entry.employee.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '60px 1fr 140px 140px 140px',
-                      padding: '16px 24px',
-                      alignItems: 'center',
-                      borderBottom: idx < entries.length - 1 ? '1px solid var(--border)' : 'none',
-                      background: rowAccent,
-                      transition: 'background 0.15s',
-                    }}
-                  >
-                    <div style={{ fontSize: isTop ? 22 : 15, fontWeight: 700, color: isTop ? undefined : 'var(--text-muted)' }}>
-                      {medalEl ?? rank}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <Avatar name={entry.employee.name} size={36} />
-                      <span style={{ fontWeight: 600, fontSize: 15 }}>{entry.employee.name}</span>
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, color: entry.workoutCount > 0 ? TEAL : 'var(--text-muted)' }}>
-                      {entry.workoutCount}
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
-                      {entry.currentStreak > 0
-                        ? <span style={{ color: '#F97316' }}>🔥 {entry.currentStreak}d</span>
-                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                    </div>
-                    <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                      {entry.lastActive
-                        ? new Date(entry.lastActive).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        : '—'}
-                    </div>
-                  </div>
-                );
-              })}
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No workout data yet</div>
+              <div style={{ color: 'var(--text-muted)' }}>Once team members start logging office workouts, they'll appear here.</div>
             </div>
-          </>
+          ) : (
+            <>
+              {/* Podium */}
+              {top3.length >= 2 && (
+                <div style={{
+                  background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 24,
+                  padding: '40px 40px 0', marginBottom: 24,
+                  boxShadow: '0 4px 24px #0002',
+                }}>
+                  <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 32 }}>
+                    Top Performers
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}>
+                    {top3[1] && <PodiumBlock entry={top3[1]} rank={2} height={90} />}
+                    {top3[0] && <PodiumBlock entry={top3[0]} rank={1} height={130} />}
+                    {top3[2] && <PodiumBlock entry={top3[2]} rank={3} height={65} />}
+                  </div>
+                </div>
+              )}
+
+              {/* Full table */}
+              <div style={{
+                background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20,
+                overflow: 'hidden', boxShadow: '0 2px 12px #0002',
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '60px 1fr 140px 140px 140px',
+                  padding: '12px 24px',
+                  borderBottom: '1px solid var(--border)',
+                  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>
+                  <div>Rank</div>
+                  <div>Member</div>
+                  <div style={{ textAlign: 'center' }}>Workouts</div>
+                  <div style={{ textAlign: 'center' }}>Active Streak</div>
+                  <div style={{ textAlign: 'center' }}>Last Active</div>
+                </div>
+
+                {entries.map((entry, idx) => {
+                  const rank      = idx + 1;
+                  const medalEl   = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+                  const isTop     = rank <= 3;
+                  const rowAccent = rank === 1 ? `${GOLD}18` : rank === 2 ? `${SILVER}12` : rank === 3 ? `${BRONZE}12` : 'transparent';
+
+                  return (
+                    <div
+                      key={entry.employee.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '60px 1fr 140px 140px 140px',
+                        padding: '16px 24px',
+                        alignItems: 'center',
+                        borderBottom: idx < entries.length - 1 ? '1px solid var(--border)' : 'none',
+                        background: rowAccent,
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      <div style={{ fontSize: isTop ? 22 : 15, fontWeight: 700, color: isTop ? undefined : 'var(--text-muted)' }}>
+                        {medalEl ?? rank}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={entry.employee.name} size={36} />
+                        <span style={{ fontWeight: 600, fontSize: 15 }}>{entry.employee.name}</span>
+                      </div>
+                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, color: entry.workoutCount > 0 ? TEAL : 'var(--text-muted)' }}>
+                        {entry.workoutCount}
+                      </div>
+                      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
+                        {entry.currentStreak > 0
+                          ? <span style={{ color: '#F97316' }}>🔥 {entry.currentStreak}d</span>
+                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </div>
+                      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                        {entry.lastActive
+                          ? new Date(entry.lastActive).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          : '—'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )
         )}
       </main>
     </div>
