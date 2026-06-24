@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.ca';
-const FROM    = process.env.NOTIFY_FROM_EMAIL   ?? 'programs@logthelift.com';
+const FROM    = process.env.NOTIFY_FROM_EMAIL   ?? 'programs@logthelift.ca';
 const MASTER  = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID!;
 
 function sb() {
