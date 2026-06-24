@@ -53,6 +53,7 @@ export default function MasterDashboardPage() {
   const [stats, setStats]                     = useState<Stats | null>(null);
   const [upcoming, setUpcoming]               = useState<UpcomingProgram[]>([]);
   const [loading, setLoading]                 = useState(true);
+  const [monthlyWorkouts, setMonthlyWorkouts] = useState<number | null>(null);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -83,6 +84,26 @@ export default function MasterDashboardPage() {
       setStats((statsResult.data as Stats[])?.[0] ?? null);
       setUpcoming((upcomingResult.data as UpcomingProgram[]) ?? []);
       setLoading(false);
+
+      // Non-blocking: total workouts logged this month across all employer employees
+      (async () => {
+        const monthStart = new Date(); monthStart.setDate(1);
+        const monthStartStr = monthStart.toISOString().slice(0, 10);
+        const { data: tplData } = await sb.from('plan_templates').select('id').eq('practitioner_id', MASTER_ID).eq('is_featured', true);
+        const tplIds = (tplData ?? []).map((t: any) => t.id as string);
+        if (!tplIds.length) { setMonthlyWorkouts(0); return; }
+        const { data: progData } = await sb.from('employer_programs').select('employer_id').in('plan_template_id', tplIds);
+        const employerIds = [...new Set((progData ?? []).map((p: any) => p.employer_id as string))];
+        if (!employerIds.length) { setMonthlyWorkouts(0); return; }
+        const { data: linkData } = await sb.from('patient_links').select('patient_id').in('practitioner_id', employerIds);
+        const patientIds = [...new Set((linkData ?? []).map((l: any) => l.patient_id as string))];
+        if (!patientIds.length) { setMonthlyWorkouts(0); return; }
+        const { count } = await sb.from('synced_workouts')
+          .select('id', { count: 'exact', head: true })
+          .in('user_id', patientIds)
+          .gte('date', monthStartStr);
+        setMonthlyWorkouts(count ?? 0);
+      })();
     });
   }, [router]);
 
@@ -124,6 +145,14 @@ export default function MasterDashboardPage() {
               {stats?.total_employee_count ?? '—'}
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>across all clients</p>
+          </div>
+
+          <div style={{ background: 'var(--card)', border: `1px solid ${TEAL}30`, borderRadius: 16, padding: '22px 20px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Workouts This Month</p>
+            <p style={{ fontSize: 32, fontWeight: 800, color: TEAL, margin: '0 0 4px' }}>
+              {monthlyWorkouts != null ? monthlyWorkouts : '—'}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>across all employees</p>
           </div>
 
           <div style={{ background: 'var(--card)', border: `1px solid ${PURPLE}30`, borderRadius: 16, padding: '22px 20px' }}>

@@ -125,6 +125,7 @@ export default function ProgramsPage() {
   const [selectedTplIds,         setSelectedTplIds]         = useState<string[]>([]);
   const [multiLaunch,            setMultiLaunch]            = useState(false);
   const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
+  const [programEngagement,      setProgramEngagement]      = useState<Record<string, number>>({});
 
   // Date picker state (shared between single and multi-launch modals)
   const [dateTab,        setDateTab]        = useState<'month' | 'custom'>('month');
@@ -234,6 +235,29 @@ export default function ProgramsPage() {
         }
         setProgramRatings(map);
       });
+
+      // Non-blocking: unique employee count per active program
+      if (active.length > 0) {
+        Promise.all([
+          sb.from('patient_links').select('patient_id').eq('practitioner_id', uid),
+          sb.from('workout_plans').select('id').eq('practitioner_id', uid),
+        ]).then(async ([linksRes2, planIdsRes]) => {
+          const patientIds = (linksRes2.data ?? []).map((l: any) => l.patient_id as string);
+          const planIds    = (planIdsRes.data ?? []).map((p: any) => p.id as string);
+          if (!patientIds.length || !planIds.length) return;
+          const engagement: Record<string, number> = {};
+          for (const prog of active) {
+            const { data: wkData } = await sb.from('synced_workouts')
+              .select('user_id')
+              .in('user_id', patientIds)
+              .gte('date', prog.started_at)
+              .lte('date', prog.ends_at)
+              .filter('data->>planId', 'in', `(${planIds.join(',')})`);
+            engagement[prog.id] = new Set((wkData ?? []).map((w: any) => w.user_id as string)).size;
+          }
+          setProgramEngagement(engagement);
+        });
+      }
     });
   }, []);
 
@@ -514,6 +538,11 @@ export default function ProgramsPage() {
                   <div>
                     <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 3px' }}>{prog.name}</h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 13 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
+                    {employeeCount > 0 && programEngagement[prog.id] != null && (
+                      <p style={{ margin: '5px 0 0', fontSize: 13, color: TEAL, fontWeight: 600 }}>
+                        {programEngagement[prog.id]} / {employeeCount} employee{employeeCount !== 1 ? 's' : ''} started
+                      </p>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <div style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}40`, borderRadius: 12, padding: '10px 18px', textAlign: 'center' }}>
