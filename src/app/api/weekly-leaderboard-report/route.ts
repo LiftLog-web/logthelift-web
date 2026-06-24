@@ -478,54 +478,60 @@ export async function GET(req: NextRequest) {
 // ── POST — On-demand from the Leaderboard page ───────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const token = req.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const client = sbUser(token);
-  const { data: { user } } = await client.auth.getUser();
-  if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Pass the token explicitly — server-side clients have no local session
+    const client = sbUser(token);
+    const { data: { user }, error: authErr } = await client.auth.getUser(token);
+    if (authErr || !user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: prof } = await client
-    .from('profiles')
-    .select('role, is_employer, company_name')
-    .eq('id', user.id)
-    .single();
+    const { data: prof } = await client
+      .from('profiles')
+      .select('role, is_employer, company_name')
+      .eq('id', user.id)
+      .single();
 
-  if (!prof?.is_employer) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!prof?.is_employer) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
-  const period: string = body.period ?? '1m';
+    const body = await req.json().catch(() => ({}));
+    const period: string = body.period ?? '1m';
 
-  const today    = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  let fromDate: string;
-  if (period === '7d')      fromDate = new Date(today.getTime() - 7 * 86400000).toISOString().slice(0, 10);
-  else if (period === '4m') fromDate = new Date(today.getFullYear(), today.getMonth() - 4, today.getDate()).toISOString().slice(0, 10);
-  else                      fromDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
+    const today    = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    let fromDate: string;
+    if (period === '7d')      fromDate = new Date(today.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+    else if (period === '4m') fromDate = new Date(today.getFullYear(), today.getMonth() - 4, today.getDate()).toISOString().slice(0, 10);
+    else                      fromDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
 
-  const company = (prof.company_name as string | null) ?? 'Your Company';
-  const data    = await fetchLeaderboard(user.id, fromDate, todayStr);
+    const company = (prof.company_name as string | null) ?? 'Your Company';
+    const data    = await fetchLeaderboard(user.id, fromDate, todayStr);
 
-  if (data.employeeCount === 0) {
-    return NextResponse.json({ error: 'No employees found.' }, { status: 400 });
+    if (data.employeeCount === 0) {
+      return NextResponse.json({ error: 'No employees found.' }, { status: 400 });
+    }
+
+    const { data: activeProgs } = await client
+      .from('employer_programs')
+      .select('name')
+      .eq('employer_id', user.id)
+      .lte('started_at', todayStr)
+      .gte('ends_at', todayStr);
+
+    const resend  = new Resend(process.env.RESEND_API_KEY);
+    const subject = `Leaderboard Report — ${company} — ${fmtShort(fromDate)} to ${fmtDate(todayStr)}`;
+    const { error } = await resend.emails.send({
+      from:  FROM,
+      to:    user.email,
+      subject,
+      html:  buildWeeklyHtml(company, fromDate, todayStr, activeProgs ?? [], data),
+    });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ sent: true, to: user.email });
+  } catch (e: any) {
+    console.error('[weekly-leaderboard-report POST]', e);
+    return NextResponse.json({ error: e?.message ?? 'Internal server error' }, { status: 500 });
   }
-
-  const { data: activeProgs } = await client
-    .from('employer_programs')
-    .select('name')
-    .eq('employer_id', user.id)
-    .lte('started_at', todayStr)
-    .gte('ends_at', todayStr);
-
-  const resend  = new Resend(process.env.RESEND_API_KEY);
-  const subject = `Leaderboard Report — ${company} — ${fmtShort(fromDate)} to ${fmtDate(todayStr)}`;
-  const { error } = await resend.emails.send({
-    from:  FROM,
-    to:    user.email,
-    subject,
-    html:  buildWeeklyHtml(company, fromDate, todayStr, activeProgs ?? [], data),
-  });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ sent: true, to: user.email });
 }
