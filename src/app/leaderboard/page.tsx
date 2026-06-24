@@ -180,12 +180,20 @@ export default function LeaderboardPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
         body:    JSON.stringify({ period }),
       });
-      const json = await res.json();
+      const text = await res.text();
+      let json: any;
+      try { json = JSON.parse(text); } catch {
+        console.error('[Email Report] HTTP', res.status, text.slice(0, 1000));
+        setEmailStatus('error');
+        setEmailMsg(`Server error (HTTP ${res.status}) — see browser console for details.`);
+        return;
+      }
       if (!res.ok) { setEmailStatus('error'); setEmailMsg(json.error ?? 'Failed to send.'); }
       else         { setEmailStatus('sent');  setEmailMsg(`Sent to ${json.to}`); }
-    } catch {
+    } catch (e) {
+      console.error('[Email Report] fetch threw:', e);
       setEmailStatus('error');
-      setEmailMsg('Network error. Please try again.');
+      setEmailMsg('Could not reach the server.');
     }
   }
 
