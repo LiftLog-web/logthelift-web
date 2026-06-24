@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { DayPicker } from 'react-day-picker';
@@ -114,6 +114,8 @@ export default function ProgramsPage() {
   const [teams,                  setTeams]                  = useState<Team[]>([]);
   const [leaderboard,            setLeaderboard]            = useState<LeaderboardRow[]>([]);
   const [lbProgramId,            setLbProgramId]            = useState<string | null>(null);
+  const [lbDropdownOpen,         setLbDropdownOpen]         = useState(false);
+  const lbDropdownRef = useRef<HTMLDivElement>(null);
   const [loading,                setLoading]                = useState(true);
   const [launchModal,            setLaunchModal]            = useState<FeaturedTemplate | null>(null);
   const [launching,              setLaunching]              = useState(false);
@@ -263,10 +265,14 @@ export default function ProgramsPage() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); }
+      if (e.key === 'Escape') { setLaunchModal(null); setPreviewTpl(null); setMultiLaunch(false); setLbDropdownOpen(false); }
+    }
+    function onMouseDown(e: MouseEvent) {
+      if (lbDropdownRef.current && !lbDropdownRef.current.contains(e.target as Node)) setLbDropdownOpen(false);
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onMouseDown);
+    return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onMouseDown); };
   }, []);
 
   async function loadLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, prog: EmployerProgram, teamList: Team[]) {
@@ -311,6 +317,13 @@ export default function ProgramsPage() {
     })).sort((a, b) => b.totalWorkouts - a.totalWorkouts));
   }
 
+  async function loadAllLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, progs: EmployerProgram[], teamList: Team[]) {
+    if (!progs.length) return;
+    const startedAt = progs.reduce((min, p) => p.started_at < min ? p.started_at : min, progs[0].started_at);
+    const endsAt    = progs.reduce((max, p) => p.ends_at   > max ? p.ends_at   : max, progs[0].ends_at);
+    await loadLeaderboard(sb, uid, { id: '__all__', plan_template_id: '', name: 'All Programs', started_at: startedAt, ends_at: endsAt }, teamList);
+  }
+
   async function handleRemoveProgram(prog: EmployerProgram) {
     if (!confirm(`End "${prog.name}" early? This will remove it from your active programs.`)) return;
     setRemovingProgId(prog.id);
@@ -320,7 +333,7 @@ export default function ProgramsPage() {
     await sb.from('workout_plans').delete().eq('practitioner_id', userId).eq('name', prog.name);
     setActivePrograms(prev => {
       const next = prev.filter(p => p.id !== prog.id);
-      if (lbProgramId === prog.id && next.length > 0) {
+      if ((lbProgramId === prog.id || lbProgramId === '__all__') && next.length > 0) {
         setLbProgramId(next[0].id);
         if (teams.length > 0) loadLeaderboard(sb, userId, next[0], teams);
       } else if (next.length === 0) {
@@ -334,10 +347,12 @@ export default function ProgramsPage() {
 
   async function switchLbProgram(progId: string) {
     setLbProgramId(progId);
-    const prog = activePrograms.find(p => p.id === progId);
-    if (prog && teams.length > 0) {
-      const sb = getSupabase();
-      await loadLeaderboard(sb, userId, prog, teams);
+    const sb = getSupabase();
+    if (progId === '__all__') {
+      if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
+    } else {
+      const prog = activePrograms.find(p => p.id === progId);
+      if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
     }
   }
 
@@ -604,20 +619,63 @@ export default function ProgramsPage() {
                 Team Leaderboard
               </p>
               {activePrograms.length > 1 && (
-                <select
-                  value={lbProgramId ?? ''}
-                  onChange={e => switchLbProgram(e.target.value)}
-                  style={{ background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text)', fontSize: 13, outline: 'none', cursor: 'pointer' }}
-                >
-                  {activePrograms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <div ref={lbDropdownRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setLbDropdownOpen(o => !o)}
+                    style={{
+                      background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8,
+                      padding: '6px 12px', color: 'var(--text)', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, outline: 'none',
+                    }}
+                  >
+                    {lbProgramId === '__all__' ? 'All Programs' : (activePrograms.find(p => p.id === lbProgramId)?.name ?? 'Select…')}
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>▼</span>
+                  </button>
+                  {lbDropdownOpen && (
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 4px)', right: 0,
+                      background: 'var(--modal-bg)', border: '1px solid var(--border-strong)',
+                      borderRadius: 10, overflow: 'hidden', zIndex: 50, minWidth: 220,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                    }}>
+                      <button
+                        onClick={() => { switchLbProgram('__all__'); setLbDropdownOpen(false); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                          background: lbProgramId === '__all__' ? `${TEAL}18` : 'transparent',
+                          color: lbProgramId === '__all__' ? TEAL : 'var(--text)',
+                          border: 'none', fontSize: 13, fontWeight: lbProgramId === '__all__' ? 700 : 500, cursor: 'pointer',
+                        }}
+                      >
+                        All Programs
+                      </button>
+                      {activePrograms.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { switchLbProgram(p.id); setLbDropdownOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                            background: lbProgramId === p.id ? `${TEAL}18` : 'transparent',
+                            color: lbProgramId === p.id ? TEAL : 'var(--text)',
+                            border: 'none', borderTop: '1px solid var(--border-subtle)',
+                            fontSize: 13, fontWeight: lbProgramId === p.id ? 700 : 500, cursor: 'pointer',
+                          }}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            {lbProgram && (
+            {lbProgramId === '__all__' ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>All active programs combined</p>
+            ) : lbProgram ? (
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
                 {lbProgram.name} · {fmt(lbProgram.started_at)} — {fmt(lbProgram.ends_at)}
               </p>
-            )}
+            ) : null}
             {leaderboard.every(r => r.totalWorkouts === 0) ? (
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No workouts logged yet. Leaderboard fills in as employees log sessions.</p>
