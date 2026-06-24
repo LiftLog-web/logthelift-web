@@ -43,6 +43,10 @@ interface LeaderboardRow {
   teamId: string; teamName: string; totalWorkouts: number; memberCount: number;
 }
 
+interface IndividualRow {
+  userId: string; name: string; totalWorkouts: number; teamName: string | null;
+}
+
 interface ProgramRating {
   avg_effectiveness: number | null;
   avg_enjoyment:     number | null;
@@ -128,6 +132,9 @@ export default function ProgramsPage() {
   const [multiLaunch,            setMultiLaunch]            = useState(false);
   const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
   const [programEngagement,      setProgramEngagement]      = useState<Record<string, number>>({});
+  const [lbView,                 setLbView]                 = useState<'team' | 'individual'>('team');
+  const [individualLeaderboard,  setIndividualLeaderboard]  = useState<IndividualRow[]>([]);
+  const [relaunchLoading,        setRelaunchLoading]        = useState<string | null>(null);
 
   // Date picker state (shared between single and multi-launch modals)
   const [dateTab,        setDateTab]        = useState<'month' | 'custom'>('month');
@@ -217,10 +224,15 @@ export default function ProgramsPage() {
       setTeams((teamsRes.data as Team[]) ?? []);
       setEmployeeCount(linkCountRes.count ?? 0);
 
-      if (active.length > 0 && teamsRes.data && teamsRes.data.length > 0) {
+      if (active.length > 0) {
         const first = active[0];
         setLbProgramId(first.id);
-        await loadLeaderboard(sb, uid, first, teamsRes.data as Team[]);
+        if (teamsRes.data && teamsRes.data.length > 0) {
+          await loadLeaderboard(sb, uid, first, teamsRes.data as Team[]);
+        } else if ((linkCountRes.count ?? 0) > 0) {
+          setLbView('individual');
+          await loadIndividualLeaderboard(sb, uid, first, []);
+        }
       }
       setLoading(false);
 
@@ -324,6 +336,44 @@ export default function ProgramsPage() {
     await loadLeaderboard(sb, uid, { id: '__all__', plan_template_id: '', name: 'All Programs', started_at: startedAt, ends_at: endsAt }, teamList);
   }
 
+  async function loadIndividualLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, prog: EmployerProgram, teamList: Team[]) {
+    const [linksRes, planIdsRes] = await Promise.all([
+      sb.from('patient_links').select('patient_id, team_id').eq('practitioner_id', uid),
+      sb.from('workout_plans').select('id').eq('practitioner_id', uid),
+    ]);
+    const links    = (linksRes.data ?? []) as { patient_id: string; team_id: string | null }[];
+    const planIds  = (planIdsRes.data ?? []).map((p: any) => p.id as string);
+    const patientIds = links.map(l => l.patient_id);
+    if (!patientIds.length) { setIndividualLeaderboard([]); return; }
+    const [wkRes, profilesRes] = await Promise.all([
+      planIds.length > 0
+        ? sb.from('synced_workouts').select('user_id').in('user_id', patientIds).gte('date', prog.started_at).lte('date', prog.ends_at).filter('data->>planId', 'in', `(${planIds.join(',')})`)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      sb.from('profiles').select('id, display_name').in('id', patientIds),
+    ]);
+    const counts: Record<string, number> = {};
+    for (const w of (wkRes.data ?? []) as { user_id: string }[]) counts[w.user_id] = (counts[w.user_id] ?? 0) + 1;
+    const nameMap: Record<string, string> = {};
+    for (const p of (profilesRes.data ?? []) as { id: string; display_name: string | null }[]) nameMap[p.id] = p.display_name ?? 'Employee';
+    const teamNameMap: Record<string, string> = {};
+    for (const t of teamList) teamNameMap[t.id] = t.name;
+    setIndividualLeaderboard(
+      links.map(l => ({
+        userId: l.patient_id,
+        name: nameMap[l.patient_id] ?? 'Employee',
+        totalWorkouts: counts[l.patient_id] ?? 0,
+        teamName: l.team_id ? (teamNameMap[l.team_id] ?? null) : null,
+      })).sort((a, b) => b.totalWorkouts - a.totalWorkouts)
+    );
+  }
+
+  async function loadAllIndividualLeaderboard(sb: ReturnType<typeof getSupabase>, uid: string, progs: EmployerProgram[], teamList: Team[]) {
+    if (!progs.length) return;
+    const startedAt = progs.reduce((min, p) => p.started_at < min ? p.started_at : min, progs[0].started_at);
+    const endsAt    = progs.reduce((max, p) => p.ends_at   > max ? p.ends_at   : max, progs[0].ends_at);
+    await loadIndividualLeaderboard(sb, uid, { id: '__all__', plan_template_id: '', name: 'All Programs', started_at: startedAt, ends_at: endsAt }, teamList);
+  }
+
   async function handleRemoveProgram(prog: EmployerProgram) {
     if (!confirm(`End "${prog.name}" early? This will remove it from your active programs.`)) return;
     setRemovingProgId(prog.id);
@@ -335,10 +385,15 @@ export default function ProgramsPage() {
       const next = prev.filter(p => p.id !== prog.id);
       if ((lbProgramId === prog.id || lbProgramId === '__all__') && next.length > 0) {
         setLbProgramId(next[0].id);
-        if (teams.length > 0) loadLeaderboard(sb, userId, next[0], teams);
+        if (lbView === 'individual') {
+          loadIndividualLeaderboard(sb, userId, next[0], teams);
+        } else if (teams.length > 0) {
+          loadLeaderboard(sb, userId, next[0], teams);
+        }
       } else if (next.length === 0) {
         setLbProgramId(null);
         setLeaderboard([]);
+        setIndividualLeaderboard([]);
       }
       return next;
     });
@@ -348,12 +403,53 @@ export default function ProgramsPage() {
   async function switchLbProgram(progId: string) {
     setLbProgramId(progId);
     const sb = getSupabase();
-    if (progId === '__all__') {
-      if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
+    if (lbView === 'individual') {
+      if (progId === '__all__') {
+        await loadAllIndividualLeaderboard(sb, userId, activePrograms, teams);
+      } else {
+        const prog = activePrograms.find(p => p.id === progId);
+        if (prog) await loadIndividualLeaderboard(sb, userId, prog, teams);
+      }
     } else {
-      const prog = activePrograms.find(p => p.id === progId);
-      if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
+      if (progId === '__all__') {
+        if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
+      } else {
+        const prog = activePrograms.find(p => p.id === progId);
+        if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
+      }
     }
+  }
+
+  async function switchLbView(view: 'team' | 'individual') {
+    setLbView(view);
+    const sb = getSupabase();
+    if (view === 'individual') {
+      if (lbProgramId === '__all__') {
+        await loadAllIndividualLeaderboard(sb, userId, activePrograms, teams);
+      } else {
+        const prog = activePrograms.find(p => p.id === lbProgramId);
+        if (prog) await loadIndividualLeaderboard(sb, userId, prog, teams);
+      }
+    } else {
+      if (lbProgramId === '__all__') {
+        if (teams.length > 0) await loadAllLeaderboard(sb, userId, activePrograms, teams);
+      } else {
+        const prog = activePrograms.find(p => p.id === lbProgramId);
+        if (prog && teams.length > 0) await loadLeaderboard(sb, userId, prog, teams);
+      }
+    }
+  }
+
+  async function handleRelaunch(prog: EmployerProgram) {
+    setRelaunchLoading(prog.id);
+    const sb = getSupabase();
+    const { data: tplData } = await sb.from('plan_templates')
+      .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
+      .eq('id', prog.plan_template_id)
+      .single();
+    setRelaunchLoading(null);
+    if (!tplData) { alert('Could not load program details.'); return; }
+    openLaunchModal(tplData as FeaturedTemplate);
   }
 
   function toggleSelect(id: string) {
@@ -611,63 +707,84 @@ export default function ProgramsPage() {
           );
         })()}
 
-        {/* Team Leaderboard */}
-        {activePrograms.length > 0 && teams.length > 0 && (
+        {/* Leaderboard */}
+        {activePrograms.length > 0 && (teams.length > 0 || employeeCount > 0) && (
           <div style={{ marginBottom: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
-                Team Leaderboard
+                Leaderboard
               </p>
-              {activePrograms.length > 1 && (
-                <div ref={lbDropdownRef} style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => setLbDropdownOpen(o => !o)}
-                    style={{
-                      background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8,
-                      padding: '6px 12px', color: 'var(--text)', fontSize: 13, fontWeight: 600,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, outline: 'none',
-                    }}
-                  >
-                    {lbProgramId === '__all__' ? 'All Programs' : (activePrograms.find(p => p.id === lbProgramId)?.name ?? 'Select…')}
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>▼</span>
-                  </button>
-                  {lbDropdownOpen && (
-                    <div style={{
-                      position: 'absolute', top: 'calc(100% + 4px)', right: 0,
-                      background: 'var(--modal-bg)', border: '1px solid var(--border-strong)',
-                      borderRadius: 10, overflow: 'hidden', zIndex: 50, minWidth: 220,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                    }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {teams.length > 0 && (
+                  <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: 3 }}>
+                    {(['team', 'individual'] as const).map(v => (
                       <button
-                        onClick={() => { switchLbProgram('__all__'); setLbDropdownOpen(false); }}
+                        key={v}
+                        onClick={() => switchLbView(v)}
                         style={{
-                          display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
-                          background: lbProgramId === '__all__' ? `${TEAL}18` : 'transparent',
-                          color: lbProgramId === '__all__' ? TEAL : 'var(--text)',
-                          border: 'none', fontSize: 13, fontWeight: lbProgramId === '__all__' ? 700 : 500, cursor: 'pointer',
+                          border: 'none', borderRadius: 6, padding: '4px 10px',
+                          fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                          background: lbView === v ? TEAL : 'transparent',
+                          color: lbView === v ? '#0f1117' : 'var(--text-dim)',
+                          transition: 'background 0.15s',
                         }}
                       >
-                        All Programs
+                        {v === 'team' ? 'Teams' : 'Individual'}
                       </button>
-                      {activePrograms.map(p => (
+                    ))}
+                  </div>
+                )}
+                {activePrograms.length > 1 && (
+                  <div ref={lbDropdownRef} style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setLbDropdownOpen(o => !o)}
+                      style={{
+                        background: 'var(--card)', border: '1px solid var(--border-strong)', borderRadius: 8,
+                        padding: '6px 12px', color: 'var(--text)', fontSize: 13, fontWeight: 600,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, outline: 'none',
+                      }}
+                    >
+                      {lbProgramId === '__all__' ? 'All Programs' : (activePrograms.find(p => p.id === lbProgramId)?.name ?? 'Select…')}
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1 }}>▼</span>
+                    </button>
+                    {lbDropdownOpen && (
+                      <div style={{
+                        position: 'absolute', top: 'calc(100% + 4px)', right: 0,
+                        background: 'var(--modal-bg)', border: '1px solid var(--border-strong)',
+                        borderRadius: 10, overflow: 'hidden', zIndex: 50, minWidth: 220,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                      }}>
                         <button
-                          key={p.id}
-                          onClick={() => { switchLbProgram(p.id); setLbDropdownOpen(false); }}
+                          onClick={() => { switchLbProgram('__all__'); setLbDropdownOpen(false); }}
                           style={{
                             display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
-                            background: lbProgramId === p.id ? `${TEAL}18` : 'transparent',
-                            color: lbProgramId === p.id ? TEAL : 'var(--text)',
-                            border: 'none', borderTop: '1px solid var(--border-subtle)',
-                            fontSize: 13, fontWeight: lbProgramId === p.id ? 700 : 500, cursor: 'pointer',
+                            background: lbProgramId === '__all__' ? `${TEAL}18` : 'transparent',
+                            color: lbProgramId === '__all__' ? TEAL : 'var(--text)',
+                            border: 'none', fontSize: 13, fontWeight: lbProgramId === '__all__' ? 700 : 500, cursor: 'pointer',
                           }}
                         >
-                          {p.name}
+                          All Programs
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        {activePrograms.map(p => (
+                          <button
+                            key={p.id}
+                            onClick={() => { switchLbProgram(p.id); setLbDropdownOpen(false); }}
+                            style={{
+                              display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                              background: lbProgramId === p.id ? `${TEAL}18` : 'transparent',
+                              color: lbProgramId === p.id ? TEAL : 'var(--text)',
+                              border: 'none', borderTop: '1px solid var(--border-subtle)',
+                              fontSize: 13, fontWeight: lbProgramId === p.id ? 700 : 500, cursor: 'pointer',
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             {lbProgramId === '__all__' ? (
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>All active programs combined</p>
@@ -676,58 +793,91 @@ export default function ProgramsPage() {
                 {lbProgram.name} · {fmt(lbProgram.started_at)} — {fmt(lbProgram.ends_at)}
               </p>
             ) : null}
-            {leaderboard.every(r => r.totalWorkouts === 0) ? (
-              <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No workouts logged yet. Leaderboard fills in as employees log sessions.</p>
-              </div>
-            ) : (
-              <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-                {leaderboard.length >= 3 && (
-                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16, padding: '32px 24px 0', background: 'var(--card-alt)' }}>
-                    {[leaderboard[1], leaderboard[0], leaderboard[2]].map((row, i) => {
-                      const rank  = i === 1 ? 1 : i === 0 ? 2 : 3;
-                      const color = rank === 1 ? GOLD : rank === 2 ? SILVER : BRONZE;
-                      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
-                      const barH  = rank === 1 ? 80 : rank === 2 ? 56 : 44;
-                      return (
-                        <div key={row.teamId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                          {rank === 1 && <div style={{ fontSize: 22 }}>👑</div>}
-                          <div style={{ fontWeight: 800, fontSize: rank === 1 ? 15 : 13, textAlign: 'center', maxWidth: 110 }}>{row.teamName}</div>
-                          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{row.totalWorkouts} workout{row.totalWorkouts !== 1 ? 's' : ''}</div>
-                          <div style={{ width: rank === 1 ? 110 : 88, height: barH, background: `linear-gradient(180deg,${color}33 0%,${color}11 100%)`, border: `1px solid ${color}44`, borderBottom: 'none', borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{medal}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--card-alt)', borderTop: '1px solid var(--border)' }}>
-                      {['Rank', 'Team', 'Workouts', 'Members'].map(h => (
-                        <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.map((row, idx) => (
-                      <tr key={row.teamId} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                        <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--text-dim)' }}>#{idx + 1}</td>
-                        <td style={{ padding: '14px 20px', fontSize: 15, fontWeight: 700 }}>{row.teamName}</td>
-                        <td style={{ padding: '14px 20px', fontSize: 14, color: TEAL, fontWeight: 700 }}>{row.totalWorkouts}</td>
-                        <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-muted)' }}>{row.memberCount}</td>
+            {lbView === 'team' ? (
+              leaderboard.every(r => r.totalWorkouts === 0) ? (
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No workouts logged yet. Leaderboard fills in as employees log sessions.</p>
+                </div>
+              ) : (
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+                  {leaderboard.length >= 3 && (
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16, padding: '32px 24px 0', background: 'var(--card-alt)' }}>
+                      {[leaderboard[1], leaderboard[0], leaderboard[2]].map((row, i) => {
+                        const rank  = i === 1 ? 1 : i === 0 ? 2 : 3;
+                        const color = rank === 1 ? GOLD : rank === 2 ? SILVER : BRONZE;
+                        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                        const barH  = rank === 1 ? 80 : rank === 2 ? 56 : 44;
+                        return (
+                          <div key={row.teamId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                            {rank === 1 && <div style={{ fontSize: 22 }}>👑</div>}
+                            <div style={{ fontWeight: 800, fontSize: rank === 1 ? 15 : 13, textAlign: 'center', maxWidth: 110 }}>{row.teamName}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{row.totalWorkouts} workout{row.totalWorkouts !== 1 ? 's' : ''}</div>
+                            <div style={{ width: rank === 1 ? 110 : 88, height: barH, background: `linear-gradient(180deg,${color}33 0%,${color}11 100%)`, border: `1px solid ${color}44`, borderBottom: 'none', borderRadius: '8px 8px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{medal}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--card-alt)', borderTop: '1px solid var(--border)' }}>
+                        {['Rank', 'Team', 'Workouts', 'Members'].map(h => (
+                          <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {leaderboard.map((row, idx) => (
+                        <tr key={row.teamId} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--text-dim)' }}>#{idx + 1}</td>
+                          <td style={{ padding: '14px 20px', fontSize: 15, fontWeight: 700 }}>{row.teamName}</td>
+                          <td style={{ padding: '14px 20px', fontSize: 14, color: TEAL, fontWeight: 700 }}>{row.totalWorkouts}</td>
+                          <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-muted)' }}>{row.memberCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              individualLeaderboard.length === 0 ? (
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No employees found. Invite employees via your Profile page.</p>
+                </div>
+              ) : (
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--card-alt)', borderBottom: '1px solid var(--border)' }}>
+                        {['Rank', 'Employee', ...(teams.length > 0 ? ['Team'] : []), 'Workouts'].map(h => (
+                          <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {individualLeaderboard.map((row, idx) => (
+                        <tr key={row.userId} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '14px 20px', fontSize: 14, fontWeight: 700, color: idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--text-dim)' }}>
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                          </td>
+                          <td style={{ padding: '14px 20px', fontSize: 15, fontWeight: 700 }}>{row.name}</td>
+                          {teams.length > 0 && (
+                            <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-muted)' }}>{row.teamName ?? '—'}</td>
+                          )}
+                          <td style={{ padding: '14px 20px', fontSize: 14, color: TEAL, fontWeight: 700 }}>{row.totalWorkouts}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+            {teams.length === 0 && (
+              <div style={{ marginTop: 14, background: `${PURPLE}10`, border: `1px solid ${PURPLE}30`, borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <p style={{ color: 'var(--text-dim)', margin: 0, fontSize: 13 }}>Create teams to unlock the Team Leaderboard.</p>
+                <button onClick={() => router.push('/teams')} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 8, padding: '7px 16px', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Set Up Teams →</button>
               </div>
             )}
-          </div>
-        )}
-
-        {activePrograms.length > 0 && teams.length === 0 && (
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px', textAlign: 'center', marginBottom: 48 }}>
-            <p style={{ color: 'var(--text-muted)', margin: '0 0 14px', fontSize: 14 }}>Create teams to unlock the leaderboard.</p>
-            <button onClick={() => router.push('/teams')} style={{ background: PURPLE, color: 'var(--text)', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}>Set Up Teams →</button>
           </div>
         )}
 
@@ -909,7 +1059,20 @@ export default function ProgramsPage() {
                       ) : (
                         <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No ratings yet</span>
                       )}
-                      <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
+                        <button
+                          onClick={() => handleRelaunch(prog)}
+                          disabled={relaunchLoading === prog.id}
+                          style={{
+                            background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8,
+                            padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: relaunchLoading === prog.id ? 'wait' : 'pointer',
+                            opacity: relaunchLoading === prog.id ? 0.6 : 1, whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {relaunchLoading === prog.id ? 'Loading…' : 'Re-launch'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
