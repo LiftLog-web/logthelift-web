@@ -1,0 +1,531 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
+
+const FROM    = process.env.NOTIFY_FROM_EMAIL ?? 'programs@logthelift.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.ca';
+
+// ── Supabase clients ─────────────────────────────────────────────────────────
+
+function sbAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  );
+}
+
+function sbUser(token: string) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtDate(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function fmtShort(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric',
+  });
+}
+
+function calcStreak(dates: string[]): number {
+  if (!dates.length) return 0;
+  const dateSet  = new Set(dates);
+  const today    = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yest     = new Date(today.getTime() - 86400000);
+  const todayStr = today.toISOString().slice(0, 10);
+  const yestStr  = yest.toISOString().slice(0, 10);
+  if (!dateSet.has(todayStr) && !dateSet.has(yestStr)) return 0;
+  let cursor = dateSet.has(todayStr) ? today : yest;
+  let streak = 0;
+  while (dateSet.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor = new Date(cursor.getTime() - 86400000);
+  }
+  return streak;
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface Employee   { id: string; name: string; teamId: string | null; teamName: string | null; }
+interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; }
+interface TeamRow    { rank: number; name: string; total: number; active: number; members: number; }
+interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; }
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function fetchLeaderboard(
+  employerId: string,
+  fromDate:   string,
+  toDate:     string,
+): Promise<LbData & { employeeCount: number }> {
+  const client = sbAdmin();
+
+  const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
+    client.from('patient_links')
+      .select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)')
+      .eq('practitioner_id', employerId),
+    client.from('employer_teams')
+      .select('id, name')
+      .eq('employer_id', employerId)
+      .order('name'),
+    client.from('workout_plans')
+      .select('id')
+      .eq('practitioner_id', employerId),
+  ]);
+
+  const teams = (teamsData ?? []) as { id: string; name: string }[];
+  const teamMap = new Map(teams.map(t => [t.id, t.name]));
+
+  const employees: Employee[] = (links ?? []).map((l: any) => ({
+    id:       l.patient_id,
+    name:     l.profiles?.display_name ?? 'Unknown',
+    teamId:   l.team_id ?? null,
+    teamName: l.team_id ? (teamMap.get(l.team_id) ?? null) : null,
+  }));
+
+  const planIds = (planRows ?? []).map((p: any) => p.id as string);
+  const empIds  = employees.map(e => e.id);
+
+  if (!empIds.length || !planIds.length) {
+    return { individual: [], teamRows: [], hasTeams: teams.length > 0, employeeCount: employees.length };
+  }
+
+  const planFilter = `(${planIds.join(',')})`;
+
+  const [{ data: periodData }, { data: streakData }] = await Promise.all([
+    client.from('synced_workouts')
+      .select('user_id, date')
+      .in('user_id', empIds)
+      .filter('data->>planId', 'in', planFilter)
+      .gte('date', fromDate)
+      .lte('date', toDate),
+    // 60-day window for current streak
+    client.from('synced_workouts')
+      .select('user_id, date')
+      .in('user_id', empIds)
+      .filter('data->>planId', 'in', planFilter)
+      .gte('date', new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)),
+  ]);
+
+  const periodMap: Record<string, string[]> = {};
+  const streakMap: Record<string, string[]> = {};
+  for (const e of employees) { periodMap[e.id] = []; streakMap[e.id] = []; }
+  for (const w of (periodData ?? [])) periodMap[w.user_id]?.push(w.date);
+  for (const w of (streakData ?? [])) streakMap[w.user_id]?.push(w.date);
+
+  const individual: IndividualRow[] = employees
+    .map(emp => ({
+      rank:     0,
+      name:     emp.name,
+      teamName: emp.teamName,
+      count:    periodMap[emp.id].length,
+      streak:   calcStreak(streakMap[emp.id]),
+    }))
+    .sort((a, b) => b.count - a.count || b.streak - a.streak)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+
+  const teamRows: TeamRow[] = teams
+    .map(team => {
+      const members = employees.filter(e => e.teamId === team.id);
+      const counts  = members.map(m => periodMap[m.id].length);
+      return {
+        rank:    0,
+        name:    team.name,
+        total:   counts.reduce((s, c) => s + c, 0),
+        active:  counts.filter(c => c > 0).length,
+        members: members.length,
+      };
+    })
+    .sort((a, b) => b.total - a.total)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+
+  return { individual, teamRows, hasTeams: teams.length > 0, employeeCount: employees.length };
+}
+
+// ── Email HTML builders ───────────────────────────────────────────────────────
+
+function medal(rank: number) {
+  return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+}
+
+function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStreak: boolean) {
+  return rows.map(r => `
+    <tr style="border-top:1px solid #2a2a3a;">
+      <td style="padding:11px 14px;font-size:${r.rank <= 3 ? 16 : 13}px;">${medal(r.rank)}</td>
+      <td style="padding:11px 8px;font-size:14px;font-weight:600;color:#f0f0f0;">${esc(r.name)}</td>
+      ${showTeam ? `<td style="padding:11px 8px;font-size:13px;color:#6b7280;">${r.teamName ? esc(r.teamName) : '—'}</td>` : ''}
+      <td style="padding:11px 8px;font-size:15px;font-weight:700;color:#1EDBA8;text-align:center;">${r.count}</td>
+      ${showStreak ? `<td style="padding:11px 14px 11px 8px;font-size:13px;color:${r.streak > 0 ? '#F97316' : '#6b7280'};text-align:center;">${r.streak > 0 ? `🔥 ${r.streak}d` : '—'}</td>` : ''}
+    </tr>`).join('');
+}
+
+function buildTeamSection(teamRows: TeamRow[]) {
+  if (!teamRows.length) return '';
+  return `
+    <p style="margin:32px 0 12px;font-size:11px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Team Standings</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
+      <thead>
+        <tr style="background:#1e1e30;">
+          <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;"></th>
+          <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Team</th>
+          <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Workouts</th>
+          <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Active</th>
+        </tr>
+      </thead>
+      <tbody style="background:#0f1117;">
+        ${teamRows.map(t => `
+          <tr style="border-top:1px solid #2a2a3a;">
+            <td style="padding:12px 14px;font-size:${t.rank <= 3 ? 16 : 13}px;">${medal(t.rank)}</td>
+            <td style="padding:12px 8px;font-size:14px;font-weight:700;color:#f0f0f0;">${esc(t.name)}</td>
+            <td style="padding:12px 8px;font-size:15px;font-weight:700;color:#1EDBA8;text-align:center;">${t.total}</td>
+            <td style="padding:12px 14px 12px 8px;font-size:13px;color:#6b7280;text-align:center;">${t.active}/${t.members}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function emailShell(content: string, footerNote: string) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:48px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+
+        <tr><td style="padding-bottom:28px;">
+          <span style="font-size:22px;font-weight:800;color:#1EDBA8;letter-spacing:-0.5px;">LiftLog</span>
+        </td></tr>
+
+        <tr><td style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:18px;padding:36px;">
+          ${content}
+        </td></tr>
+
+        <tr><td style="padding-top:28px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#4b5563;line-height:1.6;">
+            ${footerNote}<br>
+            &copy; ${new Date().getFullYear()} LiftLog
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildWeeklyHtml(
+  company:  string,
+  fromDate: string,
+  toDate:   string,
+  programs: { name: string }[],
+  data:     LbData,
+): string {
+  const { individual, teamRows, hasTeams } = data;
+  const totalWorkouts = individual.reduce((s, r) => s + r.count, 0);
+  const activeMembers = individual.filter(r => r.count > 0).length;
+  const topRow        = individual[0];
+  const programLine   = programs.length
+    ? `Active program${programs.length > 1 ? 's' : ''}: <strong style="color:#f0f0f0;">${programs.map(p => esc(p.name)).join(', ')}</strong>`
+    : '';
+
+  const thead = `
+    <thead>
+      <tr style="background:#1e1e30;">
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;"></th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Name</th>
+        ${hasTeams ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Team</th>' : ''}
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Workouts</th>
+        <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Streak</th>
+      </tr>
+    </thead>`;
+
+  const content = `
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Weekly Report</p>
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#f0f0f0;">Performance Update 🏆</h1>
+    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">${esc(company)} · ${fmtShort(fromDate)} – ${fmtDate(toDate)}</p>
+    ${programLine ? `<p style="margin:0 0 28px;font-size:13px;color:#9ca3af;">${programLine}</p>` : ''}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#1EDBA8;">${totalWorkouts}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Total Workouts</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#C471ED;">${activeMembers}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Active Members</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:22px;font-weight:900;color:#f0f0f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${topRow ? esc(topRow.name.split(' ')[0]) : '—'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Top Performer</div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Individual Rankings</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
+      ${thead}
+      <tbody style="background:#0f1117;">
+        ${buildIndividualRows(individual, hasTeams, true)}
+      </tbody>
+    </table>
+
+    ${buildTeamSection(teamRows)}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+      <tr>
+        <td align="center">
+          <a href="${APP_URL}/leaderboard"
+             style="display:inline-block;background:#1EDBA8;color:#0f1117;font-size:15px;font-weight:800;text-decoration:none;padding:14px 36px;border-radius:12px;">
+            View Full Leaderboard &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>`;
+
+  return emailShell(content, 'Sent every Sunday. You\'re receiving this as an employer on LiftLog.');
+}
+
+function buildRecapHtml(
+  company: string,
+  program: { name: string; started_at: string; ends_at: string },
+  data:    LbData,
+): string {
+  const { individual, teamRows, hasTeams } = data;
+  const totalWorkouts = individual.reduce((s, r) => s + r.count, 0);
+  const activeMembers = individual.filter(r => r.count > 0).length;
+  const top3          = individual.slice(0, 3);
+  const rest          = individual.slice(3);
+
+  const topThead = `
+    <thead>
+      <tr style="background:#1e1e30;">
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;text-align:left;"></th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;text-align:left;">Name</th>
+        ${hasTeams ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;text-align:left;">Team</th>' : ''}
+        <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;text-align:center;">Total Workouts</th>
+      </tr>
+    </thead>`;
+
+  const content = `
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">Program Complete 🎉</p>
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#f0f0f0;">${esc(program.name)}</h1>
+    <p style="margin:0 0 28px;font-size:14px;color:#6b7280;">${esc(company)} · ${fmtDate(program.started_at)} – ${fmtDate(program.ends_at)}</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#1EDBA8;">${totalWorkouts}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Total Workouts</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#C471ED;">${activeMembers}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Participants</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid rgba(255,215,0,0.4);border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#FFD700;">${individual[0]?.count ?? 0}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Top Score</div>
+        </td>
+      </tr>
+    </table>
+
+    ${top3.length ? `
+    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">Top Performers</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.04);margin-bottom:${rest.length ? 16 : 0}px;">
+      ${topThead}
+      <tbody>
+        ${buildIndividualRows(top3, hasTeams, false)}
+      </tbody>
+    </table>` : ''}
+
+    ${rest.length ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
+      <tbody style="background:#0f1117;">
+        ${buildIndividualRows(rest, hasTeams, false)}
+      </tbody>
+    </table>` : ''}
+
+    ${buildTeamSection(teamRows)}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+      <tr>
+        <td align="center">
+          <a href="${APP_URL}/programs"
+             style="display:inline-block;background:#1EDBA8;color:#0f1117;font-size:15px;font-weight:800;text-decoration:none;padding:14px 36px;border-radius:12px;">
+            Launch Next Program &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>`;
+
+  return emailShell(content, 'Sent automatically when a program ends. You\'re registered as an employer on LiftLog.');
+}
+
+// ── GET — Vercel Cron (every Sunday at 20:00 UTC) ────────────────────────────
+
+export async function GET(req: NextRequest) {
+  const auth   = req.headers.get('authorization') ?? '';
+  const secret = (process.env.CRON_SECRET ?? '').trim();
+  if (!secret || auth.trim() !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const client   = sbAdmin();
+  const resend   = new Resend(process.env.RESEND_API_KEY);
+  const today    = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const sevenAgo = new Date(today.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+
+  const [{ data: activeProgs }, { data: endedProgs }] = await Promise.all([
+    client.from('employer_programs')
+      .select('id, employer_id, name, started_at, ends_at')
+      .lte('started_at', todayStr)
+      .gte('ends_at', todayStr),
+    // Programs that ended since last Sunday's run
+    client.from('employer_programs')
+      .select('id, employer_id, name, started_at, ends_at')
+      .gte('ends_at', sevenAgo)
+      .lt('ends_at', todayStr),
+  ]);
+
+  const allEmployerIds = [...new Set([
+    ...(activeProgs ?? []).map((p: any) => p.employer_id as string),
+    ...(endedProgs  ?? []).map((p: any) => p.employer_id as string),
+  ])];
+
+  if (!allEmployerIds.length) {
+    return NextResponse.json({ sent: 0, reason: 'No employers with programs' });
+  }
+
+  const { data: profiles } = await client
+    .from('profiles')
+    .select('id, company_name')
+    .in('id', allEmployerIds);
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]));
+
+  let weekSent = 0, weekFailed = 0, recapSent = 0, recapFailed = 0;
+
+  for (const employerId of allEmployerIds) {
+    const { data: userRes } = await client.auth.admin.getUserById(employerId);
+    const email = userRes?.user?.email;
+    if (!email) continue;
+
+    const company = (profileMap.get(employerId)?.company_name as string | null) ?? 'Your Company';
+
+    // Weekly summary for active programs
+    const empActive = (activeProgs ?? []).filter((p: any) => p.employer_id === employerId);
+    if (empActive.length > 0) {
+      const data = await fetchLeaderboard(employerId, sevenAgo, todayStr);
+      if (data.employeeCount > 0) {
+        const subject = `Weekly Performance Report — ${company} — Week of ${fmtDate(sevenAgo)}`;
+        const { error } = await resend.emails.send({
+          from:    FROM,
+          to:      email,
+          subject,
+          html:    buildWeeklyHtml(company, sevenAgo, todayStr, empActive, data),
+        });
+        if (error) { console.error('Weekly send failed', employerId, error); weekFailed++; }
+        else weekSent++;
+      }
+    }
+
+    // Recap for recently ended programs
+    const empEnded = (endedProgs ?? []).filter((p: any) => p.employer_id === employerId);
+    for (const prog of empEnded) {
+      const data = await fetchLeaderboard(employerId, prog.started_at, prog.ends_at);
+      if (data.employeeCount > 0) {
+        const subject = `Program Recap — ${prog.name} — Final Results`;
+        const { error } = await resend.emails.send({
+          from:    FROM,
+          to:      email,
+          subject,
+          html:    buildRecapHtml(company, prog, data),
+        });
+        if (error) { console.error('Recap send failed', prog.id, error); recapFailed++; }
+        else recapSent++;
+      }
+    }
+  }
+
+  return NextResponse.json({ weekSent, weekFailed, recapSent, recapFailed });
+}
+
+// ── POST — On-demand from the Leaderboard page ───────────────────────────────
+
+export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const client = sbUser(token);
+  const { data: { user } } = await client.auth.getUser();
+  if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data: prof } = await client
+    .from('profiles')
+    .select('role, is_employer, company_name')
+    .eq('id', user.id)
+    .single();
+
+  if (!prof?.is_employer) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const body = await req.json().catch(() => ({}));
+  const period: string = body.period ?? '1m';
+
+  const today    = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  let fromDate: string;
+  if (period === '7d')      fromDate = new Date(today.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  else if (period === '4m') fromDate = new Date(today.getFullYear(), today.getMonth() - 4, today.getDate()).toISOString().slice(0, 10);
+  else                      fromDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
+
+  const company = (prof.company_name as string | null) ?? 'Your Company';
+  const data    = await fetchLeaderboard(user.id, fromDate, todayStr);
+
+  if (data.employeeCount === 0) {
+    return NextResponse.json({ error: 'No employees found.' }, { status: 400 });
+  }
+
+  const { data: activeProgs } = await client
+    .from('employer_programs')
+    .select('name')
+    .eq('employer_id', user.id)
+    .lte('started_at', todayStr)
+    .gte('ends_at', todayStr);
+
+  const resend  = new Resend(process.env.RESEND_API_KEY);
+  const subject = `Leaderboard Report — ${company} — ${fmtShort(fromDate)} to ${fmtDate(todayStr)}`;
+  const { error } = await resend.emails.send({
+    from:  FROM,
+    to:    user.email,
+    subject,
+    html:  buildWeeklyHtml(company, fromDate, todayStr, activeProgs ?? [], data),
+  });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ sent: true, to: user.email });
+}

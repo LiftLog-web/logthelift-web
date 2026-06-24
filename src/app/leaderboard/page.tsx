@@ -164,12 +164,38 @@ export default function LeaderboardPage() {
   const [teams, setTeams]             = useState<Team[]>([]);
   const [employees, setEmployees]     = useState<Employee[]>([]);
   const [allDates, setAllDates]       = useState<Record<string, string[]>>({});
+  const [sessionToken, setSessionToken]   = useState('');
+  const [emailStatus, setEmailStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [emailMsg, setEmailMsg]           = useState('');
+
+  useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
+
+  async function sendReport() {
+    if (emailStatus === 'sending' || !sessionToken) return;
+    setEmailStatus('sending');
+    setEmailMsg('');
+    try {
+      const res  = await fetch('/api/weekly-leaderboard-report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body:    JSON.stringify({ period }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setEmailStatus('error'); setEmailMsg(json.error ?? 'Failed to send.'); }
+      else         { setEmailStatus('sent');  setEmailMsg(`Sent to ${json.to}`); }
+    } catch {
+      setEmailStatus('error');
+      setEmailMsg('Network error. Please try again.');
+    }
+  }
 
   useEffect(() => {
     (async () => {
       const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/login'); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace('/login'); return; }
+      setSessionToken(session.access_token);
+      const user = session.user;
 
       const { data: prof } = await supabase
         .from('profiles')
@@ -347,6 +373,42 @@ export default function LeaderboardPage() {
               ))}
             </div>
           )}
+
+          {/* On-demand email report */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={sendReport}
+              disabled={emailStatus === 'sending'}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${emailStatus === 'error' ? '#F9731660' : `${TEAL}50`}`,
+                borderRadius: 10,
+                padding: '8px 22px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: emailStatus === 'sent'
+                  ? TEAL
+                  : emailStatus === 'error'
+                  ? '#F97316'
+                  : 'var(--text-muted)',
+                cursor: emailStatus === 'sending' ? 'wait' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {emailStatus === 'sending'
+                ? '⏳ Sending…'
+                : emailStatus === 'sent'
+                ? '✓ Report Sent'
+                : emailStatus === 'error'
+                ? '⚠ Failed — Retry'
+                : '📧 Email Report'}
+            </button>
+            {emailMsg && (
+              <p style={{ margin: 0, fontSize: 12, color: emailStatus === 'error' ? '#F97316' : TEAL }}>
+                {emailMsg}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Stat cards */}
