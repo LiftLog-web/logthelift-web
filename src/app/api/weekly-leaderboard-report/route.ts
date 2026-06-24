@@ -73,8 +73,8 @@ async function fetchLeaderboard(
   employerId: string,
   fromDate:   string,
   toDate:     string,
+  client = sbAdmin(),
 ): Promise<LbData & { employeeCount: number }> {
-  const client = sbAdmin();
 
   const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
     client.from('patient_links')
@@ -507,7 +507,7 @@ export async function POST(req: NextRequest) {
     else                      fromDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
 
     const company = (prof.company_name as string | null) ?? 'Your Company';
-    const data    = await fetchLeaderboard(user.id, fromDate, todayStr);
+    const data    = await fetchLeaderboard(user.id, fromDate, todayStr, client);
 
     if (data.employeeCount === 0) {
       return NextResponse.json({ error: 'No employees found.' }, { status: 400 });
