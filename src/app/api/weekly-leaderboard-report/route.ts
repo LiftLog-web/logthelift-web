@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
 const FROM    = process.env.NOTIFY_FROM_EMAIL ?? 'programs@logthelift.com';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.ca';
@@ -9,7 +10,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logthelift.ca';
 
 function sbAdmin() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   );
@@ -17,8 +18,8 @@ function sbAdmin() {
 
 function sbUser(token: string) {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     { global: { headers: { Authorization: `Bearer ${token}` } } },
   );
 }
