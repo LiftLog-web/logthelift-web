@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/weekly-leaderboard-report",
-      "schedule": "30 13 * * *"
+      "schedule": "35 13 * * *"
     }
   ]
 }
