@@ -173,7 +173,7 @@ export default function ProgramsPage() {
       setCompanyName((prof as any).company_name ?? '');
       setAuthed(true);
 
-      const [templatesRes, programsRes] = await Promise.all([
+      const [templatesRes, programsRes, linksRes] = await Promise.all([
         sb.from('plan_templates')
           .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
           .eq('practitioner_id', MASTER_ID)
@@ -185,7 +185,12 @@ export default function ProgramsPage() {
           .select('id, plan_template_id, name, started_at, ends_at')
           .eq('employer_id', uid)
           .order('started_at', { ascending: false }),
+        sb.from('patient_links')
+          .select('patient_id')
+          .eq('practitioner_id', uid),
       ]);
+
+      setEmployeeCount((linksRes.data ?? []).length);
 
       // Exclude expired templates (until < today) — keep nulls (no expiry set)
       const allTemplates = ((templatesRes.data ?? []) as FeaturedTemplate[]).filter(
