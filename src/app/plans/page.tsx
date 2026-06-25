@@ -431,7 +431,7 @@ export default function PlansPage() {
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Workout Plans</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{isEmployer ? 'Team Members' : 'Workout Plans'}</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
               {activeGrouped.length} {patientLabel}{activeGrouped.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
             </p>
@@ -455,22 +455,35 @@ export default function PlansPage() {
             >
               + Add {patientLabelCap}
             </button>
-            <button
-              onClick={() => router.push('/plans/new')}
-              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
-            >
-              + New Plan
-            </button>
+            {!isEmployer && (
+              <button
+                onClick={() => router.push('/plans/new')}
+                style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+              >
+                + New Plan
+              </button>
+            )}
           </div>
         </div>
 
         {plans.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
-            <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No plans yet. Create your first plan for a {patientLabel}.</p>
-            <button onClick={() => router.push('/plans/new')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
-              Create First Plan
-            </button>
+            {isEmployer ? (
+              <>
+                <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No active plans yet. Launch a program to assign plans to your team.</p>
+                <button onClick={() => router.push('/programs')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
+                  Go to Programs
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No plans yet. Create your first plan for a {patientLabel}.</p>
+                <button onClick={() => router.push('/plans/new')} style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}>
+                  Create First Plan
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <>
