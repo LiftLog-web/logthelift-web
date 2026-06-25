@@ -32,6 +32,8 @@ interface EmployerProgram {
   name: string;
   started_at: string;
   ends_at: string;
+  schedule_type: string;
+  work_days: number[];
 }
 
 interface ProgramRating {
@@ -120,6 +122,8 @@ export default function ProgramsPage() {
   const [dateTab,        setDateTab]        = useState<'month' | 'custom'>('month');
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [range,          setRange]          = useState<DateRange | undefined>(undefined);
+  const [scheduleType,   setScheduleType]   = useState<'fixed' | 'flexible'>('fixed');
+  const [workDays,       setWorkDays]       = useState<number[]>([1, 2, 3, 4, 5]);
 
   const monthOptions = getMonthOptions();
 
@@ -156,6 +160,8 @@ export default function ProgramsPage() {
     setDateTab('month');
     setSelectedMonths(new Set());
     setRange(undefined);
+    setScheduleType('fixed');
+    setWorkDays([1, 2, 3, 4, 5]);
   }
 
   useEffect(() => {
@@ -308,7 +314,7 @@ export default function ProgramsPage() {
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
       }
-      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end }).select('id, plan_template_id, name, started_at, ends_at').single();
+      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days').single();
       if (progErr) { setLaunchError(`Could not save "${tpl.name}": ` + progErr.message); setLaunching(false); return; }
       newProgs.push(progData as EmployerProgram);
     }
@@ -344,7 +350,7 @@ export default function ProgramsPage() {
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
-    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end }).select('id, plan_template_id, name, started_at, ends_at').single();
+    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days').single();
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
     const newProg = progData as EmployerProgram;
     setActivePrograms(prev => [newProg, ...prev]);
@@ -427,6 +433,63 @@ export default function ProgramsPage() {
         </div>
       )}
     </>
+  );
+
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const SchedulePickerUI = (
+    <div style={{ marginBottom: 16 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>Work Schedule</p>
+      <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: 10, padding: 4, gap: 4, marginBottom: 12 }}>
+        {(['fixed', 'flexible'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setScheduleType(t)}
+            style={{
+              flex: 1, border: 'none', borderRadius: 8, padding: '8px 0',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              background: scheduleType === t ? 'var(--card)' : 'transparent',
+              color: scheduleType === t ? 'var(--text)' : 'var(--text-dim)',
+              transition: 'background 0.15s',
+            }}
+          >
+            {t === 'fixed' ? 'Fixed Days' : 'Flexible'}
+          </button>
+        ))}
+      </div>
+      {scheduleType === 'fixed' && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 8 }}>
+            {DAY_LABELS.map((name, i) => {
+              const sel = workDays.includes(i);
+              return (
+                <button
+                  key={i}
+                  onClick={() => setWorkDays(prev => sel ? prev.filter(d => d !== i) : [...prev, i].sort((a, b) => a - b))}
+                  style={{
+                    border: `1.5px solid ${sel ? TEAL : 'var(--border-strong)'}`,
+                    borderRadius: 8, padding: '8px 0',
+                    background: sel ? `${TEAL}18` : 'transparent',
+                    color: sel ? TEAL : 'var(--text-dim)',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 4px' }}>
+            Streaks only count on selected work days — off days won't break a streak.
+          </p>
+        </>
+      )}
+      {scheduleType === 'flexible' && (
+        <div style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          For employees with rotating or weekend shifts. A streak stays alive as long as there's no 3+ consecutive day gap without a workout.
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -776,6 +839,7 @@ export default function ProgramsPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {DatePickerUI}
+              {SchedulePickerUI}
               {employeeCount > 0 && (
                 <div style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>
                   Each program will be assigned to all <strong style={{ color: 'var(--text)' }}>{employeeCount} linked employee{employeeCount !== 1 ? 's' : ''}</strong>.
@@ -910,6 +974,7 @@ export default function ProgramsPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' }}>{launchModal.name}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {DatePickerUI}
+              {SchedulePickerUI}
               {employeeCount === 0 && (
                 <div style={{ background: '#F59E0B18', border: '1px solid #F59E0B40', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#F59E0B', marginBottom: 4 }}>
                   No linked employees found. Invite employees via your Profile page before launching.

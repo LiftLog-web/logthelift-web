@@ -42,22 +42,54 @@ function fmtShort(d: string) {
   });
 }
 
-function calcStreak(dates: string[]): number {
-  if (!dates.length) return 0;
-  const dateSet  = new Set(dates);
-  const today    = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yest     = new Date(today.getTime() - 86400000);
-  const todayStr = today.toISOString().slice(0, 10);
-  const yestStr  = yest.toISOString().slice(0, 10);
-  if (!dateSet.has(todayStr) && !dateSet.has(yestStr)) return 0;
-  let cursor = dateSet.has(todayStr) ? today : yest;
-  let streak = 0;
-  while (dateSet.has(cursor.toISOString().slice(0, 10))) {
-    streak++;
+function calcStreakFixed(dates: string[], workDays: number[]): number {
+  if (!dates.length || !workDays.length) return 0;
+  const dateSet = new Set(dates);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  function recentWD(from: Date): Date | null {
+    const d = new Date(from);
+    for (let i = 0; i < 14; i++) {
+      if (workDays.includes(d.getDay())) return new Date(d);
+      d.setTime(d.getTime() - 86400000);
+    }
+    return null;
+  }
+  const lastWD = recentWD(today);
+  if (!lastWD) return 0;
+  let startFrom: Date;
+  if (dateSet.has(lastWD.toISOString().slice(0, 10))) {
+    startFrom = lastWD;
+  } else {
+    const prev = recentWD(new Date(lastWD.getTime() - 86400000));
+    if (!prev || !dateSet.has(prev.toISOString().slice(0, 10))) return 0;
+    startFrom = prev;
+  }
+  let streak = 0, cursor = new Date(startFrom);
+  for (let safety = 0; safety < 800; safety++) {
+    if (workDays.includes(cursor.getDay())) {
+      if (dateSet.has(cursor.toISOString().slice(0, 10))) streak++;
+      else break;
+    }
     cursor = new Date(cursor.getTime() - 86400000);
   }
   return streak;
+}
+
+function calcStreakFlexible(dates: string[]): number {
+  if (!dates.length) return 0;
+  const dateSet = new Set(dates);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let cursor = new Date(today), streak = 0, misses = 0;
+  for (let safety = 0; safety < 800; safety++) {
+    if (dateSet.has(cursor.toISOString().slice(0, 10))) { streak++; misses = 0; }
+    else if (++misses >= 3) break;
+    cursor = new Date(cursor.getTime() - 86400000);
+  }
+  return streak;
+}
+
+function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5]): number {
+  return scheduleType === 'flexible' ? calcStreakFlexible(dates) : calcStreakFixed(dates, workDays);
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -70,10 +102,12 @@ interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeam
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 async function fetchLeaderboard(
-  employerId: string,
-  fromDate:   string,
-  toDate:     string,
-  client = sbAdmin(),
+  employerId:   string,
+  fromDate:     string,
+  toDate:       string,
+  client        = sbAdmin(),
+  scheduleType  = 'fixed',
+  workDays:     number[] = [1, 2, 3, 4, 5],
 ): Promise<LbData & { employeeCount: number }> {
 
   const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
@@ -135,7 +169,7 @@ async function fetchLeaderboard(
       name:     emp.name,
       teamName: emp.teamName,
       count:    periodMap[emp.id].length,
-      streak:   calcStreak(streakMap[emp.id]),
+      streak:   calcStreak(streakMap[emp.id], scheduleType, workDays),
     }))
     .sort((a, b) => b.count - a.count || b.streak - a.streak)
     .map((r, i) => ({ ...r, rank: i + 1 }));
@@ -403,12 +437,12 @@ export async function GET(req: NextRequest) {
 
   const [{ data: activeProgs }, { data: endedProgs }] = await Promise.all([
     client.from('employer_programs')
-      .select('id, employer_id, name, started_at, ends_at')
+      .select('id, employer_id, name, started_at, ends_at, schedule_type, work_days')
       .lte('started_at', todayStr)
       .gte('ends_at', todayStr),
     // Programs that ended since last Sunday's run
     client.from('employer_programs')
-      .select('id, employer_id, name, started_at, ends_at')
+      .select('id, employer_id, name, started_at, ends_at, schedule_type, work_days')
       .gte('ends_at', sevenAgo)
       .lt('ends_at', todayStr),
   ]);
@@ -441,7 +475,9 @@ export async function GET(req: NextRequest) {
     // Weekly summary for active programs
     const empActive = (activeProgs ?? []).filter((p: any) => p.employer_id === employerId);
     if (empActive.length > 0) {
-      const data = await fetchLeaderboard(employerId, sevenAgo, todayStr);
+      const schedType = (empActive[0].schedule_type as string) ?? 'fixed';
+      const wDays     = (empActive[0].work_days as number[]) ?? [1, 2, 3, 4, 5];
+      const data = await fetchLeaderboard(employerId, sevenAgo, todayStr, client, schedType, wDays);
       if (data.employeeCount > 0) {
         const subject = `Weekly Performance Report — ${company} — Week of ${fmtDate(sevenAgo)}`;
         const { error } = await resend.emails.send({
@@ -458,7 +494,9 @@ export async function GET(req: NextRequest) {
     // Recap for recently ended programs
     const empEnded = (endedProgs ?? []).filter((p: any) => p.employer_id === employerId);
     for (const prog of empEnded) {
-      const data = await fetchLeaderboard(employerId, prog.started_at, prog.ends_at);
+      const schedType = (prog.schedule_type as string) ?? 'fixed';
+      const wDays     = (prog.work_days as number[]) ?? [1, 2, 3, 4, 5];
+      const data = await fetchLeaderboard(employerId, prog.started_at, prog.ends_at, client, schedType, wDays);
       if (data.employeeCount > 0) {
         const subject = `Program Recap — ${prog.name} — Final Results`;
         const { error } = await resend.emails.send({
@@ -507,7 +545,20 @@ export async function POST(req: NextRequest) {
     else                      fromDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
 
     const company = (prof.company_name as string | null) ?? 'Your Company';
-    const data    = await fetchLeaderboard(user.id, fromDate, todayStr, client);
+
+    const { data: activeSched } = await client
+      .from('employer_programs')
+      .select('schedule_type, work_days')
+      .eq('employer_id', user.id)
+      .lte('started_at', todayStr)
+      .gte('ends_at', todayStr)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const schedType = (activeSched?.schedule_type as string) ?? 'fixed';
+    const wDays     = (activeSched?.work_days as number[]) ?? [1, 2, 3, 4, 5];
+    const data      = await fetchLeaderboard(user.id, fromDate, todayStr, client, schedType, wDays);
 
     if (data.employeeCount === 0) {
       return NextResponse.json({ error: 'No employees found.' }, { status: 400 });

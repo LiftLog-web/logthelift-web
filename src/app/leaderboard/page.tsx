@@ -48,26 +48,54 @@ function getPeriodStart(period: Period): Date {
   return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
 }
 
-function calcCurrentStreak(sortedDates: string[]): number {
-  if (!sortedDates.length) return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today.getTime() - 86400000);
+function calcCurrentStreakFixed(sortedDates: string[], workDays: number[]): number {
+  if (!sortedDates.length || !workDays.length) return 0;
   const dateSet = new Set(sortedDates);
-
-  const todayStr   = today.toISOString().slice(0, 10);
-  const yestStr    = yesterday.toISOString().slice(0, 10);
-  if (!dateSet.has(todayStr) && !dateSet.has(yestStr)) return 0;
-
-  let cursor = dateSet.has(todayStr) ? today : yesterday;
-  let streak = 0;
-  while (true) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (!dateSet.has(key)) break;
-    streak++;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  function recentWD(from: Date): Date | null {
+    const d = new Date(from);
+    for (let i = 0; i < 14; i++) {
+      if (workDays.includes(d.getDay())) return new Date(d);
+      d.setTime(d.getTime() - 86400000);
+    }
+    return null;
+  }
+  const lastWD = recentWD(today);
+  if (!lastWD) return 0;
+  let startFrom: Date;
+  if (dateSet.has(lastWD.toISOString().slice(0, 10))) {
+    startFrom = lastWD;
+  } else {
+    const prev = recentWD(new Date(lastWD.getTime() - 86400000));
+    if (!prev || !dateSet.has(prev.toISOString().slice(0, 10))) return 0;
+    startFrom = prev;
+  }
+  let streak = 0, cursor = new Date(startFrom);
+  for (let safety = 0; safety < 800; safety++) {
+    if (workDays.includes(cursor.getDay())) {
+      if (dateSet.has(cursor.toISOString().slice(0, 10))) streak++;
+      else break;
+    }
     cursor = new Date(cursor.getTime() - 86400000);
   }
   return streak;
+}
+
+function calcCurrentStreakFlexible(sortedDates: string[]): number {
+  if (!sortedDates.length) return 0;
+  const dateSet = new Set(sortedDates);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let cursor = new Date(today), streak = 0, misses = 0;
+  for (let safety = 0; safety < 800; safety++) {
+    if (dateSet.has(cursor.toISOString().slice(0, 10))) { streak++; misses = 0; }
+    else if (++misses >= 3) break;
+    cursor = new Date(cursor.getTime() - 86400000);
+  }
+  return streak;
+}
+
+function calcCurrentStreak(sortedDates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5]): number {
+  return scheduleType === 'flexible' ? calcCurrentStreakFlexible(sortedDates) : calcCurrentStreakFixed(sortedDates, workDays);
 }
 
 function calcLongestStreak(sortedDates: string[]): number {
@@ -164,6 +192,8 @@ export default function LeaderboardPage() {
   const [teams, setTeams]             = useState<Team[]>([]);
   const [employees, setEmployees]     = useState<Employee[]>([]);
   const [allDates, setAllDates]       = useState<Record<string, string[]>>({});
+  const [scheduleType, setScheduleType]   = useState<string>('fixed');
+  const [workDays, setWorkDays]           = useState<number[]>([1, 2, 3, 4, 5]);
   const [sessionToken, setSessionToken]   = useState('');
   const [emailStatus, setEmailStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [emailMsg, setEmailMsg]           = useState('');
@@ -217,11 +247,16 @@ export default function LeaderboardPage() {
       }
       setCompanyName(prof.company_name ?? 'Your Company');
 
-      const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [{ data: links }, { data: teamsData }, { data: planRows }, { data: activeSched }] = await Promise.all([
         supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
         supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
         supabase.from('workout_plans').select('id').eq('practitioner_id', user.id),
+        supabase.from('employer_programs').select('schedule_type, work_days').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
+
+      setScheduleType((activeSched as any)?.schedule_type ?? 'fixed');
+      setWorkDays((activeSched as any)?.work_days ?? [1, 2, 3, 4, 5]);
 
       if (!links || links.length === 0) { setLoading(false); return; }
       setTeams((teamsData ?? []) as Team[]);
@@ -267,13 +302,13 @@ export default function LeaderboardPage() {
         return {
           employee: emp,
           workoutCount: periodDates.length,
-          currentStreak: calcCurrentStreak([...dates].sort()),
+          currentStreak: calcCurrentStreak([...dates].sort(), scheduleType, workDays),
           longestStreak: calcLongestStreak([...periodDates].sort()),
           lastActive: dates.length ? [...dates].sort().at(-1)! : null,
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, period]);
+  }, [employees, allDates, period, scheduleType, workDays]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
