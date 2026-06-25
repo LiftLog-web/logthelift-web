@@ -41,6 +41,14 @@ interface LeaderboardEntry {
   lastActive: string | null;
 }
 
+interface TimeOffRequest {
+  id: string;
+  employee_id: string;
+  start_date: string;
+  end_date: string;
+  status: 'pending' | 'approved' | 'denied';
+}
+
 function getPeriodStart(period: Period): Date {
   const now = new Date();
   if (period === '7d') return new Date(now.getTime() - 7 * 86400000);
@@ -48,14 +56,28 @@ function getPeriodStart(period: Period): Date {
   return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
 }
 
-function calcCurrentStreakFixed(sortedDates: string[], workDays: number[]): number {
+function expandDateRange(start: string, end: string): string[] {
+  const out: string[] = [];
+  const cursor = new Date(start + 'T00:00:00');
+  const endDate = new Date(end   + 'T00:00:00');
+  while (cursor <= endDate) { out.push(cursor.toISOString().slice(0, 10)); cursor.setDate(cursor.getDate() + 1); }
+  return out;
+}
+
+function fmtDateShort(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function calcCurrentStreakFixed(sortedDates: string[], workDays: number[], approvedOffDates: string[] = []): number {
   if (!sortedDates.length || !workDays.length) return 0;
   const dateSet = new Set(sortedDates);
+  const offSet  = new Set(approvedOffDates);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   function recentWD(from: Date): Date | null {
     const d = new Date(from);
-    for (let i = 0; i < 14; i++) {
-      if (workDays.includes(d.getDay())) return new Date(d);
+    for (let i = 0; i < 60; i++) {
+      const s = d.toISOString().slice(0, 10);
+      if (workDays.includes(d.getDay()) && !offSet.has(s)) return new Date(d);
       d.setTime(d.getTime() - 86400000);
     }
     return null;
@@ -72,8 +94,9 @@ function calcCurrentStreakFixed(sortedDates: string[], workDays: number[]): numb
   }
   let streak = 0, cursor = new Date(startFrom);
   for (let safety = 0; safety < 800; safety++) {
-    if (workDays.includes(cursor.getDay())) {
-      if (dateSet.has(cursor.toISOString().slice(0, 10))) streak++;
+    const s = cursor.toISOString().slice(0, 10);
+    if (!offSet.has(s) && workDays.includes(cursor.getDay())) {
+      if (dateSet.has(s)) streak++;
       else break;
     }
     cursor = new Date(cursor.getTime() - 86400000);
@@ -81,21 +104,26 @@ function calcCurrentStreakFixed(sortedDates: string[], workDays: number[]): numb
   return streak;
 }
 
-function calcCurrentStreakFlexible(sortedDates: string[]): number {
+function calcCurrentStreakFlexible(sortedDates: string[], approvedOffDates: string[] = []): number {
   if (!sortedDates.length) return 0;
   const dateSet = new Set(sortedDates);
+  const offSet  = new Set(approvedOffDates);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let cursor = new Date(today), streak = 0, misses = 0;
   for (let safety = 0; safety < 800; safety++) {
-    if (dateSet.has(cursor.toISOString().slice(0, 10))) { streak++; misses = 0; }
+    const s = cursor.toISOString().slice(0, 10);
+    if (offSet.has(s)) { /* approved time off — skip */ }
+    else if (dateSet.has(s)) { streak++; misses = 0; }
     else if (++misses >= 3) break;
     cursor = new Date(cursor.getTime() - 86400000);
   }
   return streak;
 }
 
-function calcCurrentStreak(sortedDates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5]): number {
-  return scheduleType === 'flexible' ? calcCurrentStreakFlexible(sortedDates) : calcCurrentStreakFixed(sortedDates, workDays);
+function calcCurrentStreak(sortedDates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5], approvedOffDates: string[] = []): number {
+  return scheduleType === 'flexible'
+    ? calcCurrentStreakFlexible(sortedDates, approvedOffDates)
+    : calcCurrentStreakFixed(sortedDates, workDays, approvedOffDates);
 }
 
 function calcLongestStreak(sortedDates: string[]): number {
@@ -197,8 +225,54 @@ export default function LeaderboardPage() {
   const [sessionToken, setSessionToken]   = useState('');
   const [emailStatus, setEmailStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [emailMsg, setEmailMsg]           = useState('');
+  const [userId, setUserId]               = useState('');
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  const [approvedOffMap, setApprovedOffMap]   = useState<Record<string, string[]>>({});
+  const [autoApprove, setAutoApprove]         = useState(false);
+  const [torExpanded, setTorExpanded]         = useState(false);
 
   useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
+
+  async function approveRequest(id: string) {
+    const supabase = getSupabase();
+    await supabase.from('time_off_requests').update({ status: 'approved' }).eq('id', id);
+    setTimeOffRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r));
+    setApprovedOffMap(prev => {
+      const req = timeOffRequests.find(r => r.id === id);
+      if (!req) return prev;
+      const next = { ...prev };
+      if (!next[req.employee_id]) next[req.employee_id] = [];
+      next[req.employee_id] = [...next[req.employee_id], ...expandDateRange(req.start_date, req.end_date)];
+      return next;
+    });
+  }
+
+  async function denyRequest(id: string) {
+    const supabase = getSupabase();
+    await supabase.from('time_off_requests').update({ status: 'denied' }).eq('id', id);
+    setTimeOffRequests(prev => prev.filter(r => r.id !== id));
+  }
+
+  async function approveAll() {
+    const supabase = getSupabase();
+    const pending = timeOffRequests.filter(r => r.status === 'pending');
+    if (!pending.length) return;
+    await supabase.from('time_off_requests').update({ status: 'approved' }).in('id', pending.map(r => r.id));
+    const nextOff = { ...approvedOffMap };
+    for (const r of pending) {
+      if (!nextOff[r.employee_id]) nextOff[r.employee_id] = [];
+      nextOff[r.employee_id] = [...nextOff[r.employee_id], ...expandDateRange(r.start_date, r.end_date)];
+    }
+    setTimeOffRequests(prev => prev.map(r => r.status === 'pending' ? { ...r, status: 'approved' } : r));
+    setApprovedOffMap(nextOff);
+  }
+
+  async function toggleAutoApprove() {
+    const supabase = getSupabase();
+    const next = !autoApprove;
+    await supabase.from('profiles').update({ auto_approve_time_off: next }).eq('id', userId);
+    setAutoApprove(next);
+  }
 
   async function sendReport() {
     if (emailStatus === 'sending' || !sessionToken) return;
@@ -235,9 +309,11 @@ export default function LeaderboardPage() {
       setSessionToken(session.access_token);
       const user = session.user;
 
+      setUserId(user.id);
+
       const { data: prof } = await supabase
         .from('profiles')
-        .select('role, is_employer, company_name')
+        .select('role, is_employer, company_name, auto_approve_time_off')
         .eq('id', user.id)
         .single();
 
@@ -246,14 +322,26 @@ export default function LeaderboardPage() {
         return;
       }
       setCompanyName(prof.company_name ?? 'Your Company');
+      setAutoApprove(!!(prof as any).auto_approve_time_off);
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const [{ data: links }, { data: teamsData }, { data: planRows }, { data: activeSched }] = await Promise.all([
+      const [{ data: links }, { data: teamsData }, { data: planRows }, { data: activeSched }, { data: torRows }] = await Promise.all([
         supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
         supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
         supabase.from('workout_plans').select('id').eq('practitioner_id', user.id),
         supabase.from('employer_programs').select('schedule_type, work_days').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('time_off_requests').select('id, employee_id, start_date, end_date, status').eq('employer_id', user.id).in('status', ['pending', 'approved']).order('start_date', { ascending: false }),
       ]);
+
+      const torList = (torRows ?? []) as TimeOffRequest[];
+      setTimeOffRequests(torList);
+
+      const offMap: Record<string, string[]> = {};
+      for (const r of torList.filter(r => r.status === 'approved')) {
+        if (!offMap[r.employee_id]) offMap[r.employee_id] = [];
+        offMap[r.employee_id].push(...expandDateRange(r.start_date, r.end_date));
+      }
+      setApprovedOffMap(offMap);
 
       setScheduleType((activeSched as any)?.schedule_type ?? 'fixed');
       setWorkDays((activeSched as any)?.work_days ?? [1, 2, 3, 4, 5]);
@@ -302,13 +390,13 @@ export default function LeaderboardPage() {
         return {
           employee: emp,
           workoutCount: periodDates.length,
-          currentStreak: calcCurrentStreak([...dates].sort(), scheduleType, workDays),
+          currentStreak: calcCurrentStreak([...dates].sort(), scheduleType, workDays, approvedOffMap[emp.id] ?? []),
           longestStreak: calcLongestStreak([...periodDates].sort()),
           lastActive: dates.length ? [...dates].sort().at(-1)! : null,
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, period, scheduleType, workDays]);
+  }, [employees, allDates, period, scheduleType, workDays, approvedOffMap]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
@@ -466,6 +554,138 @@ export default function LeaderboardPage() {
             accent={GOLD}
           />
         </div>
+
+        {/* Time-off requests panel */}
+        {timeOffRequests.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <button
+              onClick={() => setTorExpanded(v => !v)}
+              style={{
+                width: '100%',
+                background: 'var(--modal-bg)',
+                border: `1px solid ${timeOffRequests.some(r => r.status === 'pending') ? '#F9731650' : 'var(--border)'}`,
+                borderRadius: torExpanded ? '16px 16px 0 0' : 16,
+                padding: '14px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                color: 'var(--text)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🏖️</span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>Time-Off Requests</span>
+                {timeOffRequests.some(r => r.status === 'pending') && (
+                  <span style={{
+                    background: '#F97316', color: '#fff', borderRadius: 99,
+                    padding: '2px 8px', fontSize: 11, fontWeight: 700,
+                  }}>
+                    {timeOffRequests.filter(r => r.status === 'pending').length} pending
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <label
+                  onClick={e => e.stopPropagation()}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={autoApprove}
+                    onChange={toggleAutoApprove}
+                    style={{ accentColor: TEAL, width: 14, height: 14 }}
+                  />
+                  Auto-approve
+                </label>
+                {timeOffRequests.some(r => r.status === 'pending') && (
+                  <button
+                    onClick={e => { e.stopPropagation(); approveAll(); }}
+                    style={{
+                      background: TEAL, color: '#111', border: 'none', borderRadius: 8,
+                      padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Approve All
+                  </button>
+                )}
+                <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>{torExpanded ? '▲' : '▼'}</span>
+              </div>
+            </button>
+
+            {torExpanded && (
+              <div style={{
+                background: 'var(--modal-bg)',
+                border: `1px solid ${timeOffRequests.some(r => r.status === 'pending') ? '#F9731650' : 'var(--border)'}`,
+                borderTop: 'none',
+                borderRadius: '0 0 16px 16px',
+                overflow: 'hidden',
+              }}>
+                {timeOffRequests.map((req, idx) => {
+                  const empName = employees.find(e => e.id === req.employee_id)?.name ?? 'Unknown';
+                  const isPending = req.status === 'pending';
+                  return (
+                    <div
+                      key={req.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 20px',
+                        borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={empName} size={30} />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{empName}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {fmtDateShort(req.start_date)}
+                            {req.start_date !== req.end_date && ` — ${fmtDateShort(req.end_date)}`}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {!isPending && (
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: TEAL,
+                            background: `${TEAL}18`, borderRadius: 8, padding: '3px 10px',
+                          }}>
+                            Approved
+                          </span>
+                        )}
+                        {isPending && (
+                          <>
+                            <button
+                              onClick={() => approveRequest(req.id)}
+                              style={{
+                                background: TEAL, color: '#111', border: 'none', borderRadius: 8,
+                                padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => denyRequest(req.id)}
+                              style={{
+                                background: 'transparent', color: 'var(--text-muted)',
+                                border: '1px solid var(--border)', borderRadius: 8,
+                                padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              }}
+                            >
+                              Deny
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Set Up Teams nudge */}
         {teams.length === 0 && (

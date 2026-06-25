@@ -42,14 +42,24 @@ function fmtShort(d: string) {
   });
 }
 
-function calcStreakFixed(dates: string[], workDays: number[]): number {
+function expandDateRange(start: string, end: string): string[] {
+  const out: string[] = [];
+  const cursor = new Date(start + 'T00:00:00');
+  const endDate = new Date(end   + 'T00:00:00');
+  while (cursor <= endDate) { out.push(cursor.toISOString().slice(0, 10)); cursor.setDate(cursor.getDate() + 1); }
+  return out;
+}
+
+function calcStreakFixed(dates: string[], workDays: number[], approvedOffDates: string[] = []): number {
   if (!dates.length || !workDays.length) return 0;
   const dateSet = new Set(dates);
+  const offSet  = new Set(approvedOffDates);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   function recentWD(from: Date): Date | null {
     const d = new Date(from);
-    for (let i = 0; i < 14; i++) {
-      if (workDays.includes(d.getDay())) return new Date(d);
+    for (let i = 0; i < 60; i++) {
+      const s = d.toISOString().slice(0, 10);
+      if (workDays.includes(d.getDay()) && !offSet.has(s)) return new Date(d);
       d.setTime(d.getTime() - 86400000);
     }
     return null;
@@ -66,8 +76,9 @@ function calcStreakFixed(dates: string[], workDays: number[]): number {
   }
   let streak = 0, cursor = new Date(startFrom);
   for (let safety = 0; safety < 800; safety++) {
-    if (workDays.includes(cursor.getDay())) {
-      if (dateSet.has(cursor.toISOString().slice(0, 10))) streak++;
+    const s = cursor.toISOString().slice(0, 10);
+    if (!offSet.has(s) && workDays.includes(cursor.getDay())) {
+      if (dateSet.has(s)) streak++;
       else break;
     }
     cursor = new Date(cursor.getTime() - 86400000);
@@ -75,21 +86,26 @@ function calcStreakFixed(dates: string[], workDays: number[]): number {
   return streak;
 }
 
-function calcStreakFlexible(dates: string[]): number {
+function calcStreakFlexible(dates: string[], approvedOffDates: string[] = []): number {
   if (!dates.length) return 0;
   const dateSet = new Set(dates);
+  const offSet  = new Set(approvedOffDates);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let cursor = new Date(today), streak = 0, misses = 0;
   for (let safety = 0; safety < 800; safety++) {
-    if (dateSet.has(cursor.toISOString().slice(0, 10))) { streak++; misses = 0; }
+    const s = cursor.toISOString().slice(0, 10);
+    if (offSet.has(s)) { /* approved time off — skip */ }
+    else if (dateSet.has(s)) { streak++; misses = 0; }
     else if (++misses >= 3) break;
     cursor = new Date(cursor.getTime() - 86400000);
   }
   return streak;
 }
 
-function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5]): number {
-  return scheduleType === 'flexible' ? calcStreakFlexible(dates) : calcStreakFixed(dates, workDays);
+function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] = [1, 2, 3, 4, 5], approvedOffDates: string[] = []): number {
+  return scheduleType === 'flexible'
+    ? calcStreakFlexible(dates, approvedOffDates)
+    : calcStreakFixed(dates, workDays, approvedOffDates);
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -110,7 +126,7 @@ async function fetchLeaderboard(
   workDays:     number[] = [1, 2, 3, 4, 5],
 ): Promise<LbData & { employeeCount: number }> {
 
-  const [{ data: links }, { data: teamsData }, { data: planRows }] = await Promise.all([
+  const [{ data: links }, { data: teamsData }, { data: planRows }, { data: offRows }] = await Promise.all([
     client.from('patient_links')
       .select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)')
       .eq('practitioner_id', employerId),
@@ -121,6 +137,10 @@ async function fetchLeaderboard(
     client.from('workout_plans')
       .select('id')
       .eq('practitioner_id', employerId),
+    client.from('time_off_requests')
+      .select('employee_id, start_date, end_date')
+      .eq('employer_id', employerId)
+      .eq('status', 'approved'),
   ]);
 
   const teams = (teamsData ?? []) as { id: string; name: string }[];
@@ -163,13 +183,19 @@ async function fetchLeaderboard(
   for (const w of (periodData ?? [])) periodMap[w.user_id]?.push(w.date);
   for (const w of (streakData ?? [])) streakMap[w.user_id]?.push(w.date);
 
+  const approvedOffMap: Record<string, string[]> = {};
+  for (const r of (offRows ?? [])) {
+    if (!approvedOffMap[r.employee_id]) approvedOffMap[r.employee_id] = [];
+    approvedOffMap[r.employee_id].push(...expandDateRange(r.start_date, r.end_date));
+  }
+
   const individual: IndividualRow[] = employees
     .map(emp => ({
       rank:     0,
       name:     emp.name,
       teamName: emp.teamName,
       count:    periodMap[emp.id].length,
-      streak:   calcStreak(streakMap[emp.id], scheduleType, workDays),
+      streak:   calcStreak(streakMap[emp.id], scheduleType, workDays, approvedOffMap[emp.id] ?? []),
     }))
     .sort((a, b) => b.count - a.count || b.streak - a.streak)
     .map((r, i) => ({ ...r, rank: i + 1 }));
