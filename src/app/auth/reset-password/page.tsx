@@ -6,15 +6,29 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
   const [showFallback, setShowFallback] = useState(false);
+  const [appLink, setAppLink] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!code) { setShowFallback(true); return; }
-    window.location.href = `liftlog://reset-password?code=${encodeURIComponent(code)}`;
-    const t = setTimeout(() => setShowFallback(true), 2500);
-    return () => clearTimeout(t);
+    // PKCE flow: Supabase puts the auth code in ?code= (query param)
+    if (code) {
+      const link = `liftlog://reset-password?code=${encodeURIComponent(code)}`;
+      setAppLink(link);
+      window.location.href = link;
+      const t = setTimeout(() => setShowFallback(true), 2500);
+      return () => clearTimeout(t);
+    }
+    // Implicit-flow fallback: Supabase puts tokens in the URL fragment (#)
+    // which never reaches the server but is readable client-side.
+    const hash = window.location.hash; // e.g. "#access_token=...&type=recovery"
+    if (hash && hash.length > 1) {
+      const link = `liftlog://reset-password${hash}`;
+      setAppLink(link);
+      window.location.href = link;
+      const t = setTimeout(() => setShowFallback(true), 2500);
+      return () => clearTimeout(t);
+    }
+    setShowFallback(true);
   }, [code]);
-
-  const appLink = code ? `liftlog://reset-password?code=${encodeURIComponent(code)}` : null;
 
   return (
     <div style={{
@@ -39,17 +53,7 @@ function ResetPasswordContent() {
           LiftLog
         </div>
 
-        {!code ? (
-          <>
-            <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
-            <h1 style={{ color: 'var(--text)', fontSize: '18px', fontWeight: 600, margin: '0 0 12px' }}>
-              Invalid Reset Link
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-              This password reset link is invalid or has expired. Please request a new one from the LiftLog app.
-            </p>
-          </>
-        ) : !showFallback ? (
+        {!showFallback ? (
           <>
             <div style={{
               width: '48px', height: '48px', borderRadius: '50%',
@@ -60,7 +64,7 @@ function ResetPasswordContent() {
               Opening LiftLog&hellip;
             </p>
           </>
-        ) : (
+        ) : appLink ? (
           <>
             <div style={{ fontSize: '24px', marginBottom: '16px' }}>📱</div>
             <h1 style={{ color: 'var(--text)', fontSize: '18px', fontWeight: 600, margin: '0 0 12px' }}>
@@ -69,27 +73,35 @@ function ResetPasswordContent() {
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 28px' }}>
               This link is designed for the LiftLog mobile app. Please open it on your phone, or tap the button below.
             </p>
-            {appLink && (
-              <a
-                href={appLink}
-                style={{
-                  display: 'block',
-                  background: 'rgba(95,207,191,0.13)',
-                  color: '#5fcfbf',
-                  border: '1px solid rgba(95,207,191,0.40)',
-                  borderRadius: '10px',
-                  padding: '13px 24px',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  marginBottom: '12px',
-                }}
-              >
-                Open LiftLog App
-              </a>
-            )}
+            <a
+              href={appLink}
+              style={{
+                display: 'block',
+                background: 'rgba(95,207,191,0.13)',
+                color: '#5fcfbf',
+                border: '1px solid rgba(95,207,191,0.40)',
+                borderRadius: '10px',
+                padding: '13px 24px',
+                fontSize: '15px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                marginBottom: '12px',
+              }}
+            >
+              Open LiftLog App
+            </a>
             <p style={{ color: 'var(--text-faint)', fontSize: '12px', margin: 0 }}>
               If you don&apos;t have LiftLog installed, download it from the App Store.
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
+            <h1 style={{ color: 'var(--text)', fontSize: '18px', fontWeight: 600, margin: '0 0 12px' }}>
+              Invalid Reset Link
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              This password reset link is invalid or has expired. Please request a new one from the LiftLog app.
             </p>
           </>
         )}
