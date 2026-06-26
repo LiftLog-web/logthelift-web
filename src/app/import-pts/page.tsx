@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
@@ -66,21 +67,42 @@ export default function ImportPTsPage() {
 
   function handleFile(file: File) {
     setError('');
-    const nameOk = /\.(csv|txt)$/i.test(file.name);
-    const mimeOk = ['text/csv', 'text/plain', 'application/vnd.ms-excel', 'application/csv'].includes(file.type);
+    const nameOk = /\.(csv|txt|xls|xlsx)$/i.test(file.name);
+    const mimeOk = [
+      'text/csv', 'text/plain', 'application/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ].includes(file.type);
     if (!nameOk && !mimeOk) {
-      setError('Please upload a .csv or .txt file.');
+      setError('Please upload a .csv, .txt, .xls, or .xlsx file.');
       return;
     }
+
+    const isExcel = /\.(xls|xlsx)$/i.test(file.name);
     const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target?.result as string;
-      const parsed = parseCSV(text);
-      if (!parsed.length) { setError('No rows found in file.'); return; }
-      setRows(parsed);
-      setStep('preview');
-    };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.onload = e => {
+        const data = e.target?.result as ArrayBuffer;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        const parsed = parseCSV(csv);
+        if (!parsed.length) { setError('No rows found in file.'); return; }
+        setRows(parsed);
+        setStep('preview');
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = e => {
+        const text = e.target?.result as string;
+        const parsed = parseCSV(text);
+        if (!parsed.length) { setError('No rows found in file.'); return; }
+        setRows(parsed);
+        setStep('preview');
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -188,8 +210,8 @@ export default function ImportPTsPage() {
             >
               <div style={{ fontSize: 44, marginBottom: 14 }}>📂</div>
               <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>Drop your CSV here or click to browse</p>
-              <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Accepts .csv or .txt · Columns: email, name (optional)</p>
-              <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Accepts .csv, .xlsx, .xls, or .txt · Columns: email, name (optional)</p>
+              <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
 
             {error && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{error}</p>}
