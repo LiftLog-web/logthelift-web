@@ -260,13 +260,16 @@ export default function ProgramsPage() {
   }, []);
 
   async function handleRemoveProgram(prog: EmployerProgram) {
-    if (!confirm(`End "${prog.name}" early? This will remove it from your active programs.`)) return;
+    if (!confirm(`End "${prog.name}" early? It will move to your completed programs and can be re-launched at any time.`)) return;
     setRemovingProgId(prog.id);
     const sb = getSupabase();
-    const { error } = await sb.from('employer_programs').delete().eq('id', prog.id);
-    if (error) { alert('Could not remove program: ' + error.message); setRemovingProgId(null); return; }
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const { error } = await sb.from('employer_programs').update({ ends_at: yesterday }).eq('id', prog.id);
+    if (error) { alert('Could not end program: ' + error.message); setRemovingProgId(null); return; }
     await sb.from('workout_plans').delete().eq('practitioner_id', userId).eq('name', prog.name);
+    const ended = { ...prog, ends_at: yesterday };
     setActivePrograms(prev => prev.filter(p => p.id !== prog.id));
+    setPastPrograms(prev => [ended, ...prev]);
     setRemovingProgId(null);
   }
 
