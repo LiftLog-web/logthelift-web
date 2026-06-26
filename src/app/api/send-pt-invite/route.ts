@@ -8,7 +8,31 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildPTInviteHtml(gymName: string, ptName: string): string {
+function generateCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function buildPTInviteHtml(gymName: string, ptName: string, code: string | null): string {
+  const codeSection = code ? `
+      <div style="background:rgba(95,207,191,0.1);border:1px solid rgba(95,207,191,0.3);border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+        <p style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;letter-spacing:1px;margin:0 0 8px;">YOUR GYM INVITE CODE</p>
+        <p style="color:#5fcfbf;font-size:36px;font-weight:800;letter-spacing:6px;margin:0;font-family:'Courier New',monospace;">${escapeHtml(code)}</p>
+      </div>` : '';
+
+  const steps = code ? `
+      <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2.2;margin:0 0 28px;padding-left:20px;">
+        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store or Google Play</li>
+        <li>Create your account and select <strong style="color:#fff;">Practitioner</strong> as your role</li>
+        <li>Go to <strong style="color:#fff;">Settings → Link to Gym</strong></li>
+        <li>Enter the code above — you'll be connected to <strong style="color:#fff;">${escapeHtml(gymName)}</strong> instantly</li>
+      </ol>` : `
+      <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2.2;margin:0 0 28px;padding-left:20px;">
+        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store or Google Play</li>
+        <li>Create your account and select <strong style="color:#fff;">Practitioner</strong> as your role</li>
+        <li>Contact <strong style="color:#fff;">${escapeHtml(gymName)}</strong> to be linked to their gym on the platform</li>
+      </ol>`;
+
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -27,12 +51,10 @@ function buildPTInviteHtml(gymName: string, ptName: string): string {
         <strong style="color:#5fcfbf;">${escapeHtml(gymName)}</strong> would like you to join their team as a Personal Trainer on LiftLog — the platform for managing client workout plans and tracking progress.
       </p>
 
+      ${codeSection}
+
       <p style="color:rgba(255,255,255,0.6);font-size:14px;font-weight:600;margin:0 0 12px;">How to get started:</p>
-      <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2.2;margin:0 0 28px;padding-left:20px;">
-        <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store or Google Play</li>
-        <li>Create your account and select <strong style="color:#fff;">Practitioner</strong> as your role</li>
-        <li>Contact <strong style="color:#fff;">${escapeHtml(gymName)}</strong> to be linked to their gym on the platform</li>
-      </ol>
+      ${steps}
 
       <a href="https://apps.apple.com/app/id6762567982"
          style="display:block;background:#5fcfbf;color:#0f1117;text-align:center;padding:14px 24px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;margin-bottom:12px;">
@@ -93,10 +115,11 @@ export async function POST(req: NextRequest) {
 
   const { data: gymProfile } = await sb
     .from('gym_profiles')
-    .select('gym_name')
+    .select('id, gym_name')
     .eq('owner_id', user.id)
     .single();
 
+  const gymId   = (gymProfile?.id as string | null) ?? null;
   const gymName = (gymProfile?.gym_name as string | null) ?? 'Your gym';
 
   let pts: { email: string; name?: string }[] = [];
@@ -120,12 +143,22 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
+    // Generate and store a single-use gym invite code for this PT
+    let code: string | null = null;
+    if (gymId) {
+      const generatedCode = generateCode();
+      const { error: codeErr } = await sb
+        .from('gym_invite_codes')
+        .insert({ gym_id: gymId, created_by: user.id, code: generatedCode });
+      if (!codeErr) code = generatedCode;
+    }
+
     const ptName = pt.name?.trim() ?? '';
     const { error: emailErr } = await resend.emails.send({
       from:    'LiftLog <noreply@logthelift.ca>',
       to:      [email],
       subject: `${gymName} has invited you to join as a PT on LiftLog`,
-      html:    buildPTInviteHtml(gymName, ptName),
+      html:    buildPTInviteHtml(gymName, ptName, code),
     });
 
     results.push({ email, success: !emailErr, error: emailErr?.message });
