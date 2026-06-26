@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit — 5 submissions per IP per hour (public form)
+  const rl = rateLimit(`business-application:${getClientIp(req)}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+  }
+
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const { name, email, companyName, businessType } = await req.json();

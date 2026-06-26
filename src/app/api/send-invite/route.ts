@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/rate-limit';
 
 const SUPABASE_URL      = 'https://oiugmbbqigzswlndaidd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_VX7YM-ESx-wpF77a1AkMqA_oRXXAuyM';
@@ -103,6 +104,12 @@ export async function POST(req: NextRequest) {
 
   if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Rate limit — 50 invites per user per hour
+  const rl = rateLimit(`send-invite:${user.id}`, 50, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
   }
 
   let patients: { email: string; name?: string }[] = [];

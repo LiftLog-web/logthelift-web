@@ -1,8 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/rate-limit';
+
+const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY);
+
+  // Auth — must be a practitioner or gym owner
+  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data: prof } = await sb
+    .from('profiles')
+    .select('role, is_gym_owner')
+    .eq('id', user.id)
+    .single();
+
+  if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Rate limit — 20 emails per user per hour
+  const rl = rateLimit(`send-email:${user.id}`, 20, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+  }
 
   try {
     const { to, toName, fromName, subject, body } = await req.json();
