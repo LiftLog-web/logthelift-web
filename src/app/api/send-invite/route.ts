@@ -3,8 +3,8 @@ import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/rate-limit';
 
-const SUPABASE_URL      = 'https://oiugmbbqigzswlndaidd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_VX7YM-ESx-wpF77a1AkMqA_oRXXAuyM';
+const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
