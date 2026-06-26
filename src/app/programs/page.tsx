@@ -56,8 +56,8 @@ function exCount(tpl: FeaturedTemplate) {
 }
 function setLabel(s: any): string {
   if (s.isSplit)        return `${s.leftReps ?? s.leftDuration ?? '?'} per side`;
-  if (s.duration)       return `${s.duration}s hold`;
-  if (s.seconds)        return `${s.seconds}s hold`;
+  if (s.duration)       return `${s.duration}s`;
+  if (s.seconds)        return `${s.seconds}s`;
   if (s.cardioduration != null || s.cardioSeconds != null) {
     const m = s.cardioduration ?? 0; const sec = s.cardioSeconds ?? 0;
     return sec > 0 ? `${m}:${String(sec).padStart(2, '0')} min cardio` : `${m} min cardio`;
