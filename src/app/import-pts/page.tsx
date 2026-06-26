@@ -66,7 +66,9 @@ export default function ImportPTsPage() {
 
   function handleFile(file: File) {
     setError('');
-    if (!file.name.match(/\.(csv|txt)$/i)) {
+    const nameOk = /\.(csv|txt)$/i.test(file.name);
+    const mimeOk = ['text/csv', 'text/plain', 'application/vnd.ms-excel', 'application/csv'].includes(file.type);
+    if (!nameOk && !mimeOk) {
       setError('Please upload a .csv or .txt file.');
       return;
     }
