@@ -242,6 +242,7 @@ export default function PatientProgressPage() {
   const [sendResult,   setSendResult]   = useState<'ok' | 'error' | null>(null);
 
   const [practId,          setPractId]          = useState('');
+  const [accessToken,      setAccessToken]      = useState('');
   const [isEmployer,       setIsEmployer]       = useState(false);
 
   // Assigned plans + week editing
@@ -266,6 +267,7 @@ export default function PatientProgressPage() {
       if (!data.session) { router.push('/login'); return; }
 
       const uid = data.session.user.id;
+      setAccessToken(data.session.access_token);
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer, display_name').eq('id', uid).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
       setPractName(prof?.display_name ?? 'Your Practitioner');
@@ -383,7 +385,7 @@ export default function PatientProgressPage() {
     try {
       const res = await fetch('/api/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
         body: JSON.stringify({
           to:       patientEmail,
           toName:   patientName,
