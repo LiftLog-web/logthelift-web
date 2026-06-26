@@ -117,6 +117,7 @@ export default function ProgramsPage() {
   const [programRatings,         setProgramRatings]         = useState<Record<string, ProgramRating>>({});
   const [programEngagement,      setProgramEngagement]      = useState<Record<string, number>>({});
   const [relaunchLoading,        setRelaunchLoading]        = useState<string | null>(null);
+  const [previewingProgId,       setPreviewingProgId]       = useState<string | null>(null);
 
   // Date picker state (shared between single and multi-launch modals)
   const [dateTab,        setDateTab]        = useState<'month' | 'custom'>('month');
@@ -283,6 +284,19 @@ export default function ProgramsPage() {
     setRelaunchLoading(null);
     if (!tplData) { alert('Could not load program details.'); return; }
     openLaunchModal(tplData as FeaturedTemplate);
+  }
+
+  async function handlePreviewPastProg(prog: EmployerProgram) {
+    if (previewingProgId) return;
+    setPreviewingProgId(prog.id);
+    const sb = getSupabase();
+    const { data: tplData } = await sb.from('plan_templates')
+      .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
+      .eq('id', prog.plan_template_id)
+      .single();
+    setPreviewingProgId(null);
+    if (!tplData) { alert('Could not load program details.'); return; }
+    setPreviewTpl(tplData as FeaturedTemplate);
   }
 
   function toggleSelect(id: string) {
@@ -744,9 +758,9 @@ export default function ProgramsPage() {
               {pastPrograms.map(prog => {
                 const rating = programRatings[prog.plan_template_id] ?? null;
                 return (
-                  <div key={prog.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', opacity: 0.82 }}>
+                  <div key={prog.id} onClick={() => handlePreviewPastProg(prog)} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', opacity: 0.82, cursor: 'pointer' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{prog.name}</p>
+                      <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</p>
                       <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -775,7 +789,7 @@ export default function ProgramsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: AMBER, background: `${AMBER}18`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>Completed</span>
                         <button
-                          onClick={() => handleRelaunch(prog)}
+                          onClick={e => { e.stopPropagation(); handleRelaunch(prog); }}
                           disabled={relaunchLoading === prog.id}
                           style={{
                             background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8,
