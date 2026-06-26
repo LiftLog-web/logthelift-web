@@ -24,18 +24,22 @@ interface ImportResult {
 }
 
 type Step = 'upload' | 'preview' | 'sending' | 'done';
+type Mode = 'single' | 'file';
 
 export default function ImportPTsPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [authed,   setAuthed]   = useState(false);
-  const [step,     setStep]     = useState<Step>('upload');
-  const [rows,     setRows]     = useState<PTRow[]>([]);
-  const [results,  setResults]  = useState<ImportResult[]>([]);
-  const [dragOver, setDragOver] = useState(false);
-  const [error,    setError]    = useState('');
-  const [token,    setToken]    = useState('');
+  const [authed,      setAuthed]      = useState(false);
+  const [step,        setStep]        = useState<Step>('upload');
+  const [mode,        setMode]        = useState<Mode>('single');
+  const [rows,        setRows]        = useState<PTRow[]>([]);
+  const [results,     setResults]     = useState<ImportResult[]>([]);
+  const [dragOver,    setDragOver]    = useState(false);
+  const [error,       setError]       = useState('');
+  const [token,       setToken]       = useState('');
+  const [singleEmail, setSingleEmail] = useState('');
+  const [singleName,  setSingleName]  = useState('');
 
   useEffect(() => {
     const sb = getSupabase();
@@ -51,11 +55,9 @@ export default function ImportPTsPage() {
   function parseCSV(text: string): PTRow[] {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (!lines.length) return [];
-
     const firstLow = lines[0].toLowerCase();
     const hasHeader = firstLow.includes('email') || firstLow.includes('name');
     const dataLines = hasHeader ? lines.slice(1) : lines;
-
     return dataLines.map(line => {
       const cols = line.split(/[,;\t]/).map(c => c.trim().replace(/^["']|["']$/g, ''));
       const email = cols[0] ?? '';
@@ -77,10 +79,8 @@ export default function ImportPTsPage() {
       setError('Please upload a .csv, .txt, .xls, or .xlsx file.');
       return;
     }
-
     const isExcel = /\.(xls|xlsx)$/i.test(file.name);
     const reader = new FileReader();
-
     if (isExcel) {
       reader.onload = e => {
         const data = e.target?.result as ArrayBuffer;
@@ -112,6 +112,22 @@ export default function ImportPTsPage() {
     if (file) handleFile(file);
   }
 
+  function addSingleRow() {
+    const email = singleEmail.trim().toLowerCase();
+    if (!email) return;
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!valid) { setError('Please enter a valid email address.'); return; }
+    if (rows.some(r => r.email === email)) { setError('This email is already in the list.'); return; }
+    setRows(prev => [...prev, { email, name: singleName.trim(), valid: true }]);
+    setSingleEmail('');
+    setSingleName('');
+    setError('');
+  }
+
+  function removeSingleRow(index: number) {
+    setRows(prev => prev.filter((_, i) => i !== index));
+  }
+
   function downloadTemplate() {
     const content = 'email,name\npt@example.com,Jane Smith\njohn@example.com,John Doe';
     const blob = new Blob([content], { type: 'text/csv' });
@@ -126,16 +142,11 @@ export default function ImportPTsPage() {
   async function sendInvites() {
     const valid = rows.filter(r => r.valid);
     if (!valid.length) return;
-
     setStep('sending');
-
     try {
       const res = await fetch('/api/send-pt-invite', {
         method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ pts: valid.map(r => ({ email: r.email, name: r.name || undefined })) }),
       });
       const data = await res.json();
@@ -143,7 +154,7 @@ export default function ImportPTsPage() {
       setStep('done');
     } catch {
       setError('Something went wrong. Please try again.');
-      setStep('preview');
+      setStep(mode === 'single' ? 'upload' : 'preview');
     }
   }
 
@@ -152,6 +163,13 @@ export default function ImportPTsPage() {
     setResults([]);
     setStep('upload');
     setError('');
+    setSingleEmail('');
+    setSingleName('');
+  }
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    reset();
   }
 
   if (!authed) {
@@ -185,12 +203,126 @@ export default function ImportPTsPage() {
           <span style={{ color: TEAL, fontSize: 22, fontWeight: 800 }}>LiftLog</span>
         </div>
 
-        <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Import PTs</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 32 }}>
-          Upload a CSV of PT emails. Each PT receives an invitation email with instructions to join your gym on LiftLog.
+        <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Invite PTs</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28 }}>
+          Each PT receives an invitation email with a unique code to join your gym on LiftLog.
         </p>
 
-        {step === 'upload' && (
+        {/* Mode tabs — only shown during upload/entry step */}
+        {(step === 'upload') && (
+          <div style={{ display: 'flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, marginBottom: 28, gap: 4 }}>
+            {(['single', 'file'] as Mode[]).map(m => (
+              <button
+                key={m}
+                onClick={() => switchMode(m)}
+                style={{
+                  flex: 1,
+                  background: mode === m ? TEAL : 'transparent',
+                  color: mode === m ? '#0f1117' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 9,
+                  padding: '9px 0',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                {m === 'single' ? 'Add Individually' : 'Import from File'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Single entry mode ── */}
+        {mode === 'single' && step === 'upload' && (
+          <>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginBottom: 14 }}>PT details</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={singleEmail}
+                  onChange={e => { setSingleEmail(e.target.value); setError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && addSingleRow()}
+                  style={{
+                    flex: 2, background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 9, padding: '10px 13px', color: 'var(--text)',
+                    fontSize: 14, outline: 'none',
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Name (optional)"
+                  value={singleName}
+                  onChange={e => setSingleName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addSingleRow()}
+                  style={{
+                    flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 9, padding: '10px 13px', color: 'var(--text)',
+                    fontSize: 14, outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={addSingleRow}
+                  disabled={!singleEmail.trim()}
+                  style={{
+                    background: singleEmail.trim() ? TEAL : 'var(--border)',
+                    color: singleEmail.trim() ? '#0f1117' : 'var(--text-muted)',
+                    border: 'none', borderRadius: 9,
+                    padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: singleEmail.trim() ? 'pointer' : 'default',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {error && <p style={{ color: '#EF4444', fontSize: 13, margin: '0 0 6px' }}>{error}</p>}
+              <p style={{ color: 'var(--text-faint)', fontSize: 12, margin: 0 }}>Press Enter or click Add. You can queue multiple PTs before sending.</p>
+            </div>
+
+            {rows.length > 0 && (
+              <>
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
+                      {rows.length} PT{rows.length !== 1 ? 's' : ''} queued
+                    </span>
+                    <button
+                      onClick={() => setRows([])}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  {rows.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '11px 20px', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                      <span style={{ flex: 1, color: 'var(--text)', fontSize: 14 }}>{r.email}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 13, marginRight: 16 }}>{r.name || '—'}</span>
+                      <button
+                        onClick={() => removeSingleRow(i)}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={sendInvites}
+                  style={{ width: '100%', background: TEAL, color: '#0f1117', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer' }}
+                >
+                  Send {rows.length} Invite{rows.length !== 1 ? 's' : ''}
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── File import mode ── */}
+        {mode === 'file' && step === 'upload' && (
           <>
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -199,17 +331,13 @@ export default function ImportPTsPage() {
               onClick={() => fileRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? TEAL : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: 20,
-                padding: 48,
-                textAlign: 'center',
-                cursor: 'pointer',
+                borderRadius: 20, padding: 48, textAlign: 'center', cursor: 'pointer',
                 background: dragOver ? 'rgba(95,207,191,0.05)' : 'rgba(255,255,255,0.02)',
-                transition: 'border-color 0.2s, background 0.2s',
-                marginBottom: 16,
+                transition: 'border-color 0.2s, background 0.2s', marginBottom: 16,
               }}
             >
               <div style={{ fontSize: 44, marginBottom: 14 }}>📂</div>
-              <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>Drop your CSV here or click to browse</p>
+              <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>Drop your file here or click to browse</p>
               <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Accepts .csv, .xlsx, .xls, or .txt · Columns: email, name (optional)</p>
               <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
@@ -236,6 +364,7 @@ pt@example.com`}
           </>
         )}
 
+        {/* ── Preview step (file mode only) ── */}
         {step === 'preview' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -334,7 +463,7 @@ pt@example.com`}
                 onClick={reset}
                 style={{ flex: 1, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
               >
-                Import Another File
+                Invite More PTs
               </button>
               <button
                 onClick={() => router.push('/dashboard')}
@@ -345,6 +474,7 @@ pt@example.com`}
             </div>
           </>
         )}
+
       </div>
     </div>
   );
