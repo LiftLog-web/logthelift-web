@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+
+const SendPTInviteSchema = z.object({
+  pts: z.array(z.object({
+    email: z.string().email().max(254),
+    name:  z.string().max(100).optional(),
+  })).min(1).max(50),
+});
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -122,26 +130,21 @@ export async function POST(req: NextRequest) {
   const gymId   = (gymProfile?.id as string | null) ?? null;
   const gymName = (gymProfile?.gym_name as string | null) ?? 'Your gym';
 
-  let pts: { email: string; name?: string }[] = [];
+  let parsed: ReturnType<typeof SendPTInviteSchema.safeParse>;
   try {
-    const body = await req.json();
-    pts = body.pts ?? [];
+    parsed = SendPTInviteSchema.safeParse(await req.json());
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
-
-  if (!pts.length) {
-    return NextResponse.json({ error: 'No PTs provided.' }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
+  const { pts } = parsed.data;
 
   const results: { email: string; success: boolean; error?: string }[] = [];
 
   for (const pt of pts) {
-    const email = pt.email?.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      results.push({ email: pt.email ?? '', success: false, error: 'Invalid email' });
-      continue;
-    }
+    const email = pt.email.trim().toLowerCase();
 
     // Generate and store a single-use gym invite code for this PT
     let code: string | null = null;

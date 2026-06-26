@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { z } from 'zod';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+const BusinessApplicationSchema = z.object({
+  name:         z.string().min(1).max(100),
+  email:        z.string().email().max(254),
+  companyName:  z.string().min(1).max(100),
+  businessType: z.enum(['gym', 'corporate']),
+});
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -15,11 +23,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { name, email, companyName, businessType } = await req.json();
-
-    if (!name || !email || !companyName || !businessType) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const parsed = BusinessApplicationSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
+    const { name, email, companyName, businessType } = parsed.data;
 
     const typeLabel = businessType === 'gym' ? 'Gym / Studio' : 'Corporate / Employer';
 

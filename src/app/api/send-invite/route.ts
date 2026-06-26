@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+
+const SendInviteSchema = z.object({
+  patients:    z.array(z.object({
+    email: z.string().email().max(254),
+    name:  z.string().max(100).optional(),
+  })).min(1).max(100),
+  isEmployer:  z.boolean().optional(),
+  companyName: z.string().max(100).optional(),
+});
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -110,34 +120,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
   }
 
-  let patients: { email: string; name?: string }[] = [];
-  let isEmployer = false;
-  let companyName = '';
+  let parsed: ReturnType<typeof SendInviteSchema.safeParse>;
   try {
-    const body = await req.json();
-    patients    = body.patients    ?? [];
-    isEmployer  = !!(body.isEmployer);
-    companyName = body.companyName ?? '';
+    parsed = SendInviteSchema.safeParse(await req.json());
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+  }
+  const { patients, isEmployer = false, companyName = '' } = parsed.data;
 
   const senderName = isEmployer && companyName
     ? companyName
     : ((prof?.display_name as string | null) ?? 'Your practitioner');
 
-  if (!patients.length) {
-    return NextResponse.json({ error: 'No patients provided.' }, { status: 400 });
-  }
-
   const results: { email: string; success: boolean; error?: string }[] = [];
 
   for (const patient of patients) {
-    const email = patient.email?.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      results.push({ email: patient.email ?? '', success: false, error: 'Invalid email' });
-      continue;
-    }
+    const email = patient.email.trim().toLowerCase();
 
     const code = generateCode();
 

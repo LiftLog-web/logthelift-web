@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+
+const SendEmailSchema = z.object({
+  to:       z.string().email().max(254),
+  toName:   z.string().max(100).optional(),
+  fromName: z.string().max(100).optional(),
+  subject:  z.string().min(1).max(200),
+  body:     z.string().min(1).max(10000),
+});
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY);
@@ -35,11 +44,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { to, toName, fromName, subject, body } = await req.json();
-
-    if (!to || !subject || !body) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+    const parsed = SendEmailSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
+    const { to, toName, fromName, subject, body } = parsed.data;
 
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json({ error: 'Email service not configured.' }, { status: 503 });
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
             <div style="color:rgba(255,255,255,0.8);font-size:15px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(body)}</div>
             <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
               <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0;">
-                Sent by <strong style="color:#C471ED;">${escapeHtml(fromName)}</strong> via LiftLog
+                Sent by <strong style="color:#C471ED;">${escapeHtml(fromName ?? '')}</strong> via LiftLog
               </p>
             </div>
           </div>
