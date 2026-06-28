@@ -64,6 +64,11 @@ export default function ProfilePage() {
   const [featuredStats, setFeaturedStats] = useState<FeaturedStats | null>(null);
   const [employerTeams, setEmployerTeams] = useState<{ id: string; name: string; memberCount: number }[]>([]);
 
+  // Subscription state (practitioners only)
+  const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean } | null>(null);
+  const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+
   // Invite code state
   const [inviteCode, setInviteCode]   = useState<{ code: string; expires_at: string } | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -151,6 +156,25 @@ export default function ProfilePage() {
           const { data: statsRows } = await supabase.rpc('get_featured_program_stats', { p_practitioner_id: userId });
           setFeaturedStats((statsRows as FeaturedStats[])?.[0] ?? null);
         }
+
+        // Load subscription info
+        const { data: subData } = await supabase
+          .from('practitioner_subscriptions')
+          .select('status, current_period_end, grandfathered')
+          .eq('practitioner_id', userId)
+          .single();
+        if (subData) {
+          const now = new Date();
+          const periodEnd = subData.current_period_end ? new Date(subData.current_period_end) : null;
+          const trialEndData = (subData as any).trial_end ? new Date((subData as any).trial_end) : null;
+          const trialActive = subData.status === 'trialing' && trialEndData !== null && trialEndData > now;
+          const hasAccess = !!subData.grandfathered || subData.status === 'active' || subData.status === 'past_due' || trialActive;
+          setSubscription({
+            status: subData.status,
+            periodEnd: periodEnd ? periodEnd.toISOString() : null,
+            hasAccess,
+          });
+        }
       }
 
       setPageState('ready');
@@ -211,6 +235,34 @@ export default function ProfilePage() {
       setInviteError('Failed to send. Please try again.');
     }
     setSendingInvite(false);
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm(
+      subscription?.periodEnd
+        ? `Are you sure? You'll keep full access to all practitioner features until ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Your patients' data will not be deleted.`
+        : "Are you sure? You'll keep full access until the end of your billing period. Your patients' data will not be deleted."
+    )) return;
+
+    setCancelingSubscription(true);
+    setCancelSuccess(null);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cancel-subscription`,
+        { method: 'POST', headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? 'Failed to cancel subscription');
+      const periodEnd = new Date(body.periodEnd);
+      setSubscription(prev => prev ? { ...prev, status: 'active' } : prev);
+      setCancelSuccess(
+        `Your subscription has been canceled. You'll keep full access until ${periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+      );
+    } catch (err: any) {
+      alert(err?.message ?? 'Could not cancel subscription. Please contact logthelift@gmail.com.');
+    } finally {
+      setCancelingSubscription(false);
+    }
   };
 
   if (pageState === 'loading') {
@@ -544,6 +596,33 @@ export default function ProfilePage() {
             <a href="/import" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '9px 20px', fontWeight: 700, textDecoration: 'none', fontSize: 13, whiteSpace: 'nowrap', border: 'none' }}>
               Import {isEmployer ? 'Employees' : 'Patients'}
             </a>
+          </div>
+        )}
+
+        {/* Cancel subscription (practitioners with active access, not already canceled) */}
+        {isPractitioner && subscription?.hasAccess && subscription.status !== 'canceled' && (
+          <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #ff6b6b44', borderRadius: 16, padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: cancelSuccess ? 12 : 0 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#ff6b6b' }}>Cancel Subscription</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
+                  {subscription?.periodEnd
+                    ? `You'll keep access until ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                    : 'Your access continues until the end of the billing period'}
+                </p>
+              </div>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelingSubscription}
+                style={{ background: 'transparent', color: '#ff6b6b', border: '1px solid #ff6b6b', borderRadius: 10, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: cancelingSubscription ? 'not-allowed' : 'pointer', opacity: cancelingSubscription ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                {cancelingSubscription ? 'Canceling…' : 'Cancel Subscription'}
+              </button>
+            </div>
+            {cancelSuccess && (
+              <p style={{ color: '#5fcfbf', fontSize: 13, margin: 0, background: '#5fcfbf18', borderRadius: 8, padding: '10px 14px' }}>
+                {cancelSuccess}
+              </p>
+            )}
           </div>
         )}
 
