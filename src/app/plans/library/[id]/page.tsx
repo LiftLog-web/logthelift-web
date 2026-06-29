@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
@@ -250,6 +251,10 @@ export default function TemplateEditorPage() {
       if (!data.session) { router.push('/login'); return; }
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner') {
+        const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
+        if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
+      }
       setAuthed(true);
       setUserId(data.session.user.id);
       setIsEmployer(!!(prof as any)?.is_employer);

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -130,6 +131,8 @@ export default function EmployeeOverviewPage() {
         router.replace('/plans');
         return;
       }
+      const hasAccess = await checkPractitionerAccess(supabase, user.id);
+      if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
 
       // Verify this employee is actually linked to this employer
       const { data: link } = await supabase

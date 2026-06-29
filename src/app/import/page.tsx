@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import * as XLSX from 'xlsx';
 
@@ -46,6 +47,10 @@ export default function ImportPage() {
       setToken(data.session.access_token);
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer, company_name').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner') {
+        const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
+        if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
+      }
       setIsEmployer(!!(prof as any)?.is_employer);
       setCompanyName((prof as any)?.company_name ?? '');
       setAuthed(true);

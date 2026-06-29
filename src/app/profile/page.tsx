@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { Sk, SkPage } from '@/components/Skeleton';
 
@@ -55,6 +55,8 @@ function makeCode(): string {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const subscriptionExpired = searchParams.get('subscription') === 'expired';
   const [pageState, setPageState]     = useState<PageState>('loading');
   const [profile, setProfile]         = useState<Profile | null>(null);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
@@ -369,6 +371,17 @@ export default function ProfilePage() {
       )}
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
+
+        {/* Subscription expired banner */}
+        {subscriptionExpired && (
+          <div style={{ background: '#EF444418', border: '1px solid #EF444466', borderRadius: 12, padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>🔒</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#EF4444', fontSize: 15, marginBottom: 4 }}>Subscription Required</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Your practitioner subscription has expired. Renew below to regain access to your plans, patients, and media library.</div>
+            </div>
+          </div>
+        )}
 
         {/* Profile card */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
