@@ -257,10 +257,12 @@ export default function ProfilePage() {
       const token = freshSession?.access_token ?? sessionToken;
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cancel-subscription`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' } }
       );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message ?? body.error ?? 'Failed to cancel subscription');
+      const rawText = await res.text().catch(() => '');
+      let body: any = {};
+      try { body = JSON.parse(rawText); } catch {}
+      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}: ${rawText.slice(0, 200)}`);
       const periodEnd = new Date(body.periodEnd);
       setSubscription(prev => prev ? { ...prev, canCancel: false, cancelAtPeriodEnd: true, periodEnd: periodEnd.toISOString() } : prev);
       setCancelSuccess(
@@ -281,10 +283,12 @@ export default function ProfilePage() {
       const token = freshSession?.access_token ?? sessionToken;
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/resume-subscription`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' } }
       );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message ?? body.error ?? 'Failed to resume subscription');
+      const rawText = await res.text().catch(() => '');
+      let body: any = {};
+      try { body = JSON.parse(rawText); } catch {}
+      if (!res.ok) throw new Error(body.message ?? body.error ?? `HTTP ${res.status}: ${rawText.slice(0, 200)}`);
       const periodEnd = new Date(body.periodEnd);
       setSubscription(prev => prev ? { ...prev, canCancel: true, cancelAtPeriodEnd: false, periodEnd: periodEnd.toISOString() } : prev);
       setCancelSuccess(null);
