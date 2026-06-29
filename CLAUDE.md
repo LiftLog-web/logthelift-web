@@ -15,6 +15,17 @@ Follow these rules for every change. No exceptions without explicit discussion.
 - **No `dangerouslySetInnerHTML` with user content.** The one existing usage is for a static theme-flash script — that pattern is acceptable only for static strings.
 - **Sentry is production-only with `sendDefaultPii: false`.** Do not change the sample rate or PII setting without discussion.
 
+## PIPEDA Compliance
+
+Canada's PIPEDA applies to logthelift.ca. Enforce these rules on every change that touches data collection, forms, or policies:
+
+- **Any new personal data collected via forms or API routes must be added to the privacy policy** at `GymTracker/privacy-policy.html` before shipping. This includes new fields in business-application, contact forms, or any user-submitted data.
+- **The privacy policy must be linked from the site footer and any sign-up or data-collection forms.** Do not remove existing policy links.
+- **No new third-party analytics, tracking pixels, or session-recording tools** without first updating the privacy policy and evaluating PIPEDA consent requirements.
+- **Cross-border transfers**: any new data processor (SaaS, CDN, API) that stores data outside Canada must be added to Section 5 of the privacy policy.
+- **Purpose limitation**: do not use personal data (emails, names, business details) for any purpose not listed in the privacy policy.
+- When in doubt, check `C:\Dev\Claude Code Apps\SECURITY_CHECKLIST.md` (SOC2 Privacy row).
+
 ## Floating UI
 
 Any floating panel (modal, dropdown, popover, hover card) must use `var(--modal-bg)` not `var(--card)` as its background, and must close on outside click via a `mousedown` listener + ref.
