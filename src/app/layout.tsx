@@ -32,6 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NavShell />
             <ThemeToggle />
             {children}
+            <footer style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+              © {new Date().getFullYear()} LiftLog &nbsp;·&nbsp;{' '}
+              <a href="/privacy-policy.html" style={{ color: 'var(--text-muted)' }}>Privacy Policy</a>
+            </footer>
           </NavGuardProvider>
         </ThemeProvider>
       </body>
