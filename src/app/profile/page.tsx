@@ -65,7 +65,7 @@ export default function ProfilePage() {
   const [employerTeams, setEmployerTeams] = useState<{ id: string; name: string; memberCount: number }[]>([]);
 
   // Subscription state (practitioners only)
-  const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean; canCancel: boolean } | null>(null);
+  const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean; canCancel: boolean; cancelAtPeriodEnd: boolean } | null>(null);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
 
@@ -160,7 +160,7 @@ export default function ProfilePage() {
         // Load subscription info
         const { data: subData } = await supabase
           .from('practitioner_subscriptions')
-          .select('status, current_period_end, grandfathered, stripe_subscription_id')
+          .select('status, current_period_end, grandfathered, stripe_subscription_id, cancel_at_period_end')
           .eq('practitioner_id', userId)
           .single();
         if (subData) {
@@ -169,13 +169,15 @@ export default function ProfilePage() {
           const trialEndData = (subData as any).trial_end ? new Date((subData as any).trial_end) : null;
           const trialActive = subData.status === 'trialing' && trialEndData !== null && trialEndData > now;
           const hasAccess = !!subData.grandfathered || subData.status === 'active' || subData.status === 'past_due' || trialActive;
-          const canCancel = !!(subData as any).stripe_subscription_id &&
+          const cancelAtPeriodEnd = !!(subData as any).cancel_at_period_end;
+          const canCancel = !!(subData as any).stripe_subscription_id && !cancelAtPeriodEnd &&
             (subData.status === 'active' || subData.status === 'trialing' || subData.status === 'past_due');
           setSubscription({
             status: subData.status,
             periodEnd: periodEnd ? periodEnd.toISOString() : null,
             hasAccess,
             canCancel,
+            cancelAtPeriodEnd,
           });
         }
       }
@@ -250,14 +252,16 @@ export default function ProfilePage() {
     setCancelingSubscription(true);
     setCancelSuccess(null);
     try {
+      const { data: { session: freshSession } } = await getSupabase().auth.getSession();
+      const token = freshSession?.access_token ?? sessionToken;
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cancel-subscription`,
-        { method: 'POST', headers: { Authorization: `Bearer ${sessionToken}` } }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
       );
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? 'Failed to cancel subscription');
+      if (!res.ok) throw new Error(body.message ?? body.error ?? 'Failed to cancel subscription');
       const periodEnd = new Date(body.periodEnd);
-      setSubscription(prev => prev ? { ...prev, status: 'active' } : prev);
+      setSubscription(prev => prev ? { ...prev, canCancel: false, cancelAtPeriodEnd: true, periodEnd: periodEnd.toISOString() } : prev);
       setCancelSuccess(
         `Your subscription has been canceled. You'll keep full access until ${periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
       );
@@ -626,6 +630,21 @@ export default function ProfilePage() {
                 {cancelSuccess}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Subscription already canceled — show access end date */}
+        {isPractitioner && subscription?.cancelAtPeriodEnd && !subscription?.canCancel && (
+          <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #F59E0B44', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <span style={{ fontSize: 20, lineHeight: 1, marginTop: 1 }}>ℹ️</span>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#F59E0B' }}>Subscription Canceled</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
+                {subscription.periodEnd
+                  ? `You will lose your LiftLog practitioner permissions on ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                  : 'You will lose your LiftLog practitioner permissions at the end of your billing period.'}
+              </p>
+            </div>
           </div>
         )}
 
