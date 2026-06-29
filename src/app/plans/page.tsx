@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
 const TEAL    = '#5fcfbf';
@@ -170,6 +171,10 @@ export default function PlansPage() {
         .eq('id', data.session.user.id)
         .single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner') {
+        const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
+        if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
+      }
 
       const t = (prof as any)?.inactivity_threshold_days ?? 7;
       setThreshold(t);

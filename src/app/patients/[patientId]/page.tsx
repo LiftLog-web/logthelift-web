@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { MUSCLE_GROUPS } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
@@ -270,6 +271,10 @@ export default function PatientProgressPage() {
       setAccessToken(data.session.access_token);
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer, display_name').eq('id', uid).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner') {
+        const hasAccess = await checkPractitionerAccess(sb, uid);
+        if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
+      }
       setPractName(prof?.display_name ?? 'Your Practitioner');
       setPractId(uid);
       const employerFlag = !!(prof as any)?.is_employer;

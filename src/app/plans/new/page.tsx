@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback, useRef, Suspense, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
@@ -141,6 +142,10 @@ function NewPlanInner() {
 
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner').eq('id', data.session.user.id).single();
       if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner') {
+        const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
+        if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
+      }
 
       const uid = data.session.user.id;
       setPractId(uid);
