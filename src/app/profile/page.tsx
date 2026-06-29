@@ -636,7 +636,7 @@ export default function ProfilePage() {
         {/* Cancel subscription (practitioners with active access, not already canceled) */}
         {isPractitioner && subscription?.canCancel && (
           <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #ff6b6b44', borderRadius: 16, padding: '20px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: cancelSuccess ? 12 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#ff6b6b' }}>Cancel Subscription</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
@@ -652,17 +652,12 @@ export default function ProfilePage() {
                 {cancelingSubscription ? 'Canceling…' : 'Cancel Subscription'}
               </button>
             </div>
-            {cancelSuccess && (
-              <p style={{ color: '#5fcfbf', fontSize: 13, margin: 0, background: '#5fcfbf18', borderRadius: 8, padding: '10px 14px' }}>
-                {cancelSuccess}
-              </p>
-            )}
           </div>
         )}
 
         {/* Subscription already canceled — show access end date and resume option */}
         {isPractitioner && subscription?.cancelAtPeriodEnd && !subscription?.canCancel && (
-          <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #F59E0B44', borderRadius: 16, padding: '20px 24px' }}>
+          <div style={{ marginTop: 16, background: '#F59E0B18', border: '1px solid #F59E0B66', borderRadius: 16, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#F59E0B' }}>Subscription Canceled</p>
@@ -670,16 +665,23 @@ export default function ProfilePage() {
                   {subscription.periodEnd
                     ? `You will lose practitioner access on ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
                     : 'You will lose practitioner access at the end of your billing period.'}
+                  {' '}Changed your mind?
                 </p>
               </div>
               <button
                 onClick={handleResumeSubscription}
                 disabled={resumingSubscription}
-                style={{ background: 'transparent', color: '#F59E0B', border: '1px solid #F59E0B', borderRadius: 10, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: resumingSubscription ? 'not-allowed' : 'pointer', opacity: resumingSubscription ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ background: '#F59E0B', color: '#0f1117', border: 'none', borderRadius: 10, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: resumingSubscription ? 'not-allowed' : 'pointer', opacity: resumingSubscription ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {resumingSubscription ? 'Resuming…' : 'Resume Subscription'}
               </button>
             </div>
           </div>
+        )}
+
+        {cancelSuccess && (
+          <p style={{ marginTop: 12, color: '#5fcfbf', fontSize: 13, background: '#5fcfbf18', borderRadius: 8, padding: '10px 14px' }}>
+            {cancelSuccess}
+          </p>
         )}
 
         {/* Patient quick actions */}
