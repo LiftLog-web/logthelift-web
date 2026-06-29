@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { Sk, SkPage } from '@/components/Skeleton';
 
 const TEAL   = '#5fcfbf';
@@ -256,8 +256,8 @@ export default function ProfilePage() {
       const { data: { session: freshSession } } = await getSupabase().auth.getSession();
       const token = freshSession?.access_token ?? sessionToken;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cancel-subscription`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' } }
+        `${SUPABASE_URL}/functions/v1/cancel-subscription`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY } }
       );
       const rawText = await res.text().catch(() => '');
       let body: any = {};
@@ -282,8 +282,8 @@ export default function ProfilePage() {
       const { data: { session: freshSession } } = await getSupabase().auth.getSession();
       const token = freshSession?.access_token ?? sessionToken;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/resume-subscription`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' } }
+        `${SUPABASE_URL}/functions/v1/resume-subscription`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY } }
       );
       const rawText = await res.text().catch(() => '');
       let body: any = {};
