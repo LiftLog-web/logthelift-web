@@ -65,7 +65,7 @@ export default function ProfilePage() {
   const [employerTeams, setEmployerTeams] = useState<{ id: string; name: string; memberCount: number }[]>([]);
 
   // Subscription state (practitioners only)
-  const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean } | null>(null);
+  const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean; canCancel: boolean } | null>(null);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
 
@@ -160,7 +160,7 @@ export default function ProfilePage() {
         // Load subscription info
         const { data: subData } = await supabase
           .from('practitioner_subscriptions')
-          .select('status, current_period_end, grandfathered')
+          .select('status, current_period_end, grandfathered, stripe_subscription_id')
           .eq('practitioner_id', userId)
           .single();
         if (subData) {
@@ -169,10 +169,13 @@ export default function ProfilePage() {
           const trialEndData = (subData as any).trial_end ? new Date((subData as any).trial_end) : null;
           const trialActive = subData.status === 'trialing' && trialEndData !== null && trialEndData > now;
           const hasAccess = !!subData.grandfathered || subData.status === 'active' || subData.status === 'past_due' || trialActive;
+          const canCancel = !!(subData as any).stripe_subscription_id &&
+            (subData.status === 'active' || subData.status === 'trialing' || subData.status === 'past_due');
           setSubscription({
             status: subData.status,
             periodEnd: periodEnd ? periodEnd.toISOString() : null,
             hasAccess,
+            canCancel,
           });
         }
       }
@@ -600,7 +603,7 @@ export default function ProfilePage() {
         )}
 
         {/* Cancel subscription (practitioners with active access, not already canceled) */}
-        {isPractitioner && subscription?.hasAccess && subscription.status !== 'canceled' && (
+        {isPractitioner && subscription?.canCancel && (
           <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #ff6b6b44', borderRadius: 16, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: cancelSuccess ? 12 : 0 }}>
               <div>
