@@ -68,6 +68,7 @@ export default function ProfilePage() {
   const [subscription, setSubscription] = useState<{ status: string; periodEnd: string | null; hasAccess: boolean; canCancel: boolean; cancelAtPeriodEnd: boolean } | null>(null);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+  const [resumingSubscription, setResumingSubscription] = useState(false);
 
   // Invite code state
   const [inviteCode, setInviteCode]   = useState<{ code: string; expires_at: string } | null>(null);
@@ -269,6 +270,28 @@ export default function ProfilePage() {
       alert(err?.message ?? 'Could not cancel subscription. Please contact logthelift@gmail.com.');
     } finally {
       setCancelingSubscription(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!confirm('Resume your subscription? Your access will continue without interruption.')) return;
+    setResumingSubscription(true);
+    try {
+      const { data: { session: freshSession } } = await getSupabase().auth.getSession();
+      const token = freshSession?.access_token ?? sessionToken;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/resume-subscription`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message ?? body.error ?? 'Failed to resume subscription');
+      const periodEnd = new Date(body.periodEnd);
+      setSubscription(prev => prev ? { ...prev, canCancel: true, cancelAtPeriodEnd: false, periodEnd: periodEnd.toISOString() } : prev);
+      setCancelSuccess(null);
+    } catch (err: any) {
+      alert(err?.message ?? 'Could not resume subscription. Please contact logthelift@gmail.com.');
+    } finally {
+      setResumingSubscription(false);
     }
   };
 
@@ -633,17 +656,24 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Subscription already canceled — show access end date */}
+        {/* Subscription already canceled — show access end date and resume option */}
         {isPractitioner && subscription?.cancelAtPeriodEnd && !subscription?.canCancel && (
-          <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #F59E0B44', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <span style={{ fontSize: 20, lineHeight: 1, marginTop: 1 }}>ℹ️</span>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#F59E0B' }}>Subscription Canceled</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
-                {subscription.periodEnd
-                  ? `You will lose your LiftLog practitioner permissions on ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
-                  : 'You will lose your LiftLog practitioner permissions at the end of your billing period.'}
-              </p>
+          <div style={{ marginTop: 16, background: 'var(--modal-bg)', border: '1px solid #F59E0B44', borderRadius: 16, padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#F59E0B' }}>Subscription Canceled</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
+                  {subscription.periodEnd
+                    ? `You will lose practitioner access on ${new Date(subscription.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                    : 'You will lose practitioner access at the end of your billing period.'}
+                </p>
+              </div>
+              <button
+                onClick={handleResumeSubscription}
+                disabled={resumingSubscription}
+                style={{ background: 'transparent', color: '#F59E0B', border: '1px solid #F59E0B', borderRadius: 10, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: resumingSubscription ? 'not-allowed' : 'pointer', opacity: resumingSubscription ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                {resumingSubscription ? 'Resuming…' : 'Resume Subscription'}
+              </button>
             </div>
           </div>
         )}
