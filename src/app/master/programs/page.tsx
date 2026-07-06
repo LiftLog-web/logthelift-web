@@ -32,6 +32,16 @@ interface ProgramRating {
   total_count:       number;
 }
 
+interface DayRating {
+  plan_name:         string;
+  day_id:            string;
+  day_label:         string | null;
+  day_order:         number | null;
+  avg_effectiveness: number | null;
+  avg_enjoyment:     number | null;
+  rating_count:      number;
+}
+
 interface TrendRow {
   plan_name:     string;
   week_number:   number;
@@ -199,6 +209,7 @@ export default function MasterProgramsPage() {
   const router = useRouter();
   const [programs,      setPrograms]      = useState<Program[]>([]);
   const [ratings,       setRatings]       = useState<Record<string, ProgramRating>>({});
+  const [dayRatings,    setDayRatings]    = useState<Record<string, DayRating[]>>({});
   const [trends,        setTrends]        = useState<Record<string, TrendRow[]>>({});
   const [loading,       setLoading]       = useState(true);
   const [activeTab,     setActiveTab]     = useState<'programs' | 'analytics'>('programs');
@@ -222,15 +233,22 @@ export default function MasterProgramsPage() {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session || data.session.user.id !== MASTER_ID) { router.push('/login'); return; }
-      const [{ data: rows }, { data: ratingRows }, { data: trendRows }] = await Promise.all([
+      const [{ data: rows }, { data: ratingRows }, { data: trendRows }, { data: dayRatingRows }] = await Promise.all([
         sb.rpc('get_master_programs', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_featured_program_ratings', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_program_engagement_trend', { p_practitioner_id: MASTER_ID }),
+        sb.rpc('get_featured_program_day_ratings', { p_practitioner_id: MASTER_ID }),
       ]);
       setPrograms((rows as Program[]) ?? []);
       const ratingMap: Record<string, ProgramRating> = {};
       for (const r of (ratingRows as ProgramRating[]) ?? []) ratingMap[r.plan_name] = r;
       setRatings(ratingMap);
+      const dayRatingMap: Record<string, DayRating[]> = {};
+      for (const d of (dayRatingRows as DayRating[]) ?? []) {
+        if (!dayRatingMap[d.plan_name]) dayRatingMap[d.plan_name] = [];
+        dayRatingMap[d.plan_name].push(d);
+      }
+      setDayRatings(dayRatingMap);
       const trendMap: Record<string, TrendRow[]> = {};
       for (const t of (trendRows as TrendRow[]) ?? []) {
         if (!trendMap[t.plan_name]) trendMap[t.plan_name] = [];
@@ -660,7 +678,8 @@ export default function MasterProgramsPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {programs.map(p => {
-                const r = ratings[p.template_name];
+                const r        = ratings[p.template_name];
+                const days     = dayRatings[p.template_name] ?? [];
                 const completed = Number(r?.completed_count ?? 0);
                 const total = Number(r?.total_count ?? 0);
                 const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -701,7 +720,7 @@ export default function MasterProgramsPage() {
                         {r != null && Number(r.rating_count) > 0 && (
                           <div>
                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Ratings</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: days.length > 0 ? 12 : 0 }}>
                               {(r.avg_effectiveness ?? r.avg_satisfaction) != null && (
                                 <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14 }}>⭐ {r.avg_effectiveness ?? r.avg_satisfaction} / 5 Effectiveness</span>
                               )}
@@ -710,6 +729,49 @@ export default function MasterProgramsPage() {
                               )}
                               <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                             </div>
+                            {days.length > 0 && (() => {
+                              const effValues = days.map(d => d.avg_effectiveness).filter((v): v is number => v != null);
+                              const enjValues = days.map(d => d.avg_enjoyment).filter((v): v is number => v != null);
+                              const bestEffDay  = effValues.length > 0 ? Math.max(...effValues) : null;
+                              const worstEffDay = effValues.length > 1 ? Math.min(...effValues) : null;
+                              const bestEnjDay  = enjValues.length > 0 ? Math.max(...enjValues) : null;
+                              const worstEnjDay = enjValues.length > 1 ? Math.min(...enjValues) : null;
+                              return (
+                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>By Day</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {days.map(d => {
+                                      const eff = d.avg_effectiveness;
+                                      const enj = d.avg_enjoyment;
+                                      const isBestEff  = eff != null && eff === bestEffDay;
+                                      const isWorstEff = eff != null && eff === worstEffDay;
+                                      const isBestEnj  = enj != null && enj === bestEnjDay;
+                                      const isWorstEnj = enj != null && enj === worstEnjDay;
+                                      return (
+                                        <div key={d.day_id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', minWidth: 52, flexShrink: 0 }}>
+                                            {d.day_label ?? `Day ${d.day_order ?? '?'}`}
+                                          </span>
+                                          {eff != null && (
+                                            <span style={{ fontSize: 12, color: isBestEff ? TEAL : isWorstEff ? '#EF4444' : 'var(--text-dim)', fontWeight: isBestEff || isWorstEff ? 700 : 400 }}>
+                                              {eff} eff
+                                              {isBestEff ? ' ↑' : isWorstEff ? ' ↓' : ''}
+                                            </span>
+                                          )}
+                                          {enj != null && (
+                                            <span style={{ fontSize: 12, color: isBestEnj ? TEAL : isWorstEnj ? '#EF4444' : 'var(--text-dim)', fontWeight: isBestEnj || isWorstEnj ? 700 : 400 }}>
+                                              {enj} enj
+                                              {isBestEnj ? ' ↑' : isWorstEnj ? ' ↓' : ''}
+                                            </span>
+                                          )}
+                                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>({d.rating_count})</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
                         {trendData.length === 1 && (
