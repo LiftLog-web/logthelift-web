@@ -112,8 +112,14 @@ export default function LoginPage() {
         return;
       }
 
-      // Newer Supabase JS versions return user: null even for successful new signups
-      // when email confirmation is pending — only block on actual errors above.
+      // Supabase anti-enumeration: duplicate emails return data.user with identities: []
+      // New signups with email confirmation pending return data.user = null
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        setError('This email is already registered. Please sign in instead.');
+        setLoading(false);
+        return;
+      }
+
       if (data.user) {
         const profileRow: Record<string, unknown> = {
           id:           data.user.id,
