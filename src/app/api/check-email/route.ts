@@ -28,11 +28,19 @@ export async function POST(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  const { data } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('email', parsed.data.email.toLowerCase())
-    .maybeSingle();
+  // Query auth.users via admin API — the ground truth for existing accounts.
+  // listUsers is paginated; 1 000 per page is enough for a practitioner portal.
+  const { data: { users }, error } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
 
-  return NextResponse.json({ exists: !!data });
+  if (error) {
+    console.error('check-email listUsers error:', error);
+    return NextResponse.json({ exists: false });
+  }
+
+  const needle = parsed.data.email.toLowerCase();
+  const exists  = users.some(u => u.email?.toLowerCase() === needle);
+  return NextResponse.json({ exists });
 }
