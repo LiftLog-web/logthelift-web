@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
@@ -17,30 +16,30 @@ export async function POST(req: NextRequest) {
   }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY is not set');
-    return NextResponse.json({ exists: false });
-  }
-
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-
-  // Query auth.users via admin API — the ground truth for existing accounts.
-  // listUsers is paginated; 1 000 per page is enough for a practitioner portal.
-  const { data: { users }, error } = await admin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-
-  if (error) {
-    console.error('check-email listUsers error:', error);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!serviceKey || !supabaseUrl) {
+    console.error('check-email: missing env vars');
     return NextResponse.json({ exists: false });
   }
 
   const needle = parsed.data.email.toLowerCase();
-  const exists  = users.some(u => u.email?.toLowerCase() === needle);
+
+  // Use the Supabase Auth Admin REST API directly — more reliable than the JS
+  // admin SDK in Next.js server routes and works with the service role key.
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?page=1&per_page=1000`, {
+    headers: {
+      apikey:        serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+    },
+  });
+
+  if (!res.ok) {
+    console.error('check-email: auth admin API error', res.status, await res.text());
+    return NextResponse.json({ exists: false });
+  }
+
+  const body = await res.json() as { users?: Array<{ email?: string }> };
+  const users = body.users ?? [];
+  const exists = users.some(u => u.email?.toLowerCase() === needle);
   return NextResponse.json({ exists });
 }
