@@ -138,12 +138,6 @@ export default function LoginPage() {
         return;
       }
 
-      if (!data.user) {
-        setError('This email is already registered. Please sign in instead.');
-        setLoading(false);
-        return;
-      }
-
       setSuccess('Account created! Check your email to confirm your address, then sign in.');
     } catch (ex) {
       console.error('handleSignUp error:', ex);
