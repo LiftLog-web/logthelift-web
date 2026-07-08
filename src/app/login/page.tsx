@@ -94,6 +94,20 @@ export default function LoginPage() {
     }
 
     try {
+      const checkRes = await fetch('/api/check-email', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
+      });
+      if (checkRes.ok) {
+        const { exists } = await checkRes.json();
+        if (exists) {
+          setError('This email is already registered. Please sign in instead.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const supabase = getSupabase();
       const { data, error: err } = await supabase.auth.signUp({
         email,
@@ -108,14 +122,6 @@ export default function LoginPage() {
         } else {
           setError(err.message);
         }
-        setLoading(false);
-        return;
-      }
-
-      // Supabase anti-enumeration: duplicate emails return data.user with identities: []
-      // New signups with email confirmation pending return data.user = null
-      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
-        setError('This email is already registered. Please sign in instead.');
         setLoading(false);
         return;
       }
