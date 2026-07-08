@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
@@ -23,13 +23,22 @@ export default function LoginPage() {
   const [role,         setRole]         = useState<Role>('patient');
   const [companyName,  setCompanyName]  = useState('');
   const [businessType, setBusinessType] = useState<BusinessType>('employer');
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState('');
-  const [success,      setSuccess]      = useState('');
+  const [loading,          setLoading]          = useState(false);
+  const [error,            setError]            = useState('');
+  const [success,          setSuccess]          = useState('');
+  const [cooldownSeconds,  setCooldownSeconds]  = useState(0);
+
+  // Tick down the rate-limit cooldown one second at a time
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const t = setTimeout(() => setCooldownSeconds(s => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [cooldownSeconds]);
 
   const resetForm = () => {
     setEmail(''); setPassword(''); setName(''); setCompanyName('');
     setError(''); setSuccess(''); setRole('patient'); setBusinessType('employer');
+    setCooldownSeconds(0);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -93,7 +102,12 @@ export default function LoginPage() {
       });
 
       if (err) {
-        setError(err.message);
+        const rateMatch = err.message.match(/after (\d+) second/i);
+        if (rateMatch) {
+          setCooldownSeconds(parseInt(rateMatch[1], 10));
+        } else {
+          setError(err.message);
+        }
         setLoading(false);
         return;
       }
@@ -266,18 +280,25 @@ export default function LoginPage() {
               </>
             )}
 
+            {cooldownSeconds > 0 && (
+              <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>
+                For security purposes, you can only request this after {cooldownSeconds} second{cooldownSeconds !== 1 ? 's' : ''}.
+              </p>
+            )}
             {error   && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{error}</p>}
             {success && <p style={{ color: TEAL,     fontSize: 13, margin: 0 }}>{success}</p>}
 
             {!success && (
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || cooldownSeconds > 0}
                 style={{
                   background: role === 'business' ? YELLOW : PURPLE,
                   color:      role === 'business' ? '#0f1117' : 'var(--text)',
                   borderRadius: 12, padding: '13px 0', fontWeight: 700, fontSize: 15,
-                  border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                  border: 'none',
+                  cursor:  (loading || cooldownSeconds > 0) ? 'not-allowed' : 'pointer',
+                  opacity: (loading || cooldownSeconds > 0) ? 0.7 : 1,
                 }}
               >
                 {loading
