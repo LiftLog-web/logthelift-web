@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
     console.error('check-email: SUPABASE_SERVICE_ROLE_KEY not set');
-    return NextResponse.json({ exists: false });
+    return NextResponse.json({ exists: false, reason: 'no-key' });
   }
 
   // Call the check_email_exists RPC directly via REST — no SDK, no env var for URL.
@@ -31,14 +31,15 @@ export async function POST(req: NextRequest) {
       'Authorization': `Bearer ${serviceKey}`,
     },
     body: JSON.stringify({ check_email: parsed.data.email }),
+    cache: 'no-store',
   });
 
   if (!res.ok) {
     const text = await res.text();
     console.error('check-email rpc fetch error:', res.status, text);
-    return NextResponse.json({ exists: false });
+    return NextResponse.json({ exists: false, reason: 'rpc-error', rpcStatus: res.status });
   }
 
   const exists = await res.json() as boolean;
-  return NextResponse.json({ exists: !!exists });
+  return NextResponse.json({ exists: !!exists, reason: 'ok' });
 }

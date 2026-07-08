@@ -99,13 +99,12 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email }),
       });
-      if (checkRes.ok) {
-        const { exists } = await checkRes.json();
-        if (exists) {
-          setError('This email is already registered. Please sign in instead.');
-          setLoading(false);
-          return;
-        }
+      const checkBody = checkRes.ok ? await checkRes.json() : null;
+      console.log('[check-email]', checkRes.status, checkBody);
+      if (checkBody?.exists) {
+        setError('This email is already registered. Please sign in instead.');
+        setLoading(false);
+        return;
       }
 
       const supabase = getSupabase();
