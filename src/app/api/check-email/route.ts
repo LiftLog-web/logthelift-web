@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { SUPABASE_URL } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+
 const Schema = z.object({ email: z.string().email().max(254) });
 
 export async function POST(req: NextRequest) {
