@@ -100,7 +100,6 @@ export default function LoginPage() {
         body:    JSON.stringify({ email }),
       });
       const checkBody = checkRes.ok ? await checkRes.json() : null;
-      console.log('[check-email]', checkRes.status, checkBody);
       if (checkBody?.exists) {
         setError('This email is already registered. Please sign in instead.');
         setLoading(false);
