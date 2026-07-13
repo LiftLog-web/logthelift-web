@@ -10,9 +10,10 @@ import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
 
-const TEAL   = '#5fcfbf';
-const PURPLE = '#C471ED';
-const RED    = '#EF4444';
+const TEAL      = '#5fcfbf';
+const PURPLE    = '#C471ED';
+const RED       = '#EF4444';
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 const MUSCLE_GROUP_SECTIONS = [
   { label: 'Upper Body',         members: ['Chest', 'Back', 'Shoulders'] },
@@ -71,6 +72,7 @@ interface TemplateExercise {
   rest?: number;
   supersetWithId?: string;
   skippedWeeks?: number[];
+  illustrationUrl?: string;
 }
 
 interface TemplateDay {
@@ -151,7 +153,8 @@ function parseExercise(e: any): TemplateExercise {
     })),
     unit: e.unit ?? undefined,
     rest: e.rest ?? e.sets?.[0]?.rest ?? undefined,
-    supersetWithId: e.supersetWithId ?? undefined,
+    supersetWithId:   e.supersetWithId ?? undefined,
+    illustrationUrl:  e.illustrationUrl ?? undefined,
   };
 }
 
@@ -197,10 +200,11 @@ export default function TemplateEditorPage() {
   const [isEmployer,     setIsEmployer]     = useState(false);
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
-  const [addVideoTarget, setAddVideoTarget] = useState<string | null>(null);
-  const [videoUrl,       setVideoUrl]       = useState('');
-  const [savingVideo,    setSavingVideo]    = useState(false);
-  const [userId,         setUserId]         = useState('');
+  const [addVideoTarget,           setAddVideoTarget]           = useState<string | null>(null);
+  const [videoUrl,                 setVideoUrl]                 = useState('');
+  const [savingVideo,              setSavingVideo]              = useState(false);
+  const [userId,                   setUserId]                   = useState('');
+  const [generatingIllustrationId, setGeneratingIllustrationId] = useState<string | null>(null);
 
   // Sidebar
   const [sidebarOpen,        setSidebarOpen]        = useState(true);
@@ -635,6 +639,29 @@ export default function TemplateEditorPage() {
     setSavingVideo(false);
     setAddVideoTarget(null);
     setVideoUrl('');
+  };
+
+  const generateIllustration = async (ex: TemplateExercise, exerciseName: string) => {
+    setGeneratingIllustrationId(ex.id);
+    try {
+      const { data: { session } } = await getSupabase().auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch('/api/generate-exercise-image', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ templateId, exerciseId: ex.id, exerciseName, practitionerNotes: ex.notes ?? '' }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        setDays(prev => prev.map(day => ({
+          ...day,
+          exercises: day.exercises.map(e => e.id === ex.id ? { ...e, illustrationUrl: data.url } : e),
+        })));
+      }
+    } finally {
+      setGeneratingIllustrationId(null);
+    }
   };
 
   // ── Substitution ──────────────────────────────────────────────────────────
@@ -1199,6 +1226,25 @@ export default function TemplateEditorPage() {
                                   title="Add a video demo link"
                                 >
                                   + Add Video
+                                </button>
+                              )}
+                              {ex.illustrationUrl && (
+                                <img
+                                  src={ex.illustrationUrl}
+                                  alt=""
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginLeft: 8, border: '1px solid var(--border)', cursor: 'default', flexShrink: 0 }}
+                                  title="AI illustration"
+                                />
+                              )}
+                              {userId === MASTER_ID && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); generateIllustration(ex, weekExercise.name); }}
+                                  disabled={generatingIllustrationId === ex.id}
+                                  style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: generatingIllustrationId === ex.id ? 'not-allowed' : 'pointer', verticalAlign: 'middle', opacity: generatingIllustrationId === ex.id ? 0.6 : 1 }}
+                                  title="Generate AI illustration"
+                                >
+                                  {generatingIllustrationId === ex.id ? 'Generating…' : ex.illustrationUrl ? '↻ Regen' : '🎨 Illustrate'}
                                 </button>
                               )}
                             </div>

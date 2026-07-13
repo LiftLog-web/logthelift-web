@@ -1231,13 +1231,20 @@ export default function MasterProgramsPage() {
                       <div style={{ fontSize: 12, fontWeight: 800, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 8 }}>{day.label ?? `Day ${di + 1}`}</div>
                       {(day.exercises ?? []).map((ex: any, ei: number) => (
                         <div key={ei} style={{ background: 'var(--input-bg)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {(ex.sets ?? []).map((s: any, si: number) => (
-                              <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
-                            ))}
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            {ex.illustrationUrl && (
+                              <img src={ex.illustrationUrl} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {(ex.sets ?? []).map((s: any, si: number) => (
+                                  <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
+                                ))}
+                              </div>
+                              {(ex.practitionerNotes || ex.notes) && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes || ex.notes}</p>}
+                            </div>
                           </div>
-                          {ex.practitionerNotes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes}</p>}
                         </div>
                       ))}
                     </div>
@@ -1247,13 +1254,20 @@ export default function MasterProgramsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {flat.map((ex: any, ei: number) => (
                     <div key={ei} style={{ background: 'var(--input-bg)', borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {(ex.sets ?? []).map((s: any, si: number) => (
-                          <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
-                        ))}
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        {ex.illustrationUrl && (
+                          <img src={ex.illustrationUrl} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }} />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {(ex.sets ?? []).map((s: any, si: number) => (
+                              <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
+                            ))}
+                          </div>
+                          {(ex.practitionerNotes || ex.notes) && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes || ex.notes}</p>}
+                        </div>
                       </div>
-                      {ex.practitionerNotes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes}</p>}
                     </div>
                   ))}
                 </div>
