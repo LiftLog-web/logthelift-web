@@ -6,6 +6,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import ScheduleModal from './ScheduleModal';
+import { DayPicker } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
+import 'react-day-picker/style.css';
+import { addMonths, startOfMonth, format } from 'date-fns';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -205,6 +209,68 @@ Duration:   { "id": "...", "duration": 30 }   (seconds — must be > 0)
 Use "isSplit": true with "leftReps" and "rightReps" (per-side count, NOT total). Do NOT use "reps" for per-side.
 RIGHT: { "isSplit": true, "leftReps": 8, "rightReps": 8, "weight": 0, "unit": "kg" }`;
 
+interface PreviewTemplate {
+  id:                    string;
+  name:                  string;
+  description:           string | null;
+  featured_duration_days: number | null;
+  exercises:             any;
+}
+
+interface ActivePreview {
+  id:               string;
+  plan_template_id: string;
+  name:             string;
+  ends_at:          string;
+}
+
+function exCount(tpl: PreviewTemplate): number {
+  if (Array.isArray(tpl.exercises)) return tpl.exercises.length;
+  if (tpl.exercises?.days) return (tpl.exercises.days as any[]).reduce((s: number, d: any) => s + (d.exercises?.length ?? 0), 0);
+  return 0;
+}
+
+function setLabel(s: any): string {
+  if (s.isSplit)        return `${s.leftReps ?? s.leftDuration ?? '?'} per side`;
+  if (s.duration)       return `${s.duration}s`;
+  if (s.seconds)        return `${s.seconds}s`;
+  if (s.cardioduration != null || s.cardioSeconds != null) {
+    const m = s.cardioduration ?? 0; const sec = s.cardioSeconds ?? 0;
+    return sec > 0 ? `${m}:${String(sec).padStart(2, '0')} min cardio` : `${m} min cardio`;
+  }
+  const w = s.weight && s.weight > 0 ? ` @ ${s.weight}${s.unit ?? 'kg'}` : '';
+  return `${s.reps ?? '?'} reps${w}`;
+}
+
+function serializeExercisesForMobile(exercises: any): any {
+  if (!exercises) return exercises;
+  function cvtSet(s: any, exType: string): any {
+    if (exType !== 'duration') return s;
+    const { seconds, ...rest } = s;
+    return seconds != null ? { ...rest, duration: rest.duration ?? seconds } : s;
+  }
+  function cvtEx(ex: any): any {
+    const type = ex.exercise?.type;
+    return {
+      ...ex,
+      sets:  (ex.sets  ?? []).map((s: any) => cvtSet(s, type)),
+      weeks: (ex.weeks ?? []).map((w: any) => ({ ...w, sets: (w.sets ?? []).map((s: any) => cvtSet(s, type)) })),
+    };
+  }
+  if (Array.isArray(exercises)) return exercises.map(cvtEx);
+  if (exercises.days) {
+    return { ...exercises, days: exercises.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(cvtEx) })) };
+  }
+  return exercises;
+}
+
+function getMonthOptions(): Date[] {
+  const months: Date[] = [];
+  const base = new Date();
+  for (let i = 0; i <= 12; i++) months.push(startOfMonth(addMonths(base, i)));
+  return months;
+}
+
 export default function MasterProgramsPage() {
   const router = useRouter();
   const [programs,      setPrograms]      = useState<Program[]>([]);
@@ -229,15 +295,34 @@ export default function MasterProgramsPage() {
   const [promptCopied,  setPromptCopied]  = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
+  // Preview state
+  const [previewDesignTpl,   setPreviewDesignTpl]   = useState<PreviewTemplate | null>(null);
+  const [previewLaunchTpl,   setPreviewLaunchTpl]   = useState<PreviewTemplate | null>(null);
+  const [previewLoading,     setPreviewLoading]     = useState<string | null>(null);
+  const [previewLaunching,   setPreviewLaunching]   = useState(false);
+  const [previewLaunchDone,  setPreviewLaunchDone]  = useState(false);
+  const [previewLaunchError, setPreviewLaunchError] = useState('');
+  const [masterPatients,     setMasterPatients]     = useState<string[]>([]);
+  const [activePreviews,     setActivePreviews]     = useState<ActivePreview[]>([]);
+  const [endingPreviewId,    setEndingPreviewId]    = useState<string | null>(null);
+  const [dateTab,            setDateTab]            = useState<'month' | 'custom'>('month');
+  const [selectedMonths,     setSelectedMonths]     = useState<Date[]>([]);
+  const [range,              setRange]              = useState<DateRange | undefined>();
+  const [scheduleType,       setScheduleType]       = useState<'all_days' | 'work_days'>('work_days');
+  const [workDays,           setWorkDays]           = useState<number[]>([1, 2, 3, 4, 5]);
+
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session || data.session.user.id !== MASTER_ID) { router.push('/login'); return; }
-      const [{ data: rows }, { data: ratingRows }, { data: trendRows }, { data: dayRatingRows }] = await Promise.all([
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ data: rows }, { data: ratingRows }, { data: trendRows }, { data: dayRatingRows }, { data: previewRows }, { data: patientRows }] = await Promise.all([
         sb.rpc('get_master_programs', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_featured_program_ratings', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_program_engagement_trend', { p_practitioner_id: MASTER_ID }),
         sb.rpc('get_featured_program_day_ratings', { p_practitioner_id: MASTER_ID }),
+        sb.from('employer_programs').select('id, plan_template_id, name, ends_at').eq('employer_id', MASTER_ID).gte('ends_at', today),
+        sb.from('patient_links').select('patient_id').eq('practitioner_id', MASTER_ID),
       ]);
       setPrograms((rows as Program[]) ?? []);
       const ratingMap: Record<string, ProgramRating> = {};
@@ -255,15 +340,22 @@ export default function MasterProgramsPage() {
         trendMap[t.plan_name].push(t);
       }
       setTrends(trendMap);
+      setActivePreviews((previewRows as ActivePreview[]) ?? []);
+      setMasterPatients((patientRows ?? []).map((l: any) => l.patient_id as string));
       setLoading(false);
     });
   }, [router]);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowCreate(false); }
-    if (showCreate) window.addEventListener('keydown', onKey);
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (previewDesignTpl) { setPreviewDesignTpl(null); return; }
+      if (previewLaunchTpl) { setPreviewLaunchTpl(null); return; }
+      setShowCreate(false);
+    }
+    window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showCreate]);
+  }, [showCreate, previewDesignTpl, previewLaunchTpl]);
 
   // Auto-parse JSON as it's typed/pasted
   useEffect(() => {
@@ -403,6 +495,88 @@ export default function MasterProgramsPage() {
     setSavingAvailId(null);
   }
 
+  async function openPreviewDesign(p: Program) {
+    setPreviewLoading(p.template_id);
+    const sb = getSupabase();
+    const { data } = await sb.from('plan_templates').select('id, name, description, featured_duration_days, exercises').eq('id', p.template_id).single();
+    setPreviewLoading(null);
+    if (data) setPreviewDesignTpl(data as PreviewTemplate);
+  }
+
+  async function openPreviewLaunch(p: Program) {
+    setPreviewLoading(p.template_id);
+    const sb = getSupabase();
+    const { data } = await sb.from('plan_templates').select('id, name, description, featured_duration_days, exercises').eq('id', p.template_id).single();
+    setPreviewLoading(null);
+    if (data) {
+      setPreviewLaunchTpl(data as PreviewTemplate);
+      setPreviewLaunchDone(false);
+      setPreviewLaunchError('');
+      setDateTab('month');
+      setSelectedMonths([]);
+      setRange(undefined);
+      setScheduleType('work_days');
+      setWorkDays([1, 2, 3, 4, 5]);
+    }
+  }
+
+  async function handlePreviewLaunch() {
+    if (!previewLaunchTpl) return;
+    let start: string; let end: string;
+    if (dateTab === 'month') {
+      if (selectedMonths.length === 0) { setPreviewLaunchError('Select at least one month.'); return; }
+      const sorted = [...selectedMonths].sort((a, b) => a.getTime() - b.getTime());
+      start = format(startOfMonth(sorted[0]), 'yyyy-MM-dd');
+      const lastMonth = sorted[sorted.length - 1];
+      const endDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      end = format(endDate, 'yyyy-MM-dd');
+    } else {
+      if (!range?.from) { setPreviewLaunchError('Select a start date.'); return; }
+      start = format(range.from, 'yyyy-MM-dd');
+      end   = range.to ? format(range.to, 'yyyy-MM-dd') : start;
+    }
+    setPreviewLaunching(true);
+    setPreviewLaunchError('');
+    const sb = getSupabase();
+    const employees = masterPatients;
+    const serialized = serializeExercisesForMobile(previewLaunchTpl.exercises);
+    if (employees.length > 0) {
+      await sb.from('workout_plans').delete().eq('practitioner_id', MASTER_ID).in('patient_id', employees).eq('name', previewLaunchTpl.name);
+      const { error: wpErr } = await sb.from('workout_plans').insert(
+        employees.map(patientId => ({
+          practitioner_id: MASTER_ID,
+          patient_id:      patientId,
+          name:            previewLaunchTpl.name,
+          exercises:       serialized,
+        }))
+      );
+      if (wpErr) { setPreviewLaunchError('Failed to assign workout plans: ' + wpErr.message); setPreviewLaunching(false); return; }
+    }
+    const { data: epData, error: epErr } = await sb.from('employer_programs').insert({
+      employer_id:       MASTER_ID,
+      plan_template_id:  previewLaunchTpl.id,
+      name:              previewLaunchTpl.name,
+      started_at:        start,
+      ends_at:           end,
+      schedule_type:     scheduleType,
+      work_days:         workDays,
+    }).select('id, plan_template_id, name, ends_at').single();
+    if (epErr) { setPreviewLaunchError('Failed to create employer program: ' + epErr.message); setPreviewLaunching(false); return; }
+    setActivePreviews(prev => [...prev, epData as ActivePreview]);
+    setPreviewLaunching(false);
+    setPreviewLaunchDone(true);
+  }
+
+  async function handleEndPreview(ap: ActivePreview) {
+    setEndingPreviewId(ap.id);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const sb = getSupabase();
+    await sb.from('employer_programs').update({ ends_at: yesterday }).eq('id', ap.id);
+    await sb.from('workout_plans').delete().eq('practitioner_id', MASTER_ID).eq('name', ap.name);
+    setActivePreviews(prev => prev.filter(x => x.id !== ap.id));
+    setEndingPreviewId(null);
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -410,6 +584,67 @@ export default function MasterProgramsPage() {
       </div>
     );
   }
+
+  const monthOptions = getMonthOptions();
+
+  function toggleMonth(m: Date) {
+    setSelectedMonths(prev => {
+      const exists = prev.some(x => x.getTime() === m.getTime());
+      return exists ? prev.filter(x => x.getTime() !== m.getTime()) : [...prev, m];
+    });
+  }
+
+  const DatePickerUI = (
+    <div>
+      <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16, width: 'fit-content' }}>
+        {(['month', 'custom'] as const).map(t => (
+          <button key={t} onClick={() => setDateTab(t)} style={{ border: 'none', borderRadius: 8, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: dateTab === t ? 'var(--card)' : 'transparent', color: dateTab === t ? 'var(--text)' : 'var(--text-dim)' }}>
+            {t === 'month' ? 'By Month' : 'Custom Range'}
+          </button>
+        ))}
+      </div>
+      {dateTab === 'month' ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+          {monthOptions.map(m => {
+            const active = selectedMonths.some(x => x.getTime() === m.getTime());
+            return (
+              <button key={m.toISOString()} onClick={() => toggleMonth(m)} style={{ border: `1.5px solid ${active ? AMBER : 'var(--border-strong)'}`, background: active ? `${AMBER}20` : 'none', color: active ? AMBER : 'var(--text-dim)', borderRadius: 8, padding: '5px 13px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {format(m, 'MMM yyyy')}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <DayPicker className="liftlog-rdp" mode="range" selected={range} onSelect={setRange} />
+      )}
+    </div>
+  );
+
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const SchedulePickerUI = (
+    <div style={{ marginTop: 16 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Schedule Type</label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        {(['work_days', 'all_days'] as const).map(t => (
+          <button key={t} onClick={() => setScheduleType(t)} style={{ border: `1.5px solid ${scheduleType === t ? AMBER : 'var(--border-strong)'}`, background: scheduleType === t ? `${AMBER}20` : 'none', color: scheduleType === t ? AMBER : 'var(--text-dim)', borderRadius: 8, padding: '5px 13px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            {t === 'work_days' ? 'Work Days' : 'All Days'}
+          </button>
+        ))}
+      </div>
+      {scheduleType === 'work_days' && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {DAY_LABELS.map((label, i) => {
+            const active = workDays.includes(i);
+            return (
+              <button key={i} onClick={() => setWorkDays(prev => active ? prev.filter(d => d !== i) : [...prev, i].sort())} style={{ border: `1.5px solid ${active ? AMBER : 'var(--border-strong)'}`, background: active ? `${AMBER}20` : 'none', color: active ? AMBER : 'var(--text-dim)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--input-bg)', border: '1px solid var(--border-strong)',
@@ -491,13 +726,15 @@ export default function MasterProgramsPage() {
             const past      = programs.filter(p => getStatus(p) === 'past');
 
             function ProgramCard({ p }: { p: Program }) {
-              const status    = getStatus(p);
-              const r         = ratings[p.template_name];
-              const hasR      = r != null && Number(r.rating_count) > 0;
-              const eff       = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
-              const enj       = hasR ? r.avg_enjoyment : null;
-              const isSaving  = savingAvailId === p.template_id;
-              const border    = status === 'live' ? `${TEAL}50` : status === 'scheduled' ? `${PURPLE}40` : status === 'past' ? `${AMBER}30` : 'var(--border)';
+              const status       = getStatus(p);
+              const r            = ratings[p.template_name];
+              const hasR         = r != null && Number(r.rating_count) > 0;
+              const eff          = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
+              const enj          = hasR ? r.avg_enjoyment : null;
+              const isSaving     = savingAvailId === p.template_id;
+              const isLoading    = previewLoading === p.template_id;
+              const activePreview = activePreviews.find(ap => ap.plan_template_id === p.template_id);
+              const border       = status === 'live' ? `${TEAL}50` : status === 'scheduled' ? `${PURPLE}40` : status === 'past' ? `${AMBER}30` : 'var(--border)';
               return (
                 <div style={{ background: 'var(--card)', border: `1px solid ${border}`, borderRadius: 16, padding: '20px 24px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 6 }}>
@@ -528,6 +765,35 @@ export default function MasterProgramsPage() {
                       </span>
                     ) : (
                       <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{p.employer_count > 0 ? 'No ratings yet' : 'No data yet'}</span>
+                    )}
+                  </div>
+                  {/* Preview buttons */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      onClick={() => openPreviewDesign(p)}
+                      disabled={!!previewLoading}
+                      style={{ background: 'none', border: `1.5px solid ${TEAL}60`, color: TEAL, borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: previewLoading ? 'not-allowed' : 'pointer', opacity: previewLoading ? 0.5 : 1 }}
+                    >
+                      {isLoading ? 'Loading…' : 'Preview Design'}
+                    </button>
+                    <button
+                      onClick={() => openPreviewLaunch(p)}
+                      disabled={!!previewLoading}
+                      style={{ background: 'none', border: `1.5px solid ${AMBER}60`, color: AMBER, borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: previewLoading ? 'not-allowed' : 'pointer', opacity: previewLoading ? 0.5 : 1 }}
+                    >
+                      {isLoading ? 'Loading…' : 'Preview Launch'}
+                    </button>
+                    {activePreview && (
+                      <>
+                        <span style={{ background: `${AMBER}20`, color: AMBER, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>Preview Active</span>
+                        <button
+                          onClick={() => handleEndPreview(activePreview)}
+                          disabled={endingPreviewId === activePreview.id}
+                          style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: endingPreviewId === activePreview.id ? 0.5 : 1 }}
+                        >
+                          {endingPreviewId === activePreview.id ? 'Ending…' : 'End Preview'}
+                        </button>
+                      </>
                     )}
                   </div>
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -820,6 +1086,17 @@ export default function MasterProgramsPage() {
         />
       )}
 
+      {/* DayPicker theme overrides */}
+      <style>{`
+        .liftlog-rdp { --rdp-accent-color: ${TEAL}; --rdp-accent-background-color: ${TEAL}20; color: var(--text); }
+        .liftlog-rdp .rdp-day_button { color: var(--text); }
+        .liftlog-rdp .rdp-day_button:hover { background: ${TEAL}30; }
+        .liftlog-rdp .rdp-selected .rdp-day_button { background: ${TEAL}; color: #0f1117; }
+        .liftlog-rdp .rdp-range_middle .rdp-day_button { background: ${TEAL}20; color: var(--text); }
+        .liftlog-rdp .rdp-nav button { color: var(--text); }
+        .liftlog-rdp .rdp-weekday { color: var(--text-dim); }
+      `}</style>
+
       {showCreate && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setShowCreate(false); }}
@@ -915,6 +1192,129 @@ export default function MasterProgramsPage() {
                 {creating ? 'Creating…' : 'Create Featured Program'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Preview Design modal */}
+      {previewDesignTpl && (() => {
+        const tpl = previewDesignTpl;
+        const flat: any[] = Array.isArray(tpl.exercises)
+          ? tpl.exercises
+          : (tpl.exercises?.days ?? []).flatMap((d: any) => d.exercises ?? []);
+        const days: { label: string; exercises: any[] }[] | null =
+          !Array.isArray(tpl.exercises) && tpl.exercises?.days
+            ? tpl.exercises.days
+            : null;
+        return (
+          <div
+            onClick={e => { if (e.target === e.currentTarget) setPreviewDesignTpl(null); }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '40px 24px', overflowY: 'auto' }}
+          >
+            <div style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', width: '100%', maxWidth: 540, marginBottom: 40 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{tpl.name}</h2>
+                <button onClick={() => setPreviewDesignTpl(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+              </div>
+              {tpl.featured_duration_days && (
+                <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, display: 'inline-block', marginBottom: 10 }}>{tpl.featured_duration_days}d program</span>
+              )}
+              {tpl.description && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 16px', lineHeight: 1.5 }}>{tpl.description}</p>
+              )}
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 700, marginBottom: 14 }}>
+                {exCount(tpl)} exercise{exCount(tpl) !== 1 ? 's' : ''}
+              </div>
+              {days ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {days.map((day: any, di: number) => (
+                    <div key={di}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 8 }}>{day.label ?? `Day ${di + 1}`}</div>
+                      {(day.exercises ?? []).map((ex: any, ei: number) => (
+                        <div key={ei} style={{ background: 'var(--input-bg)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {(ex.sets ?? []).map((s: any, si: number) => (
+                              <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
+                            ))}
+                          </div>
+                          {ex.practitionerNotes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {flat.map((ex: any, ei: number) => (
+                    <div key={ei} style={{ background: 'var(--input-bg)', borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{ex.exercise?.name ?? 'Exercise'}</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {(ex.sets ?? []).map((s: any, si: number) => (
+                          <span key={si} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'var(--card)', borderRadius: 6, padding: '2px 8px' }}>Set {si + 1}: {setLabel(s)}</span>
+                        ))}
+                      </div>
+                      {ex.practitionerNotes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>{ex.practitionerNotes}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setPreviewDesignTpl(null)} style={{ marginTop: 24, width: '100%', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '11px 0', fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Preview Launch modal */}
+      {previewLaunchTpl && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setPreviewLaunchTpl(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '40px 24px', overflowY: 'auto' }}
+        >
+          <div style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', width: '100%', maxWidth: 540, marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Preview Launch</h2>
+              <button onClick={() => setPreviewLaunchTpl(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 20px' }}>
+              Simulates the employer launch flow using your master account. Creates real <code style={{ fontSize: 12 }}>employer_programs</code> and <code style={{ fontSize: 12 }}>workout_plans</code> rows assigned to your {masterPatients.length} linked patient{masterPatients.length !== 1 ? 's' : ''} as test employees.
+            </p>
+            <div style={{ background: `${AMBER}12`, border: `1px solid ${AMBER}40`, borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: AMBER, fontWeight: 600 }}>
+              This creates real data. Use "End Preview" on the card when done to clean up.
+            </div>
+
+            {previewLaunchDone ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
+                <p style={{ fontWeight: 800, fontSize: 16, color: TEAL, margin: '0 0 8px' }}>Preview launched!</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 20px' }}>Open GymTracker on your master account to test the employee experience.</p>
+                <button onClick={() => setPreviewLaunchTpl(null)} style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '12px 32px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 10 }}>Preview Dates</label>
+                {DatePickerUI}
+                {SchedulePickerUI}
+                {previewLaunchError && (
+                  <p style={{ color: '#EF4444', fontSize: 13, margin: '14px 0 0' }}>{previewLaunchError}</p>
+                )}
+                <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                  <button onClick={() => setPreviewLaunchTpl(null)} style={{ flex: 1, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePreviewLaunch}
+                    disabled={previewLaunching}
+                    style={{ flex: 2, background: AMBER, color: '#0f1117', border: 'none', borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 14, cursor: previewLaunching ? 'not-allowed' : 'pointer', opacity: previewLaunching ? 0.7 : 1 }}
+                  >
+                    {previewLaunching ? 'Launching…' : 'Launch Preview →'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
