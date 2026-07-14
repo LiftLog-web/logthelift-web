@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     if (updateErr) return NextResponse.json({ error: 'Failed to save illustration.' }, { status: 500 });
 
     // Also patch all workout_plans copies assigned from this template (matched by practitioner + name).
-    // workout_plans holds a snapshot JSONB copy so we must update it separately.
+    // workout_plans is a snapshot JSONB copy — exercise ids may differ from the template so match by name.
     const { data: assignedPlans } = await sbAdmin
       .from('workout_plans')
       .select('id, exercises')
@@ -144,11 +144,28 @@ export async function POST(req: NextRequest) {
       .eq('name', tpl.name);
 
     if (assignedPlans && assignedPlans.length > 0) {
+      function patchExercisesByName(raw: any): { result: any; found: boolean } {
+        let found = false;
+        function applyToList(list: any[]): any[] {
+          return list.map((e: any) => {
+            if (e.exercise?.name === exerciseName) { found = true; return { ...e, illustrationUrl: publicUrl }; }
+            return e;
+          });
+        }
+        if (Array.isArray(raw)) return { result: applyToList(raw), found };
+        if (raw?.days) {
+          return {
+            result: { ...raw, days: (raw.days as any[]).map((d: any) => ({ ...d, exercises: applyToList(d.exercises ?? []) })) },
+            found,
+          };
+        }
+        return { result: raw, found };
+      }
+
       await Promise.all(assignedPlans.map(async (wp: any) => {
-        patched = false; // reset flag — reuse patchExercises
-        const wpPatched = patchExercises(wp.exercises);
-        if (!patched) return; // exercise not present in this plan copy — skip
-        await sbAdmin.from('workout_plans').update({ exercises: wpPatched }).eq('id', wp.id);
+        const { result, found } = patchExercisesByName(wp.exercises);
+        if (!found) return;
+        await sbAdmin.from('workout_plans').update({ exercises: result }).eq('id', wp.id);
       }));
     }
 
