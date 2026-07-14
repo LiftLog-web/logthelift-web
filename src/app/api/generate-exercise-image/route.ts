@@ -135,38 +135,19 @@ export async function POST(req: NextRequest) {
 
     if (updateErr) return NextResponse.json({ error: 'Failed to save illustration.' }, { status: 500 });
 
-    // Also patch all workout_plans copies assigned from this template (matched by practitioner + name).
-    // workout_plans is a snapshot JSONB copy — exercise ids may differ from the template so match by name.
+    // Propagate the updated exercises to all workout_plans copies assigned from this template.
+    // workout_plans is a snapshot — we replace its exercises with the freshly patched template
+    // exercises directly, avoiding any exercise-id mismatch between the two tables.
     const { data: assignedPlans } = await sbAdmin
       .from('workout_plans')
-      .select('id, exercises')
+      .select('id')
       .eq('practitioner_id', user.id)
       .eq('name', tpl.name);
 
     if (assignedPlans && assignedPlans.length > 0) {
-      function patchExercisesByName(raw: any): { result: any; found: boolean } {
-        let found = false;
-        function applyToList(list: any[]): any[] {
-          return list.map((e: any) => {
-            if (e.exercise?.name === exerciseName) { found = true; return { ...e, illustrationUrl: publicUrl }; }
-            return e;
-          });
-        }
-        if (Array.isArray(raw)) return { result: applyToList(raw), found };
-        if (raw?.days) {
-          return {
-            result: { ...raw, days: (raw.days as any[]).map((d: any) => ({ ...d, exercises: applyToList(d.exercises ?? []) })) },
-            found,
-          };
-        }
-        return { result: raw, found };
-      }
-
-      await Promise.all(assignedPlans.map(async (wp: any) => {
-        const { result, found } = patchExercisesByName(wp.exercises);
-        if (!found) return;
-        await sbAdmin.from('workout_plans').update({ exercises: result }).eq('id', wp.id);
-      }));
+      await Promise.all(assignedPlans.map((wp: any) =>
+        sbAdmin.from('workout_plans').update({ exercises: newExercises }).eq('id', wp.id)
+      ));
     }
 
     return NextResponse.json({ url: publicUrl });
