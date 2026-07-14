@@ -663,6 +663,8 @@ export default function TemplateEditorPage() {
       } else {
         alert(`Illustration failed (${res.status}): ${data.error ?? 'Unknown error'}`);
       }
+    } catch (err: any) {
+      alert(`Illustration error: ${err?.message ?? String(err)}`);
     } finally {
       setGeneratingIllustrationId(null);
     }
