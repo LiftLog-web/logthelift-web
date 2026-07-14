@@ -46,11 +46,10 @@ export async function POST(req: NextRequest) {
     const prompt = `Clean minimal instructional diagram of a person performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. No text labels.${contextHint}`;
 
     const imageRes = await openai.images.generate({
-      model:   'dall-e-3',
+      model:   'dall-e-2',
       prompt,
       n:       1,
-      size:    '1024x1024',
-      quality: 'standard',
+      size:    '512x512',
     });
 
     const imageUrl = imageRes.data?.[0]?.url;
