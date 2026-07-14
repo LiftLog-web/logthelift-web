@@ -334,6 +334,13 @@ export default function TemplateEditorPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [muscleDropdownOpen]);
 
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxUrl(null); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [lightboxUrl]);
+
   // Enable dirty tracking only after all data has loaded
   useEffect(() => {
     if (loading) return;
