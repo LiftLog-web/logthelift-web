@@ -205,6 +205,7 @@ export default function TemplateEditorPage() {
   const [savingVideo,              setSavingVideo]              = useState(false);
   const [userId,                   setUserId]                   = useState('');
   const [generatingIllustrationId, setGeneratingIllustrationId] = useState<string | null>(null);
+  const [isFeatured,               setIsFeatured]               = useState(false);
 
   // Sidebar
   const [sidebarOpen,        setSidebarOpen]        = useState(true);
@@ -288,6 +289,7 @@ export default function TemplateEditorPage() {
       setName(tpl.name);
       setDescription(tpl.description ?? '');
       setTags(tpl.tags ?? []);
+      setIsFeatured(!!(tpl as any).is_featured);
 
       const raw = tpl.exercises;
       let loadedDays: TemplateDay[];
@@ -1237,7 +1239,7 @@ export default function TemplateEditorPage() {
                                   title="AI illustration"
                                 />
                               )}
-                              {userId === MASTER_ID && (
+                              {isFeatured && (
                                 <button
                                   onClick={e => { e.stopPropagation(); generateIllustration(ex, weekExercise.name); }}
                                   disabled={generatingIllustrationId === ex.id}
