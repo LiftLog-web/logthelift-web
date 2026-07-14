@@ -10,10 +10,34 @@ export const maxDuration = 60;
 const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 const BUCKET    = 'exercise-illustrations';
 
+const CHARACTER_PROFILES = [
+  'a woman with light skin, straight brown hair in a ponytail, wearing a navy blue top and dark grey leggings',
+  'a man with medium-dark skin, short natural hair, wearing a white polo shirt and black trousers',
+  'a woman with dark skin, voluminous natural curly hair, wearing a coral pink t-shirt and black leggings',
+  'a man with fair skin, short blond hair, wearing a grey t-shirt and navy trousers',
+  'a woman with medium olive skin, long straight black hair, wearing a teal top and charcoal leggings',
+  'a man with dark brown skin, very short cropped hair, wearing a light blue shirt and dark trousers',
+  'a woman with medium skin, short auburn wavy bob, wearing a purple top and black leggings',
+  'a man with medium skin, curly dark hair, wearing a heather grey t-shirt and khaki trousers',
+  'a woman with light skin, long wavy red hair, wearing a forest green top and dark leggings',
+  'a man with light brown skin, short neat fade haircut, wearing an orange t-shirt and black joggers',
+  'a woman with dark skin, short natural afro, wearing a yellow top and charcoal leggings',
+  'a man with medium-light skin, short brown hair, wearing a burgundy polo shirt and grey trousers',
+];
+
+function pickProfile(dayId: string): string {
+  let hash = 0;
+  for (let i = 0; i < dayId.length; i++) {
+    hash = Math.imul(31, hash) + dayId.charCodeAt(i) | 0;
+  }
+  return CHARACTER_PROFILES[Math.abs(hash) % CHARACTER_PROFILES.length];
+}
+
 const BodySchema = z.object({
   templateId:        z.string().uuid(),
   exerciseId:        z.string().min(1).max(100),
   exerciseName:      z.string().min(1).max(200),
+  dayId:             z.string().min(1).max(100),
   practitionerNotes: z.string().max(1000).optional(),
 });
 
@@ -38,12 +62,13 @@ export async function POST(req: NextRequest) {
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
 
-    const { templateId, exerciseId, exerciseName, practitionerNotes } = parsed.data;
+    const { templateId, exerciseId, exerciseName, dayId, practitionerNotes } = parsed.data;
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+    const character   = pickProfile(dayId);
     const contextHint = practitionerNotes ? ` Context: ${practitionerNotes.slice(0, 200)}` : '';
-    const prompt = `Clean minimal instructional diagram of a person performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. No text labels.${contextHint}`;
+    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. No text labels.${contextHint}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };

@@ -651,7 +651,7 @@ export default function TemplateEditorPage() {
     setVideoUrl('');
   };
 
-  const generateIllustration = async (ex: TemplateExercise, exerciseName: string) => {
+  const generateIllustration = async (ex: TemplateExercise, exerciseName: string, dayId: string) => {
     setGeneratingIllustrationId(ex.id);
     try {
       const { data: { session } } = await getSupabase().auth.getSession();
@@ -660,7 +660,7 @@ export default function TemplateEditorPage() {
       const res = await fetch('/api/generate-exercise-image', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ templateId, exerciseId: ex.id, exerciseName, practitionerNotes: ex.notes ?? '' }),
+        body:    JSON.stringify({ templateId, exerciseId: ex.id, exerciseName, dayId, practitionerNotes: ex.notes ?? '' }),
       });
       const data = await res.json();
       if (data.url) {
@@ -1253,7 +1253,7 @@ export default function TemplateEditorPage() {
                               )}
                               {isFeatured && (
                                 <button
-                                  onClick={e => { e.stopPropagation(); generateIllustration(ex, weekExercise.name); }}
+                                  onClick={e => { e.stopPropagation(); generateIllustration(ex, weekExercise.name, activeDayId); }}
                                   disabled={generatingIllustrationId === ex.id}
                                   style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', cursor: generatingIllustrationId === ex.id ? 'not-allowed' : 'pointer', verticalAlign: 'middle', opacity: generatingIllustrationId === ex.id ? 0.6 : 1 }}
                                   title="Generate AI illustration"
