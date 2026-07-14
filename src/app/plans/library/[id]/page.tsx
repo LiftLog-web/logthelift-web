@@ -660,6 +660,8 @@ export default function TemplateEditorPage() {
           ...day,
           exercises: day.exercises.map(e => e.id === ex.id ? { ...e, illustrationUrl: data.url } : e),
         })));
+      } else {
+        alert(`Illustration failed (${res.status}): ${data.error ?? 'Unknown error'}`);
       }
     } finally {
       setGeneratingIllustrationId(null);
