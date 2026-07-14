@@ -138,19 +138,30 @@ export async function POST(req: NextRequest) {
     // Propagate the updated exercises to all workout_plans copies assigned from this template.
     // workout_plans is a snapshot — we replace its exercises with the freshly patched template
     // exercises directly, avoiding any exercise-id mismatch between the two tables.
-    const { data: assignedPlans } = await sbAdmin
+    const { data: assignedPlans, error: wpQueryErr } = await sbAdmin
       .from('workout_plans')
       .select('id')
       .eq('practitioner_id', user.id)
       .eq('name', tpl.name);
 
+    const wpUpdateErrors: string[] = [];
     if (assignedPlans && assignedPlans.length > 0) {
-      await Promise.all(assignedPlans.map((wp: any) =>
-        sbAdmin.from('workout_plans').update({ exercises: newExercises }).eq('id', wp.id)
-      ));
+      await Promise.all(assignedPlans.map(async (wp: any) => {
+        const { error: upErr } = await sbAdmin.from('workout_plans').update({ exercises: newExercises }).eq('id', wp.id);
+        if (upErr) wpUpdateErrors.push(`${wp.id}: ${upErr.message}`);
+      }));
     }
 
-    return NextResponse.json({ url: publicUrl });
+    const debug = {
+      practitioner_id: user.id,
+      tpl_name: tpl.name,
+      wp_found: assignedPlans?.length ?? 0,
+      wp_query_error: wpQueryErr?.message ?? null,
+      wp_update_errors: wpUpdateErrors,
+    };
+    console.error('[gen-illus] workout_plans patch:', debug);
+
+    return NextResponse.json({ url: publicUrl, debug });
   } catch (err: any) {
     console.error('[generate-exercise-image]', err);
     return NextResponse.json({ error: err?.message ?? 'Unexpected server error' }, { status: 500 });
