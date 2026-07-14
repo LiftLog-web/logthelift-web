@@ -46,20 +46,16 @@ export async function POST(req: NextRequest) {
     const prompt = `Clean minimal instructional diagram of a person performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. No text labels.${contextHint}`;
 
     const imageRes = await openai.images.generate({
-      model:   'dall-e-3',
+      model:   'gpt-image-1',
       prompt,
       n:       1,
       size:    '1024x1024',
-      quality: 'standard',
-    });
+      quality: 'medium',
+    } as Parameters<typeof openai.images.generate>[0]);
 
-    const imageUrl = imageRes.data?.[0]?.url;
-    if (!imageUrl) return NextResponse.json({ error: 'Image generation failed.' }, { status: 500 });
-
-    // Download bytes from OpenAI's temporary CDN URL (not user-supplied)
-    const imgFetch = await fetch(imageUrl);
-    if (!imgFetch.ok) return NextResponse.json({ error: 'Failed to download generated image.' }, { status: 500 });
-    const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
+    const b64 = imageRes.data?.[0]?.b64_json;
+    if (!b64) return NextResponse.json({ error: 'Image generation failed.' }, { status: 500 });
+    const imgBuffer = Buffer.from(b64, 'base64');
 
     // Service-role client for storage + DB writes — bypasses RLS safely on the server
     const sbAdmin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!);
