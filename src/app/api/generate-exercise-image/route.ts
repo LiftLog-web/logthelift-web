@@ -5,6 +5,8 @@ import OpenAI from 'openai';
 import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
+export const maxDuration = 60;
+
 const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 const BUCKET    = 'exercise-illustrations';
 
