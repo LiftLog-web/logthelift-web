@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     // Patch the exercise's illustrationUrl inside plan_templates.exercises JSONB
     const { data: tpl } = await sbAdmin
       .from('plan_templates')
-      .select('exercises')
+      .select('name, exercises')
       .eq('id', templateId)
       .single();
 
@@ -102,26 +102,29 @@ export async function POST(req: NextRequest) {
 
     let patched = false;
 
-    function patchList(list: any[]): any[] {
-      return list.map((e: any) => {
-        if (e.id === exerciseId) { patched = true; return { ...e, illustrationUrl: publicUrl }; }
-        return e;
-      });
+    function patchExercises(raw: any): any {
+      if (Array.isArray(raw)) {
+        return raw.map((e: any) => {
+          if (e.id === exerciseId) { patched = true; return { ...e, illustrationUrl: publicUrl }; }
+          return e;
+        });
+      }
+      if (raw?.days) {
+        return {
+          ...raw,
+          days: (raw.days as any[]).map((d: any) => ({
+            ...d,
+            exercises: (d.exercises ?? []).map((e: any) => {
+              if (e.id === exerciseId) { patched = true; return { ...e, illustrationUrl: publicUrl }; }
+              return e;
+            }),
+          })),
+        };
+      }
+      return raw;
     }
 
-    const raw = tpl.exercises;
-    let newExercises: any;
-
-    if (Array.isArray(raw)) {
-      newExercises = patchList(raw);
-    } else if (raw?.days) {
-      newExercises = {
-        ...raw,
-        days: (raw.days as any[]).map((d: any) => ({ ...d, exercises: patchList(d.exercises ?? []) })),
-      };
-    } else {
-      newExercises = raw;
-    }
+    const newExercises = patchExercises(tpl.exercises);
 
     if (!patched) return NextResponse.json({ error: 'Exercise not found in template.' }, { status: 404 });
 
@@ -131,6 +134,23 @@ export async function POST(req: NextRequest) {
       .eq('id', templateId);
 
     if (updateErr) return NextResponse.json({ error: 'Failed to save illustration.' }, { status: 500 });
+
+    // Also patch all workout_plans copies assigned from this template (matched by practitioner + name).
+    // workout_plans holds a snapshot JSONB copy so we must update it separately.
+    const { data: assignedPlans } = await sbAdmin
+      .from('workout_plans')
+      .select('id, exercises')
+      .eq('practitioner_id', user.id)
+      .eq('name', tpl.name);
+
+    if (assignedPlans && assignedPlans.length > 0) {
+      await Promise.all(assignedPlans.map(async (wp: any) => {
+        patched = false; // reset flag — reuse patchExercises
+        const wpPatched = patchExercises(wp.exercises);
+        if (!patched) return; // exercise not present in this plan copy — skip
+        await sbAdmin.from('workout_plans').update({ exercises: wpPatched }).eq('id', wp.id);
+      }));
+    }
 
     return NextResponse.json({ url: publicUrl });
   } catch (err: any) {
