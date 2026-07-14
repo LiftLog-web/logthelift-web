@@ -201,6 +201,7 @@ export default function TemplateEditorPage() {
   const [mediaMap,       setMediaMap]       = useState<Record<string, { type: string; signedUrl?: string; urlLink?: string }>>({});
   const [demoPreview,    setDemoPreview]    = useState<{ name: string; type: string; signedUrl?: string; urlLink?: string } | null>(null);
   const [addVideoTarget,           setAddVideoTarget]           = useState<string | null>(null);
+  const [lightboxUrl,              setLightboxUrl]              = useState<string | null>(null);
   const [videoUrl,                 setVideoUrl]                 = useState('');
   const [savingVideo,              setSavingVideo]              = useState(false);
   const [userId,                   setUserId]                   = useState('');
@@ -1238,9 +1239,9 @@ export default function TemplateEditorPage() {
                                 <img
                                   src={ex.illustrationUrl}
                                   alt=""
-                                  onClick={e => e.stopPropagation()}
-                                  style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginLeft: 8, border: '1px solid var(--border)', cursor: 'default', flexShrink: 0 }}
-                                  title="AI illustration"
+                                  onClick={e => { e.stopPropagation(); setLightboxUrl(ex.illustrationUrl!); }}
+                                  style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginLeft: 8, border: '1px solid var(--border)', cursor: 'zoom-in', flexShrink: 0 }}
+                                  title="Click to enlarge"
                                 />
                               )}
                               {isFeatured && (
@@ -1492,6 +1493,13 @@ export default function TemplateEditorPage() {
         </div>
         );
       })()}
+
+      {/* Illustration lightbox */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24, cursor: 'zoom-out' }}>
+          <img src={lightboxUrl} alt="AI illustration" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 8px 48px rgba(0,0,0,0.6)', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* Add video link modal */}
       {addVideoTarget && (
