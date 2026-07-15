@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     // Patch the exercise's illustrationUrl inside plan_templates.exercises JSONB
     const { data: tpl } = await sbAdmin
       .from('plan_templates')
-      .select('name, exercises')
+      .select('name, exercises, practitioner_id')
       .eq('id', templateId)
       .single();
 
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     const { data: assignedPlans, error: wpQueryErr } = await sbAdmin
       .from('workout_plans')
       .select('id')
-      .eq('practitioner_id', user.id)
+      .eq('practitioner_id', tpl.practitioner_id)
       .eq('name', tpl.name);
 
     const wpUpdateErrors: string[] = [];
@@ -153,7 +153,8 @@ export async function POST(req: NextRequest) {
     }
 
     const debug = {
-      practitioner_id: user.id,
+      web_user_id: user.id,
+      tpl_practitioner_id: tpl.practitioner_id,
       tpl_name: tpl.name,
       wp_found: assignedPlans?.length ?? 0,
       wp_query_error: wpQueryErr?.message ?? null,
