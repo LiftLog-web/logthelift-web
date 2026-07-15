@@ -138,10 +138,12 @@ export async function POST(req: NextRequest) {
     // Propagate the updated exercises to all workout_plans copies assigned from this template.
     // workout_plans is a snapshot — we replace its exercises with the freshly patched template
     // exercises directly, avoiding any exercise-id mismatch between the two tables.
+    // The web MASTER account and the mobile practitioner account are different Supabase users,
+    // so we cannot filter by practitioner_id here. Match by name only; the MASTER_ID gate
+    // at the top of this route prevents arbitrary callers from triggering this.
     const { data: assignedPlans, error: wpQueryErr } = await sbAdmin
       .from('workout_plans')
       .select('id')
-      .eq('practitioner_id', tpl.practitioner_id)
       .eq('name', tpl.name);
 
     const wpUpdateErrors: string[] = [];
