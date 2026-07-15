@@ -23,7 +23,7 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildInviteHtml(senderName: string, firstName: string, code: string, isEmployer: boolean): string {
+function buildInviteHtml(senderName: string, firstName: string, code: string, isEmployer: boolean, inviteeEmail: string): string {
   const headline = isEmployer
     ? `Hi ${escapeHtml(firstName)}, ${escapeHtml(senderName)} has invited you to LiftLog 🌿`
     : `Hi ${escapeHtml(firstName)}, ${escapeHtml(senderName)} invited you to LiftLog 👋`;
@@ -31,10 +31,6 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
   const body = isEmployer
     ? `<strong style="color:#fff;">${escapeHtml(senderName)}</strong> wants to invite you to LiftLog to promote a healthy work environment and help you incorporate stretching and mobility into your work day. Your personalized office wellness plan will be waiting for you once you sign up.`
     : `You've been invited to LiftLog to track your fitness progress and stay connected with your team.`;
-
-  const linkStep = isEmployer
-    ? `Open the <strong style="color:#fff;">Stats</strong> tab, tap the <strong style="color:#fff;">⚙️ settings wheel</strong>, then tap <strong style="color:#fff;">Link to Practitioner or Employer</strong>`
-    : `Open the <strong style="color:#fff;">Stats</strong> tab, tap the <strong style="color:#fff;">⚙️ settings wheel</strong>, then tap <strong style="color:#fff;">Link to Practitioner or Employer</strong>`;
 
   const footer = isEmployer
     ? `Sent on behalf of <strong style="color:rgba(255,255,255,0.6);">${escapeHtml(senderName)}</strong> via LiftLog. If you were not expecting this, you can safely ignore it.`
@@ -53,17 +49,11 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
       <h1 style="color:#fff;font-size:22px;font-weight:700;margin:0 0 20px;">${headline}</h1>
       <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.7;margin:0 0 28px;">${body}</p>
 
-      <div style="background:rgba(95,207,191,0.1);border:1px solid rgba(95,207,191,0.3);border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
-        <p style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;letter-spacing:1px;margin:0 0 8px;">YOUR INVITE CODE</p>
-        <p style="color:#5fcfbf;font-size:36px;font-weight:800;letter-spacing:6px;margin:0;font-family:'Courier New',monospace;">${escapeHtml(code)}</p>
-      </div>
-
       <p style="color:rgba(255,255,255,0.6);font-size:14px;font-weight:600;margin:0 0 12px;">How to get started:</p>
       <ol style="color:rgba(255,255,255,0.7);font-size:14px;line-height:2;margin:0 0 28px;padding-left:20px;">
         <li>Download <strong style="color:#fff;">LiftLog</strong> from the App Store (iOS) or Google Play (Android)</li>
-        <li>Create your free account</li>
-        <li>${linkStep}</li>
-        <li>Enter the code above — you'll be connected instantly</li>
+        <li>Create your free account using <strong style="color:#fff;">${escapeHtml(inviteeEmail)}</strong></li>
+        <li>Sign in — you'll be automatically linked to <strong style="color:#fff;">${escapeHtml(senderName)}</strong> instantly</li>
       </ol>
 
       <a href="https://apps.apple.com/app/id6762567982"
@@ -76,6 +66,14 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
       </a>
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 10px;font-weight:600;">Already have a LiftLog account?</p>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 12px;">Use this code to link manually from <strong style="color:rgba(255,255,255,0.6);">Stats → ⚙️ Settings → Link to Practitioner or Employer</strong>:</p>
+        <div style="background:rgba(95,207,191,0.08);border:1px solid rgba(95,207,191,0.2);border-radius:10px;padding:14px;text-align:center;">
+          <p style="color:#5fcfbf;font-size:28px;font-weight:800;letter-spacing:5px;margin:0;font-family:'Courier New',monospace;">${escapeHtml(code)}</p>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
         <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">${footer}</p>
       </div>
     </div>
@@ -141,10 +139,11 @@ export async function POST(req: NextRequest) {
     const email = patient.email.trim().toLowerCase();
 
     const code = generateCode();
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const { error: codeErr } = await sb
       .from('invite_codes')
-      .insert({ practitioner_id: user.id, code });
+      .insert({ practitioner_id: user.id, code, invitee_email: email, expires_at: expiresAt });
 
     if (codeErr) {
       results.push({ email, success: false, error: 'Could not create invite code' });
@@ -159,7 +158,7 @@ export async function POST(req: NextRequest) {
       from:    'LiftLog <noreply@logthelift.ca>',
       to:      [email],
       subject,
-      html:    buildInviteHtml(senderName, firstName, code, isEmployer),
+      html:    buildInviteHtml(senderName, firstName, code, isEmployer, email),
     });
 
     results.push({ email, success: !emailErr, error: emailErr?.message });
