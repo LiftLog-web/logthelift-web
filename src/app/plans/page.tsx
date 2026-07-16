@@ -130,6 +130,7 @@ export default function PlansPage() {
   const [authed, setAuthed]       = useState(false);
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState<string | null>(null);
+  const [relinking, setRelinking] = useState<string | null>(null);
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
   const [userId, setUserId]             = useState<string>('');
@@ -288,6 +289,13 @@ export default function PlansPage() {
       setEditingTemplateFull(null);
     }
     setSavingWeeks(false);
+  };
+
+  const handleRelink = async (patientId: string) => {
+    setRelinking(patientId);
+    await getSupabase().from('patient_links').insert({ practitioner_id: userId, patient_id: patientId });
+    setLinkedPatientIds(prev => new Set([...prev, patientId]));
+    setRelinking(null);
   };
 
   const handleUnlink = async (patientId: string, patientName: string) => {
@@ -764,12 +772,21 @@ export default function PlansPage() {
                               </p>
                             </div>
                           </div>
-                          <button
-                            onClick={() => router.push(`/patients/${group.patient_id}`)}
-                            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                          >
-                            View Progress
-                          </button>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => router.push(`/patients/${group.patient_id}`)}
+                              style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              View Progress
+                            </button>
+                            <button
+                              onClick={() => handleRelink(group.patient_id)}
+                              disabled={relinking === group.patient_id}
+                              style={{ background: 'none', color: TEAL, border: `1px solid ${TEAL}60`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: relinking === group.patient_id ? 0.5 : 1 }}
+                            >
+                              {relinking === group.patient_id ? '…' : 'Re-link'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
