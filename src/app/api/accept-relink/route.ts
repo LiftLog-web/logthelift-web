@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { rateLimit } from '@/lib/rate-limit';
+import { z } from 'zod';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+
+const Schema = z.object({ invite_id: z.string().uuid() });
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '');
@@ -14,47 +16,35 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await sb.auth.getUser();
   if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const rl = rateLimit(`claim-invite:${user.id}`, 10, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  let parsed: ReturnType<typeof Schema.safeParse>;
+  try {
+    parsed = Schema.safeParse(await req.json());
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
 
+  const { invite_id } = parsed.data;
   const sbAdmin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const email = user.email.toLowerCase();
-  const now = new Date().toISOString();
 
   const { data: invite } = await sbAdmin
     .from('invite_codes')
-    .select('id, practitioner_id, is_relink')
-    .eq('invitee_email', email)
+    .select('id, practitioner_id, invitee_email')
+    .eq('id', invite_id)
     .is('used_by', null)
-    .or(`expires_at.is.null,expires_at.gt.${now}`)
-    .order('created_at', { ascending: false })
-    .limit(1)
     .maybeSingle();
 
-  if (!invite) return NextResponse.json({ linked: false, reason: 'no_invite' });
-  if (invite.practitioner_id === user.id) return NextResponse.json({ linked: false, reason: 'self_link' });
+  if (!invite) return NextResponse.json({ linked: false, reason: 'not_found' });
 
-  // Re-link invites require explicit patient consent — return a pending signal
-  // so the mobile app can show an Accept/Deny dialog before claiming.
-  if (invite.is_relink) {
-    const { data: practProf } = await sbAdmin
-      .from('profiles')
-      .select('display_name, is_employer')
-      .eq('id', invite.practitioner_id)
-      .single();
-    return NextResponse.json({
-      linked: false,
-      pendingRelink: true,
-      inviteId: invite.id,
-      practitionerName: practProf?.display_name ?? null,
-      isEmployer: practProf?.is_employer ?? false,
-    });
+  if (invite.invitee_email?.toLowerCase() !== user.email.toLowerCase()) {
+    return NextResponse.json({ error: 'Not authorized.' }, { status: 403 });
   }
 
-  await sbAdmin
-    .from('invite_codes')
-    .update({ used_by: user.id })
-    .eq('id', invite.id);
+  if (invite.practitioner_id === user.id) {
+    return NextResponse.json({ linked: false, reason: 'self_link' });
+  }
+
+  await sbAdmin.from('invite_codes').update({ used_by: user.id }).eq('id', invite_id);
 
   const { error: linkError } = await sbAdmin
     .from('patient_links')

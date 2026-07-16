@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
   const { data: invite, error: codeErr } = await sbAdmin
     .from('invite_codes')
-    .insert({ practitioner_id: user.id, code, invitee_email: patientProfile.email, expires_at: expiresAt })
+    .insert({ practitioner_id: user.id, code, invitee_email: patientProfile.email, expires_at: expiresAt, is_relink: true })
     .select('id')
     .single();
 
