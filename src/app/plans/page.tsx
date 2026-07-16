@@ -129,6 +129,7 @@ export default function PlansPage() {
   const [loading, setLoading]     = useState(true);
   const [authed, setAuthed]       = useState(false);
   const [deleting, setDeleting]   = useState<string | null>(null);
+  const [unlinking, setUnlinking] = useState<string | null>(null);
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
   const [userId, setUserId]             = useState<string>('');
@@ -287,6 +288,14 @@ export default function PlansPage() {
       setEditingTemplateFull(null);
     }
     setSavingWeeks(false);
+  };
+
+  const handleUnlink = async (patientId: string, patientName: string) => {
+    if (!confirm(`Unlink ${patientName}? They will move to "Previous Patients" and no longer appear in your active list.`)) return;
+    setUnlinking(patientId);
+    await getSupabase().from('patient_links').delete().eq('practitioner_id', userId).eq('patient_id', patientId);
+    setLinkedPatientIds(prev => { const next = new Set(prev); next.delete(patientId); return next; });
+    setUnlinking(null);
   };
 
   const handleDelete = async (planId: string) => {
@@ -632,6 +641,14 @@ export default function PlansPage() {
                             style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                           >
                             + Add Plan
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); handleUnlink(group.patient_id, group.patientName); }}
+                            disabled={unlinking === group.patient_id}
+                            title="Unlink patient"
+                            style={{ background: 'none', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: unlinking === group.patient_id ? 0.5 : 1 }}
+                          >
+                            {unlinking === group.patient_id ? '…' : 'Unlink'}
                           </button>
                           <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
                             ▾
