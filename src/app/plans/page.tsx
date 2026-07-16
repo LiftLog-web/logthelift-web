@@ -295,23 +295,16 @@ export default function PlansPage() {
   const handleRelink = async (patientId: string, patientName: string) => {
     setRelinking(patientId);
     try {
-      const { data: profile } = await getSupabase()
-        .from('profiles')
-        .select('email')
-        .eq('id', patientId)
-        .single();
-      if (!profile?.email) throw new Error('No email on file');
-
       const { data: { session } } = await getSupabase().auth.getSession();
-      const res = await fetch('/api/send-invite', {
+      const res = await fetch('/api/relink-patient', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ patients: [{ email: profile.email, name: patientName }] }),
+        body: JSON.stringify({ patient_id: patientId }),
       });
       if (!res.ok) throw new Error('Failed');
       setRelinkSent(prev => new Set([...prev, patientId]));
     } catch {
-      alert('Could not send re-link invite. Please try again.');
+      alert('Could not send re-link request. Please try again.');
     } finally {
       setRelinking(null);
     }

@@ -67,7 +67,7 @@ function buildInviteHtml(senderName: string, firstName: string, code: string, is
 
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
         <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 10px;font-weight:600;">Already have a LiftLog account?</p>
-        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 12px;">Use this code to link manually from <strong style="color:rgba(255,255,255,0.6);">Stats → ⚙️ Settings → Link to Practitioner or Employer</strong>:</p>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 12px;">Use this code to link manually from the <strong style="color:rgba(255,255,255,0.6);">Connect</strong> tab:</p>
         <div style="background:rgba(95,207,191,0.08);border:1px solid rgba(95,207,191,0.2);border-radius:10px;padding:14px;text-align:center;">
           <p style="color:#5fcfbf;font-size:28px;font-weight:800;letter-spacing:5px;margin:0;font-family:'Courier New',monospace;">${escapeHtml(code)}</p>
         </div>
