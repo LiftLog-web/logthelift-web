@@ -34,36 +34,8 @@ export async function POST(req: NextRequest) {
   if (!invite) return NextResponse.json({ linked: false, reason: 'no_invite' });
   if (invite.practitioner_id === user.id) return NextResponse.json({ linked: false, reason: 'self_link' });
 
-  // Re-link invites require explicit patient consent — return a pending signal
-  // so the mobile app can show an Accept/Deny dialog before claiming.
-  if (invite.is_relink) {
-    const { data: practProf } = await sbAdmin
-      .from('profiles')
-      .select('display_name, is_employer')
-      .eq('id', invite.practitioner_id)
-      .single();
-    return NextResponse.json({
-      linked: false,
-      pendingRelink: true,
-      inviteId: invite.id,
-      practitionerName: practProf?.display_name ?? null,
-      isEmployer: practProf?.is_employer ?? false,
-    });
-  }
-
-  await sbAdmin
-    .from('invite_codes')
-    .update({ used_by: user.id })
-    .eq('id', invite.id);
-
-  const { error: linkError } = await sbAdmin
-    .from('patient_links')
-    .insert({ practitioner_id: invite.practitioner_id, patient_id: user.id });
-
-  if (linkError && linkError.code !== '23505') {
-    return NextResponse.json({ error: 'Failed to create link.' }, { status: 500 });
-  }
-
+  // Always return a consent prompt — the mobile app shows Accept/Deny before linking.
+  // accept-relink handles the actual patient_links insert.
   const { data: practProf } = await sbAdmin
     .from('profiles')
     .select('display_name, is_employer')
@@ -71,8 +43,11 @@ export async function POST(req: NextRequest) {
     .single();
 
   return NextResponse.json({
-    linked: true,
+    linked: false,
+    pendingRelink: true,
+    inviteId: invite.id,
     practitionerName: practProf?.display_name ?? null,
     isEmployer: practProf?.is_employer ?? false,
+    isRelink: invite.is_relink ?? false,
   });
 }
