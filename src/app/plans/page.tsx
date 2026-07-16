@@ -131,6 +131,7 @@ export default function PlansPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState<string | null>(null);
   const [relinking, setRelinking] = useState<string | null>(null);
+  const [relinkSent, setRelinkSent] = useState<Set<string>>(new Set());
   const [search, setSearch]       = useState('');
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
   const [userId, setUserId]             = useState<string>('');
@@ -291,11 +292,29 @@ export default function PlansPage() {
     setSavingWeeks(false);
   };
 
-  const handleRelink = async (patientId: string) => {
+  const handleRelink = async (patientId: string, patientName: string) => {
     setRelinking(patientId);
-    await getSupabase().from('patient_links').insert({ practitioner_id: userId, patient_id: patientId });
-    setLinkedPatientIds(prev => new Set([...prev, patientId]));
-    setRelinking(null);
+    try {
+      const { data: profile } = await getSupabase()
+        .from('profiles')
+        .select('email')
+        .eq('id', patientId)
+        .single();
+      if (!profile?.email) throw new Error('No email on file');
+
+      const { data: { session } } = await getSupabase().auth.getSession();
+      const res = await fetch('/api/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ patients: [{ email: profile.email, name: patientName }] }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setRelinkSent(prev => new Set([...prev, patientId]));
+    } catch {
+      alert('Could not send re-link invite. Please try again.');
+    } finally {
+      setRelinking(null);
+    }
   };
 
   const handleUnlink = async (patientId: string, patientName: string) => {
@@ -780,11 +799,11 @@ export default function PlansPage() {
                               View Progress
                             </button>
                             <button
-                              onClick={() => handleRelink(group.patient_id)}
-                              disabled={relinking === group.patient_id}
-                              style={{ background: 'none', color: TEAL, border: `1px solid ${TEAL}60`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: relinking === group.patient_id ? 0.5 : 1 }}
+                              onClick={() => handleRelink(group.patient_id, group.patientName)}
+                              disabled={relinking === group.patient_id || relinkSent.has(group.patient_id)}
+                              style={{ background: 'none', color: relinkSent.has(group.patient_id) ? 'var(--text-dim)' : TEAL, border: `1px solid ${relinkSent.has(group.patient_id) ? 'var(--border)' : `${TEAL}60`}`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: relinkSent.has(group.patient_id) ? 'default' : 'pointer', opacity: relinking === group.patient_id ? 0.5 : 1 }}
                             >
-                              {relinking === group.patient_id ? '…' : 'Re-link'}
+                              {relinking === group.patient_id ? '…' : relinkSent.has(group.patient_id) ? 'Invite sent' : 'Re-link'}
                             </button>
                           </div>
                         </div>
