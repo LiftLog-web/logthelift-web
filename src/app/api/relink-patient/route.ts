@@ -34,7 +34,7 @@ function buildRelinkHtml(practitionerName: string, code: string, patientEmail: s
 
       <div style="margin-bottom:24px;padding:16px;background:rgba(95,207,191,0.06);border:1px solid rgba(95,207,191,0.15);border-radius:12px;">
         <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 10px;font-weight:600;">No push notifications? Enter this code manually:</p>
-        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 12px;">Go to <strong style="color:rgba(255,255,255,0.6);">Stats → ⚙️ Settings → Link to Practitioner or Employer</strong></p>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 12px;">Go to <strong style="color:rgba(255,255,255,0.6);">Connect tab → Link to Practitioner or Employer</strong></p>
         <div style="background:rgba(95,207,191,0.08);border:1px solid rgba(95,207,191,0.2);border-radius:10px;padding:14px;text-align:center;">
           <p style="color:#5fcfbf;font-size:28px;font-weight:800;letter-spacing:5px;margin:0;font-family:'Courier New',monospace;">${escapeHtml(code)}</p>
         </div>
