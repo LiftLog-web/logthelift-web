@@ -57,6 +57,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create link.' }, { status: 500 });
   }
 
+  await sbAdmin
+    .from('workout_plans')
+    .update({ hidden_by_patient: false })
+    .eq('patient_id', user.id)
+    .eq('practitioner_id', invite.practitioner_id);
+
   const { data: practProf } = await sbAdmin
     .from('profiles')
     .select('display_name, is_employer')
