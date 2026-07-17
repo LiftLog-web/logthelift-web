@@ -48,9 +48,12 @@ export async function POST(req: NextRequest) {
 
   const { error: linkError } = await sbAdmin
     .from('patient_links')
-    .insert({ practitioner_id: invite.practitioner_id, patient_id: user.id });
+    .upsert(
+      { practitioner_id: invite.practitioner_id, patient_id: user.id, unlinked_at: null },
+      { onConflict: 'practitioner_id,patient_id' }
+    );
 
-  if (linkError && linkError.code !== '23505') {
+  if (linkError) {
     return NextResponse.json({ error: 'Failed to create link.' }, { status: 500 });
   }
 
