@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     const character   = pickProfile(dayId);
     const contextHint = practitionerNotes ? ` Context: ${practitionerNotes.slice(0, 200)}` : '';
-    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. No text labels.${contextHint}`;
+    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The person has a calm, natural expression — relaxed and focused, not frowning or sad. No text labels.${contextHint}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };
@@ -154,17 +154,7 @@ export async function POST(req: NextRequest) {
       }));
     }
 
-    const debug = {
-      web_user_id: user.id,
-      tpl_practitioner_id: tpl.practitioner_id,
-      tpl_name: tpl.name,
-      wp_found: assignedPlans?.length ?? 0,
-      wp_query_error: wpQueryErr?.message ?? null,
-      wp_update_errors: wpUpdateErrors,
-    };
-    console.error('[gen-illus] workout_plans patch:', debug);
-
-    return NextResponse.json({ url: publicUrl, debug });
+    return NextResponse.json({ url: publicUrl });
   } catch (err: any) {
     console.error('[generate-exercise-image]', err);
     return NextResponse.json({ error: err?.message ?? 'Unexpected server error' }, { status: 500 });

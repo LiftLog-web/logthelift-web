@@ -663,8 +663,6 @@ export default function TemplateEditorPage() {
         body:    JSON.stringify({ templateId, exerciseId: ex.id, exerciseName, dayId, practitionerNotes: ex.notes ?? '' }),
       });
       const data = await res.json();
-      // eslint-disable-next-line no-console
-      console.log('[generateIllustration] API response:', data);
       if (data.url) {
         setDays(prev => prev.map(day => ({
           ...day,
