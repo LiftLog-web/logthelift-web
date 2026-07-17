@@ -301,10 +301,13 @@ export default function PlansPage() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ patient_id: patientId }),
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? `Request failed (${res.status})`);
+      }
       setRelinkSent(prev => new Set([...prev, patientId]));
-    } catch {
-      alert('Could not send re-link request. Please try again.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not send re-link request. Please try again.');
     } finally {
       setRelinking(null);
     }

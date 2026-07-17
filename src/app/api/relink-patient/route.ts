@@ -59,6 +59,9 @@ export async function POST(req: NextRequest) {
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'Email service not configured.' }, { status: 503 });
   }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: 'Server configuration error.' }, { status: 503 });
+  }
 
   const token = req.headers.get('Authorization')?.replace('Bearer ', '');
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -100,13 +103,14 @@ export async function POST(req: NextRequest) {
 
   const sbAdmin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-  const { data: patientProfile } = await sbAdmin
+  const { data: patientProfile, error: profileErr } = await sbAdmin
     .from('profiles')
     .select('email, expo_push_token')
     .eq('id', patient_id)
     .single();
 
   if (!patientProfile?.email) {
+    console.error('[relink-patient] patient profile lookup failed:', profileErr, 'patient_id:', patient_id);
     return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
   }
 
@@ -120,6 +124,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (codeErr || !invite) {
+    console.error('[relink-patient] invite_codes insert error:', codeErr);
     return NextResponse.json({ error: 'Could not create invite.' }, { status: 500 });
   }
 
