@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     const character   = pickProfile(dayId);
     const contextHint = practitionerNotes ? ` Context: ${practitionerNotes.slice(0, 200)}` : '';
-    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. No text labels.${contextHint}`;
+    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The entire figure must be fully visible — full head including top of hair and both feet including soles — with generous empty space above the head and below the feet so nothing is cropped. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. No text labels.${contextHint}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };
