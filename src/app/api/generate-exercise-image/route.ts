@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The entire figure must be fully visible — full head including top of hair and both feet including soles — with generous empty space above the head and below the feet so nothing is cropped. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. No text labels.${contextHint}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };
+    const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1536', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };
 
     const b64 = imageRes.data?.[0]?.b64_json;
     if (!b64) return NextResponse.json({ error: 'Image generation failed.' }, { status: 500 });
