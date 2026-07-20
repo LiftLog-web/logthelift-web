@@ -11,18 +11,18 @@ const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-
 const BUCKET    = 'exercise-illustrations';
 
 const CHARACTER_PROFILES = [
-  'a woman with light skin, straight brown hair in a ponytail, wearing a navy blue top and dark grey leggings',
-  'a man with medium-dark skin, short natural hair, wearing a white polo shirt and black trousers',
-  'a woman with dark skin, voluminous natural curly hair, wearing a coral pink t-shirt and black leggings',
-  'a man with fair skin, short blond hair, wearing a grey t-shirt and navy trousers',
-  'a woman with medium olive skin, long straight black hair, wearing a teal top and charcoal leggings',
-  'a man with dark brown skin, very short cropped hair, wearing a light blue shirt and dark trousers',
-  'a woman with medium skin, short auburn wavy bob, wearing a purple top and black leggings',
-  'a man with medium skin, curly dark hair, wearing a heather grey t-shirt and khaki trousers',
-  'a woman with light skin, long wavy red hair, wearing a forest green top and dark leggings',
-  'a man with light brown skin, short neat fade haircut, wearing an orange t-shirt and black joggers',
-  'a woman with dark skin, short natural afro, wearing a yellow top and charcoal leggings',
-  'a man with medium-light skin, short brown hair, wearing a burgundy polo shirt and grey trousers',
+  'a woman with pale peach skin, straight brown hair in a ponytail, wearing a navy blue top and dark grey leggings',
+  'a man with warm brown skin, short natural hair, wearing a white polo shirt and black trousers',
+  'a woman with deep brown skin, voluminous natural curly hair, wearing a coral pink t-shirt and black leggings',
+  'a man with fair freckled skin, short blond hair, wearing a grey t-shirt and navy trousers',
+  'a woman with warm olive skin, long straight black hair, wearing a teal top and charcoal leggings',
+  'a man with deep ebony skin, very short cropped hair, wearing a light blue shirt and dark trousers',
+  'a woman with medium beige skin, short auburn wavy bob, wearing a purple top and black leggings',
+  'a man with golden tan skin, curly dark hair, wearing a heather grey t-shirt and khaki trousers',
+  'a woman with pale ivory skin, long wavy red hair, wearing a forest green top and dark leggings',
+  'a man with caramel brown skin, short neat fade haircut, wearing an orange t-shirt and black joggers',
+  'a woman with rich dark brown skin, short natural afro, wearing a yellow top and charcoal leggings',
+  'a man with light beige skin, short brown hair, wearing a burgundy polo shirt and grey trousers',
 ];
 
 function pickProfile(dayId: string): string {
@@ -66,9 +66,11 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const character   = pickProfile(dayId);
+    // Always use the same character for all master-library illustrations so that
+    // no exercise is associated with a different ethnic appearance than another.
+    const character   = CHARACTER_PROFILES[1]; // warm brown skin, white polo, black trousers
     const contextHint = practitionerNotes ? ` Context: ${practitionerNotes.slice(0, 200)}` : '';
-    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The person has a calm, natural expression — relaxed and focused, not frowning or sad. No text labels.${contextHint}`;
+    const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. No text labels.${contextHint}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const imageRes = await openai.images.generate({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' } as any) as { data: Array<{ b64_json?: string | null }> };
