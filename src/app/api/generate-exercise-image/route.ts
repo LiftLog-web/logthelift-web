@@ -66,9 +66,7 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Always use the same character for all master-library illustrations so that
-    // no exercise is associated with a different ethnic appearance than another.
-    const character   = CHARACTER_PROFILES[1]; // warm brown skin, white polo, black trousers
+    const character   = pickProfile(dayId);
     const contextHint = practitionerNotes ? ` Context: ${practitionerNotes.slice(0, 200)}` : '';
     const prompt = `Clean minimal instructional diagram of ${character} performing "${exerciseName}" in a workplace or office setting. Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. No text labels.${contextHint}`;
 
