@@ -256,8 +256,9 @@ export default function TemplateEditorPage() {
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
-      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
-      if (prof?.role === 'practitioner') {
+      const isMaster = data.session.user.id === MASTER_ID;
+      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner && !isMaster) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner' && !isMaster) {
         const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
         if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
       }

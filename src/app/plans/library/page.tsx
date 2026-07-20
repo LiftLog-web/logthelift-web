@@ -8,8 +8,9 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 
-const TEAL   = '#5fcfbf';
-const PURPLE = '#C471ED';
+const TEAL      = '#5fcfbf';
+const PURPLE    = '#C471ED';
+const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
 const BODY_PART_GROUPS: { label: string; tags: string[] }[] = [
   { label: 'Upper Body', tags: ['Arms', 'Back', 'Chest', 'Shoulders', 'Upper Body'] },
@@ -149,8 +150,9 @@ export default function PlanLibraryPage() {
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
       const { data: prof } = await sb.from('profiles').select('role, is_gym_owner, is_employer').eq('id', data.session.user.id).single();
-      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner) { router.push('/profile'); return; }
-      if (prof?.role === 'practitioner') {
+      const isMaster = data.session.user.id === MASTER_ID;
+      if (prof?.role !== 'practitioner' && !prof?.is_gym_owner && !isMaster) { router.push('/profile'); return; }
+      if (prof?.role === 'practitioner' && !isMaster) {
         const hasAccess = await checkPractitionerAccess(sb, data.session.user.id);
         if (!hasAccess) { router.push('/profile?subscription=expired'); return; }
       }
