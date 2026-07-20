@@ -89,7 +89,9 @@ export async function POST(req: NextRequest) {
 
     if (uploadErr) return NextResponse.json({ error: 'Storage upload failed.' }, { status: 500 });
 
-    const { data: { publicUrl } } = sbAdmin.storage.from(BUCKET).getPublicUrl(storagePath);
+    const { data: { publicUrl: _publicUrl } } = sbAdmin.storage.from(BUCKET).getPublicUrl(storagePath);
+    // Append a timestamp so every regen bypasses the CDN/browser cache at the same path.
+    const publicUrl = `${_publicUrl}?t=${Date.now()}`;
 
     // Patch the exercise's illustrationUrl inside plan_templates.exercises JSONB
     const { data: tpl } = await sbAdmin
