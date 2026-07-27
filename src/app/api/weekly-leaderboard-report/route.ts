@@ -111,7 +111,7 @@ function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Employee   { id: string; name: string; teamId: string | null; teamName: string | null; }
-interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; }
+interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; avgEffectiveness: number | null; avgEnjoyment: number | null; }
 interface TeamRow    { rank: number; name: string; total: number; active: number; members: number; }
 interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; }
 
@@ -164,7 +164,7 @@ async function fetchLeaderboard(
 
   const [{ data: periodData }, { data: streakData }] = await Promise.all([
     client.from('synced_workouts')
-      .select('user_id, date')
+      .select('user_id, date, data')
       .in('user_id', empIds)
       .filter('data->>planId', 'in', planFilter)
       .gte('date', fromDate)
@@ -179,8 +179,22 @@ async function fetchLeaderboard(
 
   const periodMap: Record<string, string[]> = {};
   const streakMap: Record<string, string[]> = {};
-  for (const e of employees) { periodMap[e.id] = []; streakMap[e.id] = []; }
-  for (const w of (periodData ?? [])) periodMap[w.user_id]?.push(w.date);
+  const ratingsMap: Record<string, { effSum: number; effCount: number; enjSum: number; enjCount: number }> = {};
+  for (const e of employees) {
+    periodMap[e.id] = [];
+    streakMap[e.id] = [];
+    ratingsMap[e.id] = { effSum: 0, effCount: 0, enjSum: 0, enjCount: 0 };
+  }
+  for (const w of (periodData ?? [])) {
+    periodMap[w.user_id]?.push(w.date);
+    const r = ratingsMap[w.user_id];
+    if (r) {
+      const eff = typeof w.data?.effectivenessRating === 'number' ? w.data.effectivenessRating : null;
+      const enj = typeof w.data?.enjoymentRating === 'number' ? w.data.enjoymentRating : null;
+      if (eff !== null) { r.effSum += eff; r.effCount++; }
+      if (enj !== null) { r.enjSum += enj; r.enjCount++; }
+    }
+  }
   for (const w of (streakData ?? [])) streakMap[w.user_id]?.push(w.date);
 
   const approvedOffMap: Record<string, string[]> = {};
@@ -190,13 +204,18 @@ async function fetchLeaderboard(
   }
 
   const individual: IndividualRow[] = employees
-    .map(emp => ({
-      rank:     0,
-      name:     emp.name,
-      teamName: emp.teamName,
-      count:    periodMap[emp.id].length,
-      streak:   calcStreak(streakMap[emp.id], scheduleType, workDays, approvedOffMap[emp.id] ?? []),
-    }))
+    .map(emp => {
+      const rm = ratingsMap[emp.id];
+      return {
+        rank:             0,
+        name:             emp.name,
+        teamName:         emp.teamName,
+        count:            periodMap[emp.id].length,
+        streak:           calcStreak(streakMap[emp.id], scheduleType, workDays, approvedOffMap[emp.id] ?? []),
+        avgEffectiveness: rm.effCount > 0 ? rm.effSum / rm.effCount : null,
+        avgEnjoyment:     rm.enjCount > 0 ? rm.enjSum / rm.enjCount : null,
+      };
+    })
     .sort((a, b) => b.count - a.count || b.streak - a.streak)
     .map((r, i) => ({ ...r, rank: i + 1 }));
 
@@ -224,15 +243,21 @@ function medal(rank: number) {
   return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
 }
 
-function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStreak: boolean) {
-  return rows.map(r => `
+function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStreak: boolean, showRatings = false) {
+  return rows.map(r => {
+    const streakPad = showRatings ? 'padding:11px 8px' : 'padding:11px 14px 11px 8px';
+    return `
     <tr style="border-top:1px solid #2a2a3a;">
       <td style="padding:11px 14px;font-size:${r.rank <= 3 ? 16 : 13}px;">${medal(r.rank)}</td>
       <td style="padding:11px 8px;font-size:14px;font-weight:600;color:#f0f0f0;">${esc(r.name)}</td>
       ${showTeam ? `<td style="padding:11px 8px;font-size:13px;color:#6b7280;">${r.teamName ? esc(r.teamName) : '—'}</td>` : ''}
       <td style="padding:11px 8px;font-size:15px;font-weight:700;color:#1EDBA8;text-align:center;">${r.count}</td>
-      ${showStreak ? `<td style="padding:11px 14px 11px 8px;font-size:13px;color:${r.streak > 0 ? '#F97316' : '#6b7280'};text-align:center;">${r.streak > 0 ? `🔥 ${r.streak}d` : '—'}</td>` : ''}
-    </tr>`).join('');
+      ${showStreak ? `<td style="${streakPad};font-size:13px;color:${r.streak > 0 ? '#F97316' : '#6b7280'};text-align:center;">${r.streak > 0 ? `🔥 ${r.streak}d` : '—'}</td>` : ''}
+      ${showRatings ? `
+      <td style="padding:11px 8px;font-size:13px;color:${r.avgEffectiveness !== null ? '#f0f0f0' : '#6b7280'};text-align:center;">${r.avgEffectiveness !== null ? r.avgEffectiveness.toFixed(1) : '—'}</td>
+      <td style="padding:11px 14px 11px 8px;font-size:13px;color:${r.avgEnjoyment !== null ? '#f0f0f0' : '#6b7280'};text-align:center;">${r.avgEnjoyment !== null ? r.avgEnjoyment.toFixed(1) : '—'}</td>` : ''}
+    </tr>`;
+  }).join('');
 }
 
 function buildTeamSection(teamRows: TeamRow[]) {
@@ -316,7 +341,9 @@ function buildWeeklyHtml(
         <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Name</th>
         ${hasTeams ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Team</th>' : ''}
         <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Workouts</th>
-        <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Streak</th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Streak</th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Effectiveness</th>
+        <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Enjoyment</th>
       </tr>
     </thead>`;
 
@@ -349,7 +376,7 @@ function buildWeeklyHtml(
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
       ${thead}
       <tbody style="background:#0f1117;">
-        ${buildIndividualRows(individual, hasTeams, true)}
+        ${buildIndividualRows(individual, hasTeams, true, true)}
       </tbody>
     </table>
 
