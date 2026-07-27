@@ -216,6 +216,110 @@ function weekLabel(weekStartStr: string): { range: string; badge: string | null 
   return { range, badge };
 }
 
+/* ── Activity calendar ──────────────────────────────────────────── */
+const PERSONAL_COLOR = '#64748b';
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function ActivityGrid({ dates, planDates }: { dates: string[]; planDates: string[] }) {
+  const allSet  = new Set(dates);
+  const planSet = new Set(planDates);
+  const today   = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr  = today.toISOString().slice(0, 10);
+  const todayDow  = (today.getDay() + 6) % 7;
+  const thisMonday = new Date(today.getTime() - todayDow * 86400000);
+
+  type DayInfo = {
+    date: string; dayNum: number;
+    isFuture: boolean; isToday: boolean;
+    hasPlan: boolean; hasPersonal: boolean;
+  };
+  const weeks: DayInfo[][] = [];
+  for (let w = 4; w >= 0; w--) {
+    const week: DayInfo[] = [];
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(thisMonday.getTime() - w * 7 * 86400000 + d * 86400000);
+      const s  = dt.toISOString().slice(0, 10);
+      week.push({
+        date: s, dayNum: dt.getDate(),
+        isFuture: dt > today, isToday: s === todayStr,
+        hasPlan:     planSet.has(s),
+        hasPersonal: allSet.has(s) && !planSet.has(s),
+      });
+    }
+    weeks.push(week);
+  }
+
+  const wkLabel = (wi: number) => {
+    if (wi === 4) return 'This week';
+    if (wi === 3) return 'Last week';
+    const d = new Date(weeks[wi][0].date);
+    return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  };
+
+  const DAY_COLS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
+        Activity — last 5 weeks
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
+        <div />
+        {DAY_COLS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{d}</div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right', paddingRight: 10, whiteSpace: 'nowrap' }}>
+              {wkLabel(wi)}
+            </div>
+            {week.map(day => {
+              const bg      = day.isFuture ? 'var(--border)' : day.hasPlan ? TEAL : day.hasPersonal ? PERSONAL_COLOR : 'var(--border)';
+              const opacity = day.isFuture ? 0.12 : (day.hasPlan || day.hasPersonal) ? 1 : 0.28;
+              const color   = (day.hasPlan || day.hasPersonal) && !day.isFuture ? '#fff' : 'var(--text-muted)';
+              const tooltip = day.hasPlan ? `${day.date} · plan workout` : day.hasPersonal ? `${day.date} · personal workout` : day.isFuture ? '' : `${day.date} · no workout`;
+              return (
+                <div
+                  key={day.date}
+                  title={tooltip}
+                  style={{
+                    borderRadius: 6, padding: '7px 0',
+                    background: bg, opacity,
+                    textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
+                    color,
+                    outline: day.isToday ? `2px solid ${TEAL}` : 'none',
+                    outlineOffset: 1,
+                    transition: 'opacity 0.12s',
+                  }}
+                >
+                  {day.isFuture ? '' : day.dayNum}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.28 }} />
+          <span>No workout</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR }} />
+          <span>Personal workout</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL }} />
+          <span>Plan workout</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Component ──────────────────────────────────────────────────── */
 export default function PatientProgressPage() {
   const router    = useRouter();
@@ -534,6 +638,11 @@ export default function PatientProgressPage() {
   /* ── Plan lookup ── */
   const planNameById = Object.fromEntries(assignedPlans.map(p => [p.id, p.name]));
 
+  /* ── Activity calendar data ── */
+  const assignedPlanIdSet = new Set(assignedPlans.map(p => p.id));
+  const allDates  = workouts.map(w => w.date);
+  const planDates = workouts.filter(w => w.planId && assignedPlanIdSet.has(w.planId)).map(w => w.date);
+
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
   const withPlan       = workouts.filter(w => w.planId);
@@ -706,6 +815,13 @@ export default function PatientProgressPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Activity Calendar ── */}
+        {workouts.length > 0 && (
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 22px', marginBottom: 24 }}>
+            <ActivityGrid dates={allDates} planDates={planDates} />
+          </div>
+        )}
 
         {/* ── Assigned Plans ── */}
         {assignedPlans.length > 0 && (
