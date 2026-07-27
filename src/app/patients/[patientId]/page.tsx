@@ -221,23 +221,33 @@ const PERSONAL_COLOR = '#64748b';
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function ActivityGrid({
-  dates, planDates, workouts, planNameById,
+  dates, planDates, workouts, planNameById, isEmployer,
 }: {
   dates: string[];
   planDates: string[];
   workouts: WorkoutLog[];
   planNameById: Record<string, string>;
+  isEmployer?: boolean;
 }) {
   const [tooltip,   setTooltip]   = useState<{ date: string; rect: DOMRect } | null>(null);
   const [modalDate, setModalDate] = useState<string | null>(null);
+  const [calPage,   setCalPage]   = useState(0);
+
+  useEffect(() => {
+    if (!modalDate) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setModalDate(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalDate]);
 
   const allSet  = new Set(dates);
   const planSet = new Set(planDates);
   const today   = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr   = today.toISOString().slice(0, 10);
-  const todayDow   = (today.getDay() + 6) % 7;
-  const thisMonday = new Date(today.getTime() - todayDow * 86400000);
+  const todayStr      = today.toISOString().slice(0, 10);
+  const todayDow      = (today.getDay() + 6) % 7;
+  const currentMonday = new Date(today.getTime() - todayDow * 86400000);
+  const thisMonday    = new Date(currentMonday.getTime() - calPage * 5 * 7 * 86400000);
 
   const dateMap = new Map<string, WorkoutLog[]>();
   for (const w of workouts) {
@@ -266,11 +276,16 @@ function ActivityGrid({
     weeks.push(week);
   }
 
-  const wkLabel = (wi: number) => {
-    if (wi === 4) return 'This week';
-    if (wi === 3) return 'Last week';
-    const d = new Date(weeks[wi][0].date);
+  const fmtShort = (ds: string) => {
+    const d = new Date(ds + 'T12:00:00');
     return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  };
+  const rangeLabel = `${fmtShort(weeks[0][0].date)} – ${fmtShort(weeks[4][6].date)}`;
+
+  const wkLabel = (wi: number) => {
+    if (calPage === 0 && wi === 4) return 'This week';
+    if (calPage === 0 && wi === 3) return 'Last week';
+    return fmtShort(weeks[wi][0].date);
   };
 
   const DAY_COLS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -282,57 +297,103 @@ function ActivityGrid({
 
   const modalWorkouts = modalDate ? (dateMap.get(modalDate) ?? []) : [];
 
+  const navBtn = (disabled: boolean): React.CSSProperties => ({
+    background: 'transparent',
+    border: '1px solid var(--border)',
+    color: 'var(--text-muted)',
+    borderRadius: 8,
+    padding: '4px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.35 : 1,
+  });
+
   return (
     <>
       <div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
-          Activity — last 5 weeks
+        {/* Header with pagination */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Activity</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{rangeLabel}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setCalPage(p => p + 1)} style={navBtn(false)}>← Older</button>
+            <button onClick={() => setCalPage(p => p - 1)} disabled={calPage === 0} style={navBtn(calPage === 0)}>Newer →</button>
+          </div>
         </div>
+
+        {/* Day-of-week header */}
         <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
           <div />
           {DAY_COLS.map(d => (
             <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{d}</div>
           ))}
         </div>
+
+        {/* Week rows */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {weeks.map((week, wi) => (
-            <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right', paddingRight: 10, whiteSpace: 'nowrap' }}>
-                {wkLabel(wi)}
+          {weeks.map((week, wi) => {
+            const weekWs   = week.flatMap(day => dateMap.get(day.date) ?? []);
+            const count    = weekWs.length;
+            const allExs   = weekWs.flatMap(w => w.exercises ?? []);
+            const withTgts = allExs.filter(ex => (ex.targetSets ?? []).length > 0);
+            const done     = withTgts.filter(ex => exStatus(ex) === 'completed').length;
+            const rate     = withTgts.length > 0 ? Math.round(done / withTgts.length * 100) : null;
+            const ratings  = weekWs.flatMap(w =>
+              [w.effectivenessRating ?? w.satisfactionRating, w.enjoymentRating]
+                .filter((r): r is number => r != null && r > 0)
+            );
+            const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+            const parts: string[] = [];
+            if (count > 0) parts.push(`${count} workout${count !== 1 ? 's' : ''}`);
+            if (rate !== null) parts.push(`✓ ${rate}%`);
+            if (!isEmployer && avgRating !== null) parts.push(`★ ${fmtRating(avgRating)}`);
+            const statLine = parts.join(' · ');
+
+            return (
+              <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
+                <div style={{ textAlign: 'right', paddingRight: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{wkLabel(wi)}</div>
+                  {statLine && <div style={{ fontSize: 9, fontWeight: 500, color: 'var(--text-dim)', marginTop: 1, whiteSpace: 'nowrap' }}>{statLine}</div>}
+                </div>
+                {week.map(day => {
+                  const hasWorkout = !day.isFuture && dateMap.has(day.date);
+                  const bg      = day.isFuture ? 'var(--border)' : day.hasPlan ? TEAL : day.hasPersonal ? PERSONAL_COLOR : 'var(--border)';
+                  const opacity = day.isFuture ? 0.12 : (day.hasPlan || day.hasPersonal) ? 1 : 0.28;
+                  const color   = (day.hasPlan || day.hasPersonal) && !day.isFuture ? '#fff' : 'var(--text-muted)';
+                  return (
+                    <div
+                      key={day.date}
+                      style={{
+                        borderRadius: 6, padding: '7px 0',
+                        background: bg, opacity,
+                        textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
+                        color,
+                        outline: day.isToday ? `2px solid ${TEAL}` : 'none',
+                        outlineOffset: 1,
+                        transition: 'opacity 0.12s',
+                        cursor: hasWorkout ? 'pointer' : 'default',
+                      }}
+                      onMouseEnter={e => {
+                        if (hasWorkout) setTooltip({ date: day.date, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() });
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                      onClick={() => {
+                        if (hasWorkout) { setTooltip(null); setModalDate(day.date); }
+                      }}
+                    >
+                      {day.isFuture ? '' : day.dayNum}
+                    </div>
+                  );
+                })}
               </div>
-              {week.map(day => {
-                const hasWorkout = !day.isFuture && dateMap.has(day.date);
-                const bg      = day.isFuture ? 'var(--border)' : day.hasPlan ? TEAL : day.hasPersonal ? PERSONAL_COLOR : 'var(--border)';
-                const opacity = day.isFuture ? 0.12 : (day.hasPlan || day.hasPersonal) ? 1 : 0.28;
-                const color   = (day.hasPlan || day.hasPersonal) && !day.isFuture ? '#fff' : 'var(--text-muted)';
-                return (
-                  <div
-                    key={day.date}
-                    style={{
-                      borderRadius: 6, padding: '7px 0',
-                      background: bg, opacity,
-                      textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
-                      color,
-                      outline: day.isToday ? `2px solid ${TEAL}` : 'none',
-                      outlineOffset: 1,
-                      transition: 'opacity 0.12s',
-                      cursor: hasWorkout ? 'pointer' : 'default',
-                    }}
-                    onMouseEnter={e => {
-                      if (hasWorkout) setTooltip({ date: day.date, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() });
-                    }}
-                    onMouseLeave={() => setTooltip(null)}
-                    onClick={() => {
-                      if (hasWorkout) { setTooltip(null); setModalDate(day.date); }
-                    }}
-                  >
-                    {day.isFuture ? '' : day.dayNum}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Legend */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.28 }} />
@@ -533,9 +594,6 @@ export default function PatientProgressPage() {
   const [practName,     setPractName]     = useState('');
   const [workouts,      setWorkouts]      = useState<WorkoutLog[]>([]);
   const [loading,       setLoading]       = useState(true);
-  const [expanded,      setExpanded]      = useState<Set<string>>(new Set());
-  const [expandedEx,    setExpandedEx]    = useState<Set<string>>(new Set());
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [noAccess,      setNoAccess]      = useState(false);
   const [exerciseDemos, setExerciseDemos] = useState<Array<{ id: string; exercise_name: string; media_type: string; file_path: string; url_link: string | null }>>([]);
   const [demoSignedUrls, setDemoSignedUrls] = useState<Record<string, string>>({});
@@ -619,10 +677,6 @@ export default function PatientProgressPage() {
       }
 
       setWorkouts(logs);
-      const allWeekKeys = new Set(logs.map(w => getWeekStartDate(w.date)));
-      const storedCollapsed = localStorage.getItem(`patient-weeks-collapsed-${patientId}`);
-      const collapsed: Set<string> = storedCollapsed ? new Set(JSON.parse(storedCollapsed)) : new Set();
-      setExpandedWeeks(new Set([...allWeekKeys].filter(k => !collapsed.has(k))));
 
       // Store assigned plans for week editing
       setAssignedPlans(rawPlans.map((p) => ({
@@ -744,24 +798,6 @@ export default function PatientProgressPage() {
       router.push(`/plans/library/${data.id}`);
     }
   };
-
-  const toggleWorkout = (id: string) =>
-    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
-  const toggleEx = (id: string) =>
-    setExpandedEx(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
-  const toggleWeek = (key: string) =>
-    setExpandedWeeks(prev => {
-      const n = new Set(prev);
-      n.has(key) ? n.delete(key) : n.add(key);
-      const storedCollapsed: string[] = JSON.parse(localStorage.getItem(`patient-weeks-collapsed-${patientId}`) ?? '[]');
-      const updated = n.has(key)
-        ? storedCollapsed.filter(k => k !== key)
-        : [...new Set([...storedCollapsed, key])];
-      localStorage.setItem(`patient-weeks-collapsed-${patientId}`, JSON.stringify(updated));
-      return n;
-    });
 
   /* ── Week groups ── */
   const weekMap = new Map<string, WorkoutLog[]>();
@@ -1021,7 +1057,7 @@ export default function PatientProgressPage() {
         {/* ── Activity Calendar ── */}
         {workouts.length > 0 && (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 22px', marginBottom: 24 }}>
-            <ActivityGrid dates={allDates} planDates={planDates} workouts={workouts} planNameById={planNameById} />
+            <ActivityGrid dates={allDates} planDates={planDates} workouts={workouts} planNameById={planNameById} isEmployer={isEmployer} />
           </div>
         )}
 
@@ -1237,241 +1273,11 @@ export default function PatientProgressPage() {
           </div>
         )}
 
-        {/* Workout list — grouped by week */}
-        {workouts.length === 0 ? (
+        {/* No-workout empty state */}
+        {workouts.length === 0 && (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
             <p style={{ fontSize: 36, marginBottom: 12 }}>📭</p>
             <p style={{ color: 'var(--text-muted)' }}>No workouts synced yet for this {isEmployer ? 'employee' : 'patient'}.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {sortedWeekKeys.map(weekKey => {
-              const weekWorkouts  = weekMap.get(weekKey)!;
-              const { range, badge } = weekLabel(weekKey);
-              const weekOpen      = expandedWeeks.has(weekKey);
-
-              // Week-level aggregate stats
-              const weekExercises   = weekWorkouts.flatMap(w => w.exercises ?? []);
-              const weekWithTargets = weekExercises.filter(e => (e.targetSets ?? []).length > 0);
-              const weekDone        = weekWithTargets.filter(e => exStatus(e) === 'completed').length;
-              const weekRate        = weekWithTargets.length > 0 ? Math.round((weekDone / weekWithTargets.length) * 100) : null;
-              const weekRatings     = weekWorkouts.flatMap(w => [w.effectivenessRating ?? w.satisfactionRating, w.enjoymentRating].filter((r): r is number => typeof r === 'number' && r > 0));
-              const weekAvgRating   = weekRatings.length ? weekRatings.reduce((a, b) => a + b, 0) / weekRatings.length : null;
-              const weekAllStatuses = weekExercises.map(exStatus);
-              const weekOverall: ExStatus =
-                weekAllStatuses.length === 0 ? 'none'
-                : weekAllStatuses.every(s => s === 'completed') ? 'completed'
-                : weekAllStatuses.some(s => s === 'completed' || s === 'partial') ? 'partial'
-                : 'none';
-
-              return (
-                <div key={weekKey}>
-                  {/* Week header */}
-                  <button
-                    onClick={() => toggleWeek(weekKey)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: weekOpen ? '12px 12px 0 0' : 12, cursor: 'pointer', textAlign: 'left', borderBottom: weekOpen ? '1px solid var(--border-subtle)' : undefined }}
-                  >
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[weekOverall], flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{range}</span>
-                    {badge && (
-                      <span style={{ background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{badge}</span>
-                    )}
-                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                      {weekWorkouts.length} workout{weekWorkouts.length !== 1 ? 's' : ''}
-                      {weekRate !== null ? ` · ${weekRate}% completion` : ''}
-                      {!isEmployer && weekAvgRating !== null ? ` · ★ ${fmtRating(weekAvgRating)}` : ''}
-                    </span>
-                    <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 14, transform: weekOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
-                  </button>
-
-                  {/* Week body */}
-                  {weekOpen && (
-                    <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
-                      {weekWorkouts.map((w, wi) => {
-                        const isOpen       = expanded.has(w.id);
-                        const statuses     = (w.exercises ?? []).map(exStatus);
-                        const doneCount    = statuses.filter(s => s === 'completed').length;
-                        const partialCount = statuses.filter(s => s === 'partial').length;
-                        const total        = statuses.length;
-                        const overallStatus: ExStatus =
-                          total === 0 ? 'none'
-                          : doneCount === total ? 'completed'
-                          : doneCount + partialCount > 0 ? 'partial'
-                          : 'none';
-
-                        return (
-                          <div key={w.id} style={{ borderTop: wi > 0 ? '1px solid var(--border-subtle)' : undefined }}>
-
-                            {/* Workout row */}
-                            <button
-                              onClick={() => toggleWorkout(w.id)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 22px', background: isOpen ? `${PURPLE}0d` : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                            >
-                              <div style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[overallStatus], flexShrink: 0 }} />
-                              <span style={{ fontWeight: 700, fontSize: 14, minWidth: 100, whiteSpace: 'nowrap' }}>
-                                {new Date(w.date + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </span>
-                              {w.planId && planNameById[w.planId] && (
-                                <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                  {planNameById[w.planId]}
-                                </span>
-                              )}
-                              {w.duration > 0 && (
-                                <span style={{ background: 'var(--card-alt)', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{w.duration} min</span>
-                              )}
-                              {!isEmployer && (w.effectivenessRating || w.enjoymentRating || w.satisfactionRating) && (
-                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', gap: 10, alignItems: 'center' }}>
-                                  {(w.effectivenessRating ?? w.satisfactionRating) && (
-                                    <span><span style={{ color: PURPLE, fontSize: 10, fontWeight: 800, marginRight: 3 }}>Effectiveness</span><span style={{ color: PURPLE }}>★</span> {fmtRating((w.effectivenessRating ?? w.satisfactionRating)!)}</span>
-                                  )}
-                                  {w.enjoymentRating && (
-                                    <span><span style={{ color: TEAL, fontSize: 10, fontWeight: 800, marginRight: 3 }}>Enjoyment</span><span style={{ color: TEAL }}>★</span> {fmtRating(w.enjoymentRating)}</span>
-                                  )}
-                                </span>
-                              )}
-                              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                {total > 0 && (() => {
-                                  const allDone    = doneCount === total;
-                                  const anyProgress = doneCount + partialCount > 0;
-                                  const badgeColor = allDone ? TEAL : anyProgress ? PURPLE : 'var(--text-dim)';
-                                  const label = allDone
-                                    ? `${total}/${total} ✓`
-                                    : partialCount > 0
-                                      ? `${doneCount}/${total} · ${partialCount} partial`
-                                      : `${doneCount}/${total}`;
-                                  return (
-                                    <span style={{ background: `${badgeColor}1a`, color: badgeColor, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-                                      {label}
-                                    </span>
-                                  );
-                                })()}
-                                <span style={{ color: 'var(--text-faint)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
-                              </div>
-                            </button>
-
-                            {/* Exercise strip — always visible when collapsed */}
-                            {!isOpen && (w.exercises ?? []).length > 0 && (
-                              <div style={{ padding: '0 22px 9px 45px', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                {(w.exercises ?? []).slice(0, 3).map((ex, i) => (
-                                  <span key={i} style={{ fontSize: 11, color: STATUS_COLOR[statuses[i]], background: `${STATUS_COLOR[statuses[i]]}15`, padding: '2px 9px', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                    {ex.exercise.name}
-                                  </span>
-                                ))}
-                                {(w.exercises ?? []).length > 3 && (
-                                  <span style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 4px' }}>+{(w.exercises ?? []).length - 3} more</span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Workout detail */}
-                            {isOpen && (
-                              <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'var(--card)' }}>
-                                {w.notes?.trim() && (
-                                  <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                    <span style={{ fontSize: 14 }}>💬</span>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                      <span style={{ fontSize: 12, fontWeight: 700, color: TEAL }}>{patientName}</span>
-                                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {(w.exercises ?? []).length === 0 ? (
-                                  <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>No exercises recorded.</p>
-                                ) : (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {(w.exercises ?? []).map(ex => {
-                                      const st     = exStatus(ex);
-                                      const exOpen = expandedEx.has(ex.id);
-                                      const hasNote = ex.notes?.trim();
-                                      const hasSets = ex.sets?.length > 0;
-                                      return (
-                                        <div key={ex.id} style={{ border: `1px solid ${STATUS_COLOR[st]}30`, borderRadius: 10, overflow: 'hidden' }}>
-                                          <button
-                                            onClick={() => toggleEx(ex.id)}
-                                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', background: `${STATUS_COLOR[st]}08`, border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                                          >
-                                            <span style={{ background: STATUS_BG_CSS[st], color: STATUS_TEXT_CSS[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>{STATUS_LABEL[st]}</span>
-                                            <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{ex.exercise.name}</span>
-                                            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                                              {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
-                                            </span>
-                                            {hasNote && <span title={isEmployer ? 'Employee note' : 'Patient note'} style={{ fontSize: 13 }}>💬</span>}
-                                            <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
-                                          </button>
-                                          {exOpen && (
-                                            <div style={{ borderTop: `1px solid ${STATUS_COLOR[st]}20`, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                              {hasSets && (
-                                                <div>
-                                                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sets</p>
-                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                    {ex.sets.map((s, si) => {
-                                                      const target = ex.targetSets?.[si];
-                                                      const actual = setLabel(s, ex.exercise.type);
-                                                      const tLabel = target ? setLabel(target, ex.exercise.type) : null;
-                                                      let setMet: boolean | null = null;
-                                                      if (target) {
-                                                        if (target.reps !== undefined) {
-                                                          const aReps = s.isSplit ? Math.min(s.leftReps ?? 0, s.rightReps ?? 0) : (s.reps ?? 0);
-                                                          const aWt   = s.isSplit ? Math.min(s.leftWeight ?? 0, s.rightWeight ?? 0) : (s.weight ?? 0);
-                                                          setMet = aReps >= target.reps && aWt >= (target.weight ?? 0);
-                                                        } else if (target.duration !== undefined) {
-                                                          const aDur = s.isSplit ? Math.min(s.leftDuration ?? 0, s.rightDuration ?? 0) : (s.duration ?? 0);
-                                                          setMet = aDur >= target.duration;
-                                                        } else if (target.cardioduration !== undefined) {
-                                                          setMet = (s.cardioduration ?? 0) >= target.cardioduration;
-                                                        }
-                                                      }
-                                                      return (
-                                                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                                                          <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
-                                                          <span style={{ color: 'var(--text)', minWidth: 100 }}>{actual}</span>
-                                                          {tLabel && (
-                                                            <>
-                                                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>target: {tLabel}</span>
-                                                              {setMet !== null && <span style={{ color: setMet ? TEAL : '#EF4444', fontSize: 12 }}>{setMet ? '✓' : '✗'}</span>}
-                                                            </>
-                                                          )}
-                                                        </div>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                </div>
-                                              )}
-                                              {ex.practitionerNotes?.trim() && (
-                                                <div style={{ background: `${PURPLE}0d`, border: `1px solid ${PURPLE}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
-                                                  <span style={{ fontSize: 13 }}>📋</span>
-                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, color: PURPLE }}>PT Notes</span>
-                                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>{ex.practitionerNotes}</p>
-                                                  </div>
-                                                </div>
-                                              )}
-                                              {hasNote && (
-                                                <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
-                                                  <span style={{ fontSize: 13 }}>💬</span>
-                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, color: TEAL }}>{patientName}</span>
-                                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         )}
       </main>
