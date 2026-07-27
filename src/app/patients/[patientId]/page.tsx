@@ -220,14 +220,30 @@ function weekLabel(weekStartStr: string): { range: string; badge: string | null 
 const PERSONAL_COLOR = '#64748b';
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function ActivityGrid({ dates, planDates }: { dates: string[]; planDates: string[] }) {
+function ActivityGrid({
+  dates, planDates, workouts, planNameById,
+}: {
+  dates: string[];
+  planDates: string[];
+  workouts: WorkoutLog[];
+  planNameById: Record<string, string>;
+}) {
+  const [tooltip,   setTooltip]   = useState<{ date: string; rect: DOMRect } | null>(null);
+  const [modalDate, setModalDate] = useState<string | null>(null);
+
   const allSet  = new Set(dates);
   const planSet = new Set(planDates);
   const today   = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr  = today.toISOString().slice(0, 10);
-  const todayDow  = (today.getDay() + 6) % 7;
+  const todayStr   = today.toISOString().slice(0, 10);
+  const todayDow   = (today.getDay() + 6) % 7;
   const thisMonday = new Date(today.getTime() - todayDow * 86400000);
+
+  const dateMap = new Map<string, WorkoutLog[]>();
+  for (const w of workouts) {
+    if (!dateMap.has(w.date)) dateMap.set(w.date, []);
+    dateMap.get(w.date)!.push(w);
+  }
 
   type DayInfo = {
     date: string; dayNum: number;
@@ -235,10 +251,10 @@ function ActivityGrid({ dates, planDates }: { dates: string[]; planDates: string
     hasPlan: boolean; hasPersonal: boolean;
   };
   const weeks: DayInfo[][] = [];
-  for (let w = 4; w >= 0; w--) {
+  for (let wk = 4; wk >= 0; wk--) {
     const week: DayInfo[] = [];
     for (let d = 0; d < 7; d++) {
-      const dt = new Date(thisMonday.getTime() - w * 7 * 86400000 + d * 86400000);
+      const dt = new Date(thisMonday.getTime() - wk * 7 * 86400000 + d * 86400000);
       const s  = dt.toISOString().slice(0, 10);
       week.push({
         date: s, dayNum: dt.getDate(),
@@ -259,64 +275,250 @@ function ActivityGrid({ dates, planDates }: { dates: string[]; planDates: string
 
   const DAY_COLS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  const fmtModalDate = (ds: string) =>
+    new Date(ds + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' });
+  const fmtTipDate = (ds: string) =>
+    new Date(ds + 'T12:00:00').toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const modalWorkouts = modalDate ? (dateMap.get(modalDate) ?? []) : [];
+
   return (
-    <div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
-        Activity — last 5 weeks
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
-        <div />
-        {DAY_COLS.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{d}</div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {weeks.map((week, wi) => (
-          <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right', paddingRight: 10, whiteSpace: 'nowrap' }}>
-              {wkLabel(wi)}
+    <>
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
+          Activity — last 5 weeks
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
+          <div />
+          {DAY_COLS.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right', paddingRight: 10, whiteSpace: 'nowrap' }}>
+                {wkLabel(wi)}
+              </div>
+              {week.map(day => {
+                const hasWorkout = !day.isFuture && dateMap.has(day.date);
+                const bg      = day.isFuture ? 'var(--border)' : day.hasPlan ? TEAL : day.hasPersonal ? PERSONAL_COLOR : 'var(--border)';
+                const opacity = day.isFuture ? 0.12 : (day.hasPlan || day.hasPersonal) ? 1 : 0.28;
+                const color   = (day.hasPlan || day.hasPersonal) && !day.isFuture ? '#fff' : 'var(--text-muted)';
+                return (
+                  <div
+                    key={day.date}
+                    style={{
+                      borderRadius: 6, padding: '7px 0',
+                      background: bg, opacity,
+                      textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
+                      color,
+                      outline: day.isToday ? `2px solid ${TEAL}` : 'none',
+                      outlineOffset: 1,
+                      transition: 'opacity 0.12s',
+                      cursor: hasWorkout ? 'pointer' : 'default',
+                    }}
+                    onMouseEnter={e => {
+                      if (hasWorkout) setTooltip({ date: day.date, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() });
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                    onClick={() => {
+                      if (hasWorkout) { setTooltip(null); setModalDate(day.date); }
+                    }}
+                  >
+                    {day.isFuture ? '' : day.dayNum}
+                  </div>
+                );
+              })}
             </div>
-            {week.map(day => {
-              const bg      = day.isFuture ? 'var(--border)' : day.hasPlan ? TEAL : day.hasPersonal ? PERSONAL_COLOR : 'var(--border)';
-              const opacity = day.isFuture ? 0.12 : (day.hasPlan || day.hasPersonal) ? 1 : 0.28;
-              const color   = (day.hasPlan || day.hasPersonal) && !day.isFuture ? '#fff' : 'var(--text-muted)';
-              const tooltip = day.hasPlan ? `${day.date} · plan workout` : day.hasPersonal ? `${day.date} · personal workout` : day.isFuture ? '' : `${day.date} · no workout`;
-              return (
-                <div
-                  key={day.date}
-                  title={tooltip}
-                  style={{
-                    borderRadius: 6, padding: '7px 0',
-                    background: bg, opacity,
-                    textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
-                    color,
-                    outline: day.isToday ? `2px solid ${TEAL}` : 'none',
-                    outlineOffset: 1,
-                    transition: 'opacity 0.12s',
-                  }}
-                >
-                  {day.isFuture ? '' : day.dayNum}
-                </div>
-              );
-            })}
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.28 }} />
+            <span>No workout</span>
           </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.28 }} />
-          <span>No workout</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR }} />
-          <span>Personal workout</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL }} />
-          <span>Plan workout</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR }} />
+            <span>Personal workout</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL }} />
+            <span>Plan workout</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Hover tooltip */}
+      {tooltip && (() => {
+        const ws       = dateMap.get(tooltip.date) ?? [];
+        const allExs   = ws.flatMap(w => w.exercises ?? []);
+        const shown    = allExs.slice(0, 4);
+        const extra    = allExs.length - shown.length;
+        const { rect } = tooltip;
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              left: rect.left + rect.width / 2,
+              top: rect.top - 10,
+              transform: 'translate(-50%, -100%)',
+              background: 'var(--modal-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              zIndex: 1000,
+              pointerEvents: 'none',
+              minWidth: 170,
+              maxWidth: 240,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            }}
+          >
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+              {fmtTipDate(tooltip.date)}
+            </p>
+            {shown.map((ex, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[exStatus(ex)], flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {ex.exercise.name}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
+                  {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ))}
+            {extra > 0 && (
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-dim)' }}>+{extra} more</p>
+            )}
+            <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-dim)', borderTop: '1px solid var(--border-subtle)', paddingTop: 6 }}>
+              Click to view full details
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Workout detail modal */}
+      {modalDate && (
+        <div
+          onMouseDown={() => setModalDate(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+        >
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 560, maxHeight: 'calc(100vh - 80px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{fmtModalDate(modalDate)}</h2>
+                {modalWorkouts[0]?.duration > 0 && (
+                  <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>{modalWorkouts[0].duration} min</p>
+                )}
+              </div>
+              <button
+                onMouseDown={e => { e.stopPropagation(); setModalDate(null); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 4, marginTop: -2 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+              {modalWorkouts.map((w, wi) => (
+                <div key={w.id} style={{ marginBottom: wi < modalWorkouts.length - 1 ? 28 : 0 }}>
+                  {/* Plan badge */}
+                  {w.planId && planNameById[w.planId] && (
+                    <div style={{ marginBottom: 14 }}>
+                      <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6 }}>
+                        {planNameById[w.planId]}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Patient notes */}
+                  {w.notes?.trim() && (
+                    <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}28`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 8 }}>
+                      <span style={{ fontSize: 14, flexShrink: 0 }}>💬</span>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
+                    </div>
+                  )}
+
+                  {/* Exercises */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(w.exercises ?? []).map((ex, ei) => {
+                      const st = exStatus(ex);
+                      return (
+                        <div key={`${ex.exercise.id}-${ei}`} style={{ border: `1px solid ${STATUS_COLOR[st]}30`, borderRadius: 10, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: `${STATUS_COLOR[st]}08` }}>
+                            <span style={{ background: STATUS_BG_CSS[st], color: STATUS_TEXT_CSS[st], fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {STATUS_LABEL[st]}
+                            </span>
+                            <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{ex.exercise.name}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>
+                              {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          {ex.sets.length > 0 && (
+                            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {ex.sets.map((s, si) => {
+                                const target = ex.targetSets?.[si];
+                                const actual = setLabel(s, ex.exercise.type);
+                                const tLabel = target ? setLabel(target, ex.exercise.type) : null;
+                                return (
+                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                                    <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
+                                    <span style={{ color: 'var(--text)', minWidth: 90 }}>{actual}</span>
+                                    {tLabel && (
+                                      <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>target: {tLabel}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {ex.notes?.trim() && (
+                            <div style={{ borderTop: `1px solid ${STATUS_COLOR[st]}20`, padding: '8px 14px', display: 'flex', gap: 6 }}>
+                              <span style={{ fontSize: 12, color: TEAL, flexShrink: 0 }}>💬</span>
+                              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Ratings */}
+                  {(w.effectivenessRating || w.satisfactionRating || w.enjoymentRating) && (
+                    <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      {(w.effectivenessRating ?? w.satisfactionRating) != null && (
+                        <div style={{ background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 10, padding: '10px 16px', flex: 1, minWidth: 130 }}>
+                          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: PURPLE, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Effectiveness</p>
+                          <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: PURPLE }}>
+                            {fmtRating(w.effectivenessRating ?? w.satisfactionRating!)}
+                            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}> / 5</span>
+                          </p>
+                        </div>
+                      )}
+                      {w.enjoymentRating != null && (
+                        <div style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 16px', flex: 1, minWidth: 130 }}>
+                          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: TEAL, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enjoyment</p>
+                          <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: TEAL }}>
+                            {fmtRating(w.enjoymentRating)}
+                            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}> / 5</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -819,7 +1021,7 @@ export default function PatientProgressPage() {
         {/* ── Activity Calendar ── */}
         {workouts.length > 0 && (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: '20px 22px', marginBottom: 24 }}>
-            <ActivityGrid dates={allDates} planDates={planDates} />
+            <ActivityGrid dates={allDates} planDates={planDates} workouts={workouts} planNameById={planNameById} />
           </div>
         )}
 
