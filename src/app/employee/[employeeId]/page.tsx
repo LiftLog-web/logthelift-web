@@ -63,137 +63,119 @@ function StatCard({ label, value, sub, accent, icon }: {
   );
 }
 
-const PERSONAL_COLOR = '#94a3b8';
+const PERSONAL_COLOR = '#64748b';
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function ActivityGrid({ dates, employerDates }: { dates: string[]; employerDates: string[] }) {
   const allSet = new Set(dates);
   const empSet = new Set(employerDates);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
 
-  // Monday-first: Mon=0 … Sun=6
-  const mondayDow = (dow: number) => (dow + 6) % 7;
+  // Find the Monday of the current week (Mon=0 … Sun=6)
+  const todayDow = (today.getDay() + 6) % 7;
+  const thisMonday = new Date(today.getTime() - todayDow * 86400000);
 
-  type DayCell = { date: string; dow: number; month: number; hasEmployer: boolean; hasPersonal: boolean };
-  const days: DayCell[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * 86400000);
-    const s = d.toISOString().slice(0, 10);
-    days.push({
-      date: s,
-      dow: mondayDow(d.getDay()),
-      month: d.getMonth(),
-      hasEmployer: empSet.has(s),
-      hasPersonal: allSet.has(s) && !empSet.has(s),
-    });
+  // Build 5 full weeks (Mon → Sun), newest last
+  type DayInfo = {
+    date: string; dayNum: number; month: number;
+    isFuture: boolean; isToday: boolean;
+    hasEmployer: boolean; hasPersonal: boolean;
+  };
+  const weeks: DayInfo[][] = [];
+  for (let w = 4; w >= 0; w--) {
+    const week: DayInfo[] = [];
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(thisMonday.getTime() - w * 7 * 86400000 + d * 86400000);
+      const s = dt.toISOString().slice(0, 10);
+      week.push({
+        date: s, dayNum: dt.getDate(), month: dt.getMonth(),
+        isFuture: dt > today, isToday: s === todayStr,
+        hasEmployer: empSet.has(s),
+        hasPersonal: allSet.has(s) && !empSet.has(s),
+      });
+    }
+    weeks.push(week);
   }
 
-  const startDow = days[0].dow;
-  type Cell = DayCell | null;
-  const cells: Cell[] = [...Array(startDow).fill(null), ...days];
-  const numCols = Math.ceil(cells.length / 7);
-  while (cells.length < numCols * 7) cells.push(null);
-
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const colMonths = Array.from({ length: numCols }, (_, col) => {
-    const colCells = cells.slice(col * 7, col * 7 + 7).filter((c): c is DayCell => c !== null);
-    if (!colCells.length) return '';
-    const m = colCells[0].month;
-    if (col === 0) return MONTHS[m];
-    const prevCells = cells.slice((col - 1) * 7, (col - 1) * 7 + 7).filter((c): c is DayCell => c !== null);
-    return (!prevCells.length || prevCells[0].month !== m) ? MONTHS[m] : '';
-  });
-
-  const CELL = 16, GAP = 4;
-  // Mon … Sun (Monday-first)
-  const DOW_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
-
-  const cellBg = (cell: DayCell) => {
-    if (cell.hasEmployer) return TEAL;
-    if (cell.hasPersonal) return PERSONAL_COLOR;
-    return 'var(--border)';
+  const weekLabel = (wi: number) => {
+    if (wi === 4) return 'This week';
+    if (wi === 3) return 'Last week';
+    const d = new Date(weeks[wi][0].date);
+    return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
   };
-  const cellOpacity = (cell: DayCell) => {
-    if (cell.hasEmployer) return 1;
-    if (cell.hasPersonal) return 0.65;
-    return 0.3;
-  };
-  const cellTitle = (cell: DayCell) => {
-    const label = cell.hasEmployer ? ' · employer plan' : cell.hasPersonal ? ' · personal workout' : '';
-    return `${cell.date}${label}`;
-  };
+
+  const DAY_COLS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
-        Activity — last 30 days
+        Activity — last 5 weeks
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        {/* Day-of-week labels (Mon-first) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateRows: `repeat(7, ${CELL}px)`,
-          gap: GAP,
-          marginRight: 8,
-          marginTop: 22,
-          flexShrink: 0,
-        }}>
-          {DOW_LABELS.map((label, i) => (
-            <div key={i} style={{ height: CELL, display: 'flex', alignItems: 'center', fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              {label}
+
+      {/* Day-of-week header */}
+      <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
+        <div />
+        {DAY_COLS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Week rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'right', paddingRight: 10, whiteSpace: 'nowrap' }}>
+              {weekLabel(wi)}
             </div>
-          ))}
-        </div>
-
-        <div>
-          {/* Month labels — overflow hidden so adjacent months don't bleed */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${numCols}, ${CELL}px)`,
-            columnGap: GAP,
-            marginBottom: 6,
-            height: 18,
-          }}>
-            {colMonths.map((m, i) => (
-              <div key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                {m}
-              </div>
-            ))}
+            {week.map(day => {
+              const bg = day.isFuture ? 'var(--border)'
+                : day.hasEmployer ? TEAL
+                : day.hasPersonal ? PERSONAL_COLOR
+                : 'var(--border)';
+              const opacity = day.isFuture ? 0.12
+                : day.hasEmployer ? 1
+                : day.hasPersonal ? 1
+                : 0.28;
+              const color = (day.hasEmployer || day.hasPersonal) && !day.isFuture
+                ? '#fff'
+                : 'var(--text-muted)';
+              const tooltip = day.hasEmployer ? `${day.date} · employer plan`
+                : day.hasPersonal ? `${day.date} · personal workout`
+                : day.isFuture ? '' : `${day.date} · no workout`;
+              return (
+                <div
+                  key={day.date}
+                  title={tooltip}
+                  style={{
+                    borderRadius: 6, padding: '7px 0',
+                    background: bg, opacity,
+                    textAlign: 'center', fontSize: 12, fontWeight: day.isToday ? 800 : 500,
+                    color,
+                    outline: day.isToday ? `2px solid ${TEAL}` : 'none',
+                    outlineOffset: 1,
+                    transition: 'opacity 0.12s',
+                  }}
+                >
+                  {day.isFuture ? '' : day.dayNum}
+                </div>
+              );
+            })}
           </div>
-
-          {/* Heat cells */}
-          <div style={{
-            display: 'grid',
-            gridTemplateRows: `repeat(7, ${CELL}px)`,
-            gridAutoColumns: CELL,
-            gridAutoFlow: 'column',
-            gap: GAP,
-          }}>
-            {cells.map((cell, i) => (
-              <div
-                key={i}
-                title={cell ? cellTitle(cell) : undefined}
-                style={{
-                  width: CELL, height: CELL, borderRadius: 3,
-                  background: cell == null ? 'transparent' : cellBg(cell),
-                  opacity: cell == null ? 0 : cellOpacity(cell),
-                  transition: 'opacity 0.12s',
-                  cursor: cell ? 'default' : undefined,
-                }}
-              />
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 14, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.3 }} />
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.28 }} />
           <span>No workout</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR, opacity: 0.65 }} />
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR }} />
           <span>Personal workout</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
