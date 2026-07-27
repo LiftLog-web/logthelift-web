@@ -692,7 +692,14 @@ export default function PlansPage() {
                               </div>
                               {plan.weeks.length > 0 && (
                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                                  {plan.weeks.map(w => (
+                                  {plan.weeks.map(w => isEmployer ? (
+                                    <span
+                                      key={w}
+                                      style={{ background: `${PURPLE}25`, color: PURPLE, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, border: `1px solid ${PURPLE}40` }}
+                                    >
+                                      W{w}
+                                    </span>
+                                  ) : (
                                     <button
                                       key={w}
                                       onClick={async e => {
@@ -717,7 +724,7 @@ export default function PlansPage() {
                                       W{w}
                                     </button>
                                   ))}
-                                  <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 2 }}>✎</span>
+                                  {!isEmployer && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 2 }}>✎</span>}
                                 </div>
                               )}
                               {plan.description && (
@@ -726,21 +733,23 @@ export default function PlansPage() {
                               <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
                                 {new Date(plan.created_at).toLocaleDateString('en-CA')}
                               </p>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                  onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
-                                  style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-teal-border)', cursor: 'pointer' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(plan.id)}
-                                  disabled={deleting === plan.id}
-                                  style={{ flex: 1, background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
+                              {!isEmployer && (
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <button
+                                    onClick={() => router.push(`/plans/new?edit=${plan.id}`)}
+                                    style={{ flex: 1, background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-teal-border)', cursor: 'pointer' }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(plan.id)}
+                                    disabled={deleting === plan.id}
+                                    style={{ flex: 1, background: 'var(--btn-red-bg)', color: 'var(--btn-red-text)', borderRadius: 8, padding: '8px 0', fontWeight: 700, fontSize: 12, border: '1px solid var(--btn-red-border)', cursor: 'pointer', opacity: deleting === plan.id ? 0.5 : 1 }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
