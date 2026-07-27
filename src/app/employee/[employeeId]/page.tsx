@@ -63,37 +63,103 @@ function StatCard({ label, value, sub, accent, icon }: {
   );
 }
 
-function ActivityDots({ dates }: { dates: string[] }) {
+function ActivityGrid({ dates }: { dates: string[] }) {
   const dateSet = new Set(dates);
-  const today   = new Date();
-  const days: { date: string; active: boolean }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const days: { date: string; dow: number; month: number; active: boolean }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today.getTime() - i * 86400000);
     const s = d.toISOString().slice(0, 10);
-    days.push({ date: s, active: dateSet.has(s) });
+    days.push({ date: s, dow: d.getDay(), month: d.getMonth(), active: dateSet.has(s) });
   }
+
+  const startDow = days[0].dow;
+  const cells: ({ date: string; month: number; active: boolean } | null)[] = [
+    ...Array(startDow).fill(null),
+    ...days,
+  ];
+  const numCols = Math.ceil(cells.length / 7);
+  while (cells.length < numCols * 7) cells.push(null);
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const colMonths = Array.from({ length: numCols }, (_, col) => {
+    const colCells = cells.slice(col * 7, col * 7 + 7).filter(Boolean) as { date: string; month: number; active: boolean }[];
+    if (!colCells.length) return '';
+    const m = colCells[0].month;
+    if (col === 0) return MONTHS[m];
+    const prevColCells = cells.slice((col - 1) * 7, (col - 1) * 7 + 7).filter(Boolean) as { date: string; month: number; active: boolean }[];
+    return (!prevColCells.length || prevColCells[0].month !== m) ? MONTHS[m] : '';
+  });
+
+  const CELL = 14, GAP = 3;
+  const DOW_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 12 }}>
         Activity — last 30 days
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {days.map(d => (
-          <div
-            key={d.date}
-            title={d.date}
-            style={{
-              width: 18, height: 18, borderRadius: 4,
-              background: d.active ? TEAL : 'var(--border)',
-              opacity: d.active ? 1 : 0.4,
-              transition: 'opacity 0.15s',
-            }}
-          />
-        ))}
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        {/* Day-of-week labels */}
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: `repeat(7, ${CELL}px)`,
+          gap: GAP,
+          marginRight: 6,
+          marginTop: 20,
+        }}>
+          {DOW_LABELS.map((label, i) => (
+            <div key={i} style={{ height: CELL, display: 'flex', alignItems: 'center', fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div>
+          {/* Month labels */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${numCols}, ${CELL}px)`,
+            columnGap: GAP,
+            marginBottom: 4,
+            height: 16,
+          }}>
+            {colMonths.map((m, i) => (
+              <div key={i} style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m}</div>
+            ))}
+          </div>
+
+          {/* Heat cells */}
+          <div style={{
+            display: 'grid',
+            gridTemplateRows: `repeat(7, ${CELL}px)`,
+            gridAutoColumns: CELL,
+            gridAutoFlow: 'column',
+            gap: GAP,
+          }}>
+            {cells.map((cell, i) => (
+              <div
+                key={i}
+                title={cell ? `${cell.date}${cell.active ? ' · workout logged' : ''}` : undefined}
+                style={{
+                  width: CELL, height: CELL, borderRadius: 3,
+                  background: cell == null ? 'transparent' : cell.active ? TEAL : 'var(--border)',
+                  opacity: cell == null ? 0 : cell.active ? 1 : 0.4,
+                  transition: 'background 0.12s',
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-        <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--border)', opacity: 0.4 }} /> No workout
-        <div style={{ width: 12, height: 12, borderRadius: 3, background: TEAL, marginLeft: 8 }} /> Workout logged
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+        <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.4 }} />
+        <span>No workout</span>
+        <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL, marginLeft: 8 }} />
+        <span>Workout logged</span>
       </div>
     </div>
   );
@@ -283,7 +349,7 @@ export default function EmployeeOverviewPage() {
           background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
           padding: '24px 28px',
         }}>
-          <ActivityDots dates={activityDates} />
+          <ActivityGrid dates={activityDates} />
         </div>
 
       </main>
