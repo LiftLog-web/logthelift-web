@@ -230,6 +230,7 @@ export default function LeaderboardPage() {
   const [approvedOffMap, setApprovedOffMap]   = useState<Record<string, string[]>>({});
   const [autoApprove, setAutoApprove]         = useState(false);
   const [torExpanded, setTorExpanded]         = useState(false);
+  const [hoveredRow, setHoveredRow]           = useState<string | null>(null);
 
   useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
 
@@ -403,6 +404,10 @@ export default function LeaderboardPage() {
   const avgWorkouts    = useMemo(() => employees.length > 0 ? (totalWorkouts / employees.length).toFixed(1) : '0', [totalWorkouts, employees]);
   const topStreak      = useMemo(() => entries.reduce((best, e) => e.currentStreak > best.currentStreak ? e : best, entries[0] ?? null), [entries]);
 
+  const participationRate  = useMemo(() => employees.length > 0 ? Math.round((activeMembers / employees.length) * 100) : 0, [activeMembers, employees]);
+  const activeEntries      = useMemo(() => entries.filter(e => e.workoutCount > 0), [entries]);
+  const notStartedEntries  = useMemo(() => entries.filter(e => e.workoutCount === 0), [entries]);
+
   const teamEntries = useMemo<TeamEntry[]>(() => {
     if (!teams.length) return [];
     return teams.map(team => {
@@ -419,7 +424,7 @@ export default function LeaderboardPage() {
 
   const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months' };
 
-  const top3 = entries.slice(0, 3);
+  const top3 = activeEntries.slice(0, 3);
 
   if (loading) {
     return (
@@ -545,7 +550,7 @@ export default function LeaderboardPage() {
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
           <StatCard label="Total Workouts" value={totalWorkouts} sub={`Last ${periodLabel[period]}`} accent={TEAL} />
-          <StatCard label="Active Members" value={activeMembers} sub={`of ${employees.length} total`} accent={PURPLE} />
+          <StatCard label="Participation Rate" value={employees.length > 0 ? `${participationRate}%` : '—'} sub={`${activeMembers} / ${employees.length} employees`} accent={PURPLE} />
           <StatCard label="Avg Per Person" value={avgWorkouts} sub="workouts in period" />
           <StatCard
             label="Top Streak"
@@ -778,7 +783,7 @@ export default function LeaderboardPage() {
               }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '60px 1fr 140px 140px 140px',
+                  gridTemplateColumns: '60px 1fr 110px 120px 120px 120px',
                   padding: '12px 24px',
                   borderBottom: '1px solid var(--border)',
                   fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
@@ -788,10 +793,11 @@ export default function LeaderboardPage() {
                   <div>Member</div>
                   <div style={{ textAlign: 'center' }}>Workouts</div>
                   <div style={{ textAlign: 'center' }}>Active Streak</div>
+                  <div style={{ textAlign: 'center' }}>Best Streak</div>
                   <div style={{ textAlign: 'center' }}>Last Active</div>
                 </div>
 
-                {entries.map((entry, idx) => {
+                {activeEntries.map((entry, idx) => {
                   const rank      = idx + 1;
                   const medalEl   = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
                   const isTop     = rank <= 3;
@@ -800,14 +806,18 @@ export default function LeaderboardPage() {
                   return (
                     <div
                       key={entry.employee.id}
+                      onClick={() => router.push(`/employee/${entry.employee.id}`)}
+                      onMouseEnter={() => setHoveredRow(entry.employee.id)}
+                      onMouseLeave={() => setHoveredRow(null)}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '60px 1fr 140px 140px 140px',
+                        gridTemplateColumns: '60px 1fr 110px 120px 120px 120px',
                         padding: '16px 24px',
                         alignItems: 'center',
-                        borderBottom: idx < entries.length - 1 ? '1px solid var(--border)' : 'none',
-                        background: rowAccent,
+                        borderBottom: idx < activeEntries.length - 1 ? '1px solid var(--border)' : 'none',
+                        background: hoveredRow === entry.employee.id ? `${TEAL}12` : rowAccent,
                         transition: 'background 0.15s',
+                        cursor: 'pointer',
                       }}
                     >
                       <div style={{ fontSize: isTop ? 22 : 15, fontWeight: 700, color: isTop ? undefined : 'var(--text-muted)' }}>
@@ -817,12 +827,17 @@ export default function LeaderboardPage() {
                         <Avatar name={entry.employee.name} size={36} />
                         <span style={{ fontWeight: 600, fontSize: 15 }}>{entry.employee.name}</span>
                       </div>
-                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, color: entry.workoutCount > 0 ? TEAL : 'var(--text-muted)' }}>
+                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>
                         {entry.workoutCount}
                       </div>
                       <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
                         {entry.currentStreak > 0
                           ? <span style={{ color: '#F97316' }}>🔥 {entry.currentStreak}d</span>
+                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </div>
+                      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
+                        {entry.longestStreak > 0
+                          ? <span style={{ color: PURPLE }}>⭐ {entry.longestStreak}d</span>
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </div>
                       <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
@@ -834,6 +849,41 @@ export default function LeaderboardPage() {
                   );
                 })}
               </div>
+
+              {/* Not Yet Started */}
+              {notStartedEntries.length > 0 && (
+                <div style={{ marginTop: 12, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 12px #0002' }}>
+                  <div style={{ padding: '14px 24px', borderBottom: notStartedEntries.length > 0 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Not Yet Started
+                    </span>
+                    <span style={{ background: '#F9731622', color: '#F97316', borderRadius: 99, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>
+                      {notStartedEntries.length}
+                    </span>
+                  </div>
+                  {notStartedEntries.map((entry, idx) => (
+                    <div
+                      key={entry.employee.id}
+                      onClick={() => router.push(`/employee/${entry.employee.id}`)}
+                      onMouseEnter={() => setHoveredRow(entry.employee.id)}
+                      onMouseLeave={() => setHoveredRow(null)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 24px',
+                        borderBottom: idx < notStartedEntries.length - 1 ? '1px solid var(--border)' : 'none',
+                        background: hoveredRow === entry.employee.id ? `${TEAL}08` : 'transparent',
+                        transition: 'background 0.15s',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Avatar name={entry.employee.name} size={32} />
+                      <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{entry.employee.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )
         )}
