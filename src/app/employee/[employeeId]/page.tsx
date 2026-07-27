@@ -11,8 +11,6 @@ const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
 const GOLD   = '#F59E0B';
 
-const OFFICE_GROUPS = new Set(['Desk & Office', 'Seated & Chair-Based']);
-
 interface WorkoutSet {
   reps?: number; weight?: number;
   duration?: number; cardioduration?: number;
@@ -179,9 +177,7 @@ export default function EmployeeOverviewPage() {
 
       for (const w of employerWorkouts) {
         const log = w.data as WorkoutLog;
-        for (const ex of log.exercises ?? []) {
-          if (OFFICE_GROUPS.has(ex.exercise?.muscleGroup ?? '')) strCount++;
-        }
+        strCount += (log.exercises ?? []).length;
         const eff = log.effectivenessRating ?? log.satisfactionRating;
         if (typeof eff === 'number' && eff > 0) effRatings.push(eff);
         if (typeof log.enjoymentRating === 'number' && log.enjoymentRating > 0) enjRatings.push(log.enjoymentRating);
@@ -251,7 +247,7 @@ export default function EmployeeOverviewPage() {
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
           <StatCard label="Workouts Logged" value={totalWorkouts} sub="all activity" accent={TEAL} icon="🏃" />
-          <StatCard label="Office Stretches" value={totalStretches} sub="from employer plans" accent={PURPLE} icon="🧘" />
+          <StatCard label="Exercises Completed" value={totalStretches} sub="from employer plans" accent={PURPLE} icon="🧘" />
         </div>
 
         {/* Ratings */}
