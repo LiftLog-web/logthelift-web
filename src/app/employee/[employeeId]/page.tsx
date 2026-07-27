@@ -63,52 +63,80 @@ function StatCard({ label, value, sub, accent, icon }: {
   );
 }
 
-function ActivityGrid({ dates }: { dates: string[] }) {
-  const dateSet = new Set(dates);
+const PERSONAL_COLOR = '#94a3b8';
+
+function ActivityGrid({ dates, employerDates }: { dates: string[]; employerDates: string[] }) {
+  const allSet = new Set(dates);
+  const empSet = new Set(employerDates);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const days: { date: string; dow: number; month: number; active: boolean }[] = [];
+  // Monday-first: Mon=0 … Sun=6
+  const mondayDow = (dow: number) => (dow + 6) % 7;
+
+  type DayCell = { date: string; dow: number; month: number; hasEmployer: boolean; hasPersonal: boolean };
+  const days: DayCell[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today.getTime() - i * 86400000);
     const s = d.toISOString().slice(0, 10);
-    days.push({ date: s, dow: d.getDay(), month: d.getMonth(), active: dateSet.has(s) });
+    days.push({
+      date: s,
+      dow: mondayDow(d.getDay()),
+      month: d.getMonth(),
+      hasEmployer: empSet.has(s),
+      hasPersonal: allSet.has(s) && !empSet.has(s),
+    });
   }
 
   const startDow = days[0].dow;
-  const cells: ({ date: string; month: number; active: boolean } | null)[] = [
-    ...Array(startDow).fill(null),
-    ...days,
-  ];
+  type Cell = DayCell | null;
+  const cells: Cell[] = [...Array(startDow).fill(null), ...days];
   const numCols = Math.ceil(cells.length / 7);
   while (cells.length < numCols * 7) cells.push(null);
 
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const colMonths = Array.from({ length: numCols }, (_, col) => {
-    const colCells = cells.slice(col * 7, col * 7 + 7).filter(Boolean) as { date: string; month: number; active: boolean }[];
+    const colCells = cells.slice(col * 7, col * 7 + 7).filter((c): c is DayCell => c !== null);
     if (!colCells.length) return '';
     const m = colCells[0].month;
     if (col === 0) return MONTHS[m];
-    const prevColCells = cells.slice((col - 1) * 7, (col - 1) * 7 + 7).filter(Boolean) as { date: string; month: number; active: boolean }[];
-    return (!prevColCells.length || prevColCells[0].month !== m) ? MONTHS[m] : '';
+    const prevCells = cells.slice((col - 1) * 7, (col - 1) * 7 + 7).filter((c): c is DayCell => c !== null);
+    return (!prevCells.length || prevCells[0].month !== m) ? MONTHS[m] : '';
   });
 
-  const CELL = 14, GAP = 3;
-  const DOW_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+  const CELL = 16, GAP = 4;
+  // Mon … Sun (Monday-first)
+  const DOW_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
+
+  const cellBg = (cell: DayCell) => {
+    if (cell.hasEmployer) return TEAL;
+    if (cell.hasPersonal) return PERSONAL_COLOR;
+    return 'var(--border)';
+  };
+  const cellOpacity = (cell: DayCell) => {
+    if (cell.hasEmployer) return 1;
+    if (cell.hasPersonal) return 0.65;
+    return 0.3;
+  };
+  const cellTitle = (cell: DayCell) => {
+    const label = cell.hasEmployer ? ' · employer plan' : cell.hasPersonal ? ' · personal workout' : '';
+    return `${cell.date}${label}`;
+  };
 
   return (
     <div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
         Activity — last 30 days
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        {/* Day-of-week labels */}
+        {/* Day-of-week labels (Mon-first) */}
         <div style={{
           display: 'grid',
           gridTemplateRows: `repeat(7, ${CELL}px)`,
           gap: GAP,
-          marginRight: 6,
-          marginTop: 20,
+          marginRight: 8,
+          marginTop: 22,
+          flexShrink: 0,
         }}>
           {DOW_LABELS.map((label, i) => (
             <div key={i} style={{ height: CELL, display: 'flex', alignItems: 'center', fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -118,16 +146,18 @@ function ActivityGrid({ dates }: { dates: string[] }) {
         </div>
 
         <div>
-          {/* Month labels */}
+          {/* Month labels — overflow hidden so adjacent months don't bleed */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${numCols}, ${CELL}px)`,
             columnGap: GAP,
-            marginBottom: 4,
-            height: 16,
+            marginBottom: 6,
+            height: 18,
           }}>
             {colMonths.map((m, i) => (
-              <div key={i} style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m}</div>
+              <div key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                {m}
+              </div>
             ))}
           </div>
 
@@ -142,12 +172,13 @@ function ActivityGrid({ dates }: { dates: string[] }) {
             {cells.map((cell, i) => (
               <div
                 key={i}
-                title={cell ? `${cell.date}${cell.active ? ' · workout logged' : ''}` : undefined}
+                title={cell ? cellTitle(cell) : undefined}
                 style={{
                   width: CELL, height: CELL, borderRadius: 3,
-                  background: cell == null ? 'transparent' : cell.active ? TEAL : 'var(--border)',
-                  opacity: cell == null ? 0 : cell.active ? 1 : 0.4,
-                  transition: 'background 0.12s',
+                  background: cell == null ? 'transparent' : cellBg(cell),
+                  opacity: cell == null ? 0 : cellOpacity(cell),
+                  transition: 'opacity 0.12s',
+                  cursor: cell ? 'default' : undefined,
                 }}
               />
             ))}
@@ -155,11 +186,20 @@ function ActivityGrid({ dates }: { dates: string[] }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-        <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.4 }} />
-        <span>No workout</span>
-        <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL, marginLeft: 8 }} />
-        <span>Workout logged</span>
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 14, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--border)', opacity: 0.3 }} />
+          <span>No workout</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: PERSONAL_COLOR, opacity: 0.65 }} />
+          <span>Personal workout</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: TEAL }} />
+          <span>Employer plan</span>
+        </div>
       </div>
     </div>
   );
@@ -177,6 +217,7 @@ export default function EmployeeOverviewPage() {
   const [avgEffectiveness, setAvgEffectiveness] = useState<number | null>(null);
   const [avgEnjoyment,     setAvgEnjoyment]     = useState<number | null>(null);
   const [activityDates,    setActivityDates]     = useState<string[]>([]);
+  const [employerDates,    setEmployerDates]     = useState<string[]>([]);
   const [assignedPlans,    setAssignedPlans]     = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -257,6 +298,7 @@ export default function EmployeeOverviewPage() {
       setAvgEffectiveness(effRatings.length ? effRatings.reduce((a, b) => a + b, 0) / effRatings.length : null);
       setAvgEnjoyment(enjRatings.length ? enjRatings.reduce((a, b) => a + b, 0) / enjRatings.length : null);
       setActivityDates([...new Set(allDates)]);
+      setEmployerDates([...new Set(employerWorkouts.map((w: any) => w.date as string))]);
       setLoading(false);
     })();
   }, [router, employeeId]);
@@ -349,7 +391,7 @@ export default function EmployeeOverviewPage() {
           background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
           padding: '24px 28px',
         }}>
-          <ActivityGrid dates={activityDates} />
+          <ActivityGrid dates={activityDates} employerDates={employerDates} />
         </div>
 
       </main>
