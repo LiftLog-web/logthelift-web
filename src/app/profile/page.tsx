@@ -378,7 +378,7 @@ function ProfilePageContent() {
             <span style={{ fontSize: 20, flexShrink: 0 }}>🔒</span>
             <div>
               <div style={{ fontWeight: 700, color: '#EF4444', fontSize: 15, marginBottom: 4 }}>Subscription Required</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Your practitioner subscription has expired. Renew below to regain access to your plans, patients, and media library.</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{isEmployer ? 'Your employer subscription has expired. Renew below to regain access to your team members and programs.' : 'Your practitioner subscription has expired. Renew below to regain access to your plans, patients, and media library.'}</div>
             </div>
           </div>
         )}
