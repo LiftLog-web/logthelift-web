@@ -231,6 +231,9 @@ export default function LeaderboardPage() {
   const [autoApprove, setAutoApprove]         = useState(false);
   const [torExpanded, setTorExpanded]         = useState(false);
   const [hoveredRow, setHoveredRow]           = useState<string | null>(null);
+  const [planMeta, setPlanMeta]               = useState<{ id: string; name: string }[]>([]);
+  const [datesByPlan, setDatesByPlan]         = useState<Record<string, Record<string, string[]>>>({});
+  const [programFilter, setProgramFilter]     = useState<string | null>(null);
 
   useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
 
@@ -329,7 +332,7 @@ export default function LeaderboardPage() {
       const [{ data: links }, { data: teamsData }, { data: planRows }, { data: activeSched }, { data: torRows }] = await Promise.all([
         supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
         supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
-        supabase.from('workout_plans').select('id').eq('practitioner_id', user.id),
+        supabase.from('workout_plans').select('id, name').eq('practitioner_id', user.id),
         supabase.from('employer_programs').select('schedule_type, work_days').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('time_off_requests').select('id, employee_id, start_date, end_date, status').eq('employer_id', user.id).in('status', ['pending', 'approved']).order('start_date', { ascending: false }),
       ]);
@@ -357,28 +360,53 @@ export default function LeaderboardPage() {
       }));
       setEmployees(empList);
 
-      const planIds = (planRows ?? []).map((p: any) => p.id as string);
-      let workouts: { user_id: string; date: string }[] = [];
+      const metaList = (planRows ?? []).map((p: any) => ({ id: p.id as string, name: p.name as string }));
+      setPlanMeta(metaList);
+      const planIds = metaList.map(p => p.id);
+
+      let workouts: { user_id: string; date: string; planId: string }[] = [];
       if (planIds.length > 0 && empList.length > 0) {
         const { data } = await supabase
           .from('synced_workouts')
-          .select('user_id, date')
+          .select('user_id, date, data')
           .in('user_id', empList.map(e => e.id))
           .filter('data->>planId', 'in', `(${planIds.join(',')})`);
-        workouts = data ?? [];
+        workouts = (data ?? []).map((w: any) => ({
+          user_id: w.user_id,
+          date: w.date,
+          planId: (w.data as any)?.planId ?? '',
+        }));
       }
 
       const dateMap: Record<string, string[]> = {};
+      const dbp: Record<string, Record<string, string[]>> = {};
       for (const emp of empList) dateMap[emp.id] = [];
+      for (const pid of planIds) dbp[pid] = {};
 
       for (const w of workouts) {
         dateMap[w.user_id]?.push(w.date);
+        if (w.planId && dbp[w.planId]) {
+          if (!dbp[w.planId][w.user_id]) dbp[w.planId][w.user_id] = [];
+          dbp[w.planId][w.user_id].push(w.date);
+        }
       }
 
       setAllDates(dateMap);
+      setDatesByPlan(dbp);
       setLoading(false);
     })();
   }, [router]);
+
+  const programs = useMemo(() => [...new Set(planMeta.map(p => p.name))].sort(), [planMeta]);
+
+  const planIdsByProgram = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const p of planMeta) {
+      if (!map[p.name]) map[p.name] = [];
+      map[p.name].push(p.id);
+    }
+    return map;
+  }, [planMeta]);
 
   const entries = useMemo<LeaderboardEntry[]>(() => {
     const start = getPeriodStart(period);
@@ -386,7 +414,16 @@ export default function LeaderboardPage() {
 
     return employees
       .map(emp => {
-        const dates = allDates[emp.id] ?? [];
+        let dates: string[];
+        if (programFilter && planIdsByProgram[programFilter]) {
+          const merged = new Set<string>();
+          for (const pid of planIdsByProgram[programFilter]) {
+            for (const d of datesByPlan[pid]?.[emp.id] ?? []) merged.add(d);
+          }
+          dates = [...merged];
+        } else {
+          dates = allDates[emp.id] ?? [];
+        }
         const periodDates = dates.filter(d => d >= startStr);
         return {
           employee: emp,
@@ -397,7 +434,7 @@ export default function LeaderboardPage() {
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, period, scheduleType, workDays, approvedOffMap]);
+  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, scheduleType, workDays, approvedOffMap]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
@@ -505,6 +542,32 @@ export default function LeaderboardPage() {
                   }}
                 >
                   {v === 'team' ? 'Teams' : 'Individual'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Program filter pills — only when there are 2+ distinct programs */}
+          {programs.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {[null, ...programs].map(prog => (
+                <button
+                  key={prog ?? '__all__'}
+                  onClick={() => setProgramFilter(prog)}
+                  style={{
+                    borderRadius: 8,
+                    padding: '6px 16px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: programFilter === prog ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'var(--bg)',
+                    color: programFilter === prog ? '#fff' : 'var(--text-muted)',
+                    border: `1px solid ${programFilter === prog ? 'transparent' : 'var(--border)'}`,
+                    boxShadow: programFilter === prog ? `0 2px 10px ${TEAL}44` : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {prog ?? 'All Programs'}
                 </button>
               ))}
             </div>

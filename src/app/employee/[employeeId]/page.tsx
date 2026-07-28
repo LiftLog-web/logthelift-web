@@ -63,6 +63,87 @@ function StatCard({ label, value, sub, accent, icon }: {
   );
 }
 
+function expandDateRange(start: string, end: string): string[] {
+  const out: string[] = [];
+  const cursor = new Date(start + 'T00:00:00');
+  const endDate = new Date(end   + 'T00:00:00');
+  while (cursor <= endDate) { out.push(cursor.toISOString().slice(0, 10)); cursor.setDate(cursor.getDate() + 1); }
+  return out;
+}
+
+function calcCurrentStreak(sortedDates: string[], scheduleType = 'fixed', workDays: number[] = [1,2,3,4,5], approvedOffDates: string[] = []): number {
+  if (!sortedDates.length) return 0;
+  const dateSet = new Set(sortedDates);
+  const offSet  = new Set(approvedOffDates);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  if (scheduleType === 'flexible') {
+    let cursor = new Date(today), streak = 0, misses = 0;
+    for (let i = 0; i < 800; i++) {
+      const s = cursor.toISOString().slice(0, 10);
+      if (offSet.has(s)) { /* skip */ }
+      else if (dateSet.has(s)) { streak++; misses = 0; }
+      else if (++misses >= 3) break;
+      cursor = new Date(cursor.getTime() - 86400000);
+    }
+    return streak;
+  }
+
+  function recentWD(from: Date): Date | null {
+    const d = new Date(from);
+    for (let i = 0; i < 60; i++) {
+      const s = d.toISOString().slice(0, 10);
+      if (workDays.includes(d.getDay()) && !offSet.has(s)) return new Date(d);
+      d.setTime(d.getTime() - 86400000);
+    }
+    return null;
+  }
+  const lastWD = recentWD(today);
+  if (!lastWD) return 0;
+  let startFrom: Date;
+  if (dateSet.has(lastWD.toISOString().slice(0, 10))) {
+    startFrom = lastWD;
+  } else {
+    const prev = recentWD(new Date(lastWD.getTime() - 86400000));
+    if (!prev || !dateSet.has(prev.toISOString().slice(0, 10))) return 0;
+    startFrom = prev;
+  }
+  let streak = 0, cursor = new Date(startFrom);
+  for (let safety = 0; safety < 800; safety++) {
+    const s = cursor.toISOString().slice(0, 10);
+    if (!offSet.has(s) && workDays.includes(cursor.getDay())) {
+      if (dateSet.has(s)) streak++;
+      else break;
+    }
+    cursor = new Date(cursor.getTime() - 86400000);
+  }
+  return streak;
+}
+
+function calcLongestStreak(sortedDates: string[]): number {
+  if (!sortedDates.length) return 0;
+  const unique = [...new Set(sortedDates)].sort();
+  let longest = 1, current = 1;
+  for (let i = 1; i < unique.length; i++) {
+    const prev = new Date(unique[i - 1]).getTime();
+    const curr = new Date(unique[i]).getTime();
+    if (curr - prev === 86400000) { current++; if (current > longest) longest = current; }
+    else current = 1;
+  }
+  return longest;
+}
+
+function fmtDateShort(d: string) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+interface TimeOffEntry {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: 'pending' | 'approved' | 'denied';
+}
+
 const PERSONAL_COLOR = '#64748b';
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -201,6 +282,10 @@ export default function EmployeeOverviewPage() {
   const [activityDates,    setActivityDates]     = useState<string[]>([]);
   const [employerDates,    setEmployerDates]     = useState<string[]>([]);
   const [assignedPlans,    setAssignedPlans]     = useState<{ id: string; name: string }[]>([]);
+  const [currentStreak,    setCurrentStreak]     = useState(0);
+  const [longestStreak,    setLongestStreak]     = useState(0);
+  const [timeOffHistory,   setTimeOffHistory]    = useState<TimeOffEntry[]>([]);
+  const [torExpanded,      setTorExpanded]       = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -235,16 +320,21 @@ export default function EmployeeOverviewPage() {
       setEmployeeName(empProfile?.display_name ?? 'Unknown');
       setEmployeeEmail(empProfile?.email ?? '');
 
-      // Get employer's plan IDs
-      const { data: plans } = await supabase
-        .from('workout_plans')
-        .select('id, name')
-        .eq('practitioner_id', user.id)
-        .eq('patient_id', employeeId);
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      // Get employer's plan IDs, active program schedule, and this employee's time-off
+      const [{ data: plans }, { data: activeSched }, { data: torRows }] = await Promise.all([
+        supabase.from('workout_plans').select('id, name').eq('practitioner_id', user.id).eq('patient_id', employeeId),
+        supabase.from('employer_programs').select('schedule_type, work_days').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('time_off_requests').select('id, start_date, end_date, status').eq('employer_id', user.id).eq('employee_id', employeeId).in('status', ['pending', 'approved']).order('start_date', { ascending: false }),
+      ]);
 
       const planList = plans ?? [];
       setAssignedPlans(planList.map((p: any) => ({ id: p.id, name: p.name })));
       const ptPlanIds = new Set(planList.map((p: any) => p.id as string));
+
+      const torList = (torRows ?? []) as TimeOffEntry[];
+      setTimeOffHistory(torList);
 
       // Fetch workouts for this employee
       const { data: workouts } = await supabase
@@ -279,8 +369,20 @@ export default function EmployeeOverviewPage() {
       setTotalStretches(strCount);
       setAvgEffectiveness(effRatings.length ? effRatings.reduce((a, b) => a + b, 0) / effRatings.length : null);
       setAvgEnjoyment(enjRatings.length ? enjRatings.reduce((a, b) => a + b, 0) / enjRatings.length : null);
-      setActivityDates([...new Set(allDates)]);
-      setEmployerDates([...new Set(employerWorkouts.map((w: any) => w.date as string))]);
+      const uniqueAllDates     = [...new Set(allDates)].sort();
+      const uniqueEmployerDates = [...new Set(employerWorkouts.map((w: any) => w.date as string))].sort();
+      setActivityDates(uniqueAllDates);
+      setEmployerDates(uniqueEmployerDates);
+
+      // Compute streaks using employer-plan dates (engagement metric)
+      const approvedOffDates = torList
+        .filter(t => t.status === 'approved')
+        .flatMap(t => expandDateRange(t.start_date, t.end_date));
+      const schedType  = (activeSched as any)?.schedule_type ?? 'flexible';
+      const workDaysRaw = (activeSched as any)?.work_days;
+      const workDays   = Array.isArray(workDaysRaw) ? workDaysRaw as number[] : [1, 2, 3, 4, 5];
+      setCurrentStreak(calcCurrentStreak(uniqueEmployerDates, schedType, workDays, approvedOffDates));
+      setLongestStreak(calcLongestStreak(uniqueEmployerDates));
       setLoading(false);
     })();
   }, [router, employeeId]);
@@ -340,6 +442,12 @@ export default function EmployeeOverviewPage() {
           <StatCard label="Exercises Completed" value={totalStretches} sub="from employer plans" accent={PURPLE} icon="🧘" />
         </div>
 
+        {/* Streak stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+          <StatCard label="Current Streak" value={`${currentStreak}d`} sub="employer-plan workouts" accent={TEAL} icon="🔥" />
+          <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="employer-plan workouts" accent={PURPLE} icon="🏆" />
+        </div>
+
         {/* Ratings */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
           <div style={{
@@ -371,9 +479,58 @@ export default function EmployeeOverviewPage() {
         {/* Activity dots */}
         <div style={{
           background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
-          padding: '24px 28px',
+          padding: '24px 28px', marginBottom: 28,
         }}>
           <ActivityGrid dates={activityDates} employerDates={employerDates} />
+        </div>
+
+        {/* Time-off history */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+          <button
+            onClick={() => setTorExpanded(v => !v)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '20px 24px', background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text)', fontWeight: 700, fontSize: 14,
+            }}
+          >
+            <span>🗓 Time-off History</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {timeOffHistory.length} request{timeOffHistory.length !== 1 ? 's' : ''}
+              <span style={{ fontSize: 16 }}>{torExpanded ? '▲' : '▼'}</span>
+            </span>
+          </button>
+
+          {torExpanded && (
+            <div style={{ borderTop: '1px solid var(--border)', padding: '4px 0 8px' }}>
+              {timeOffHistory.length === 0 ? (
+                <div style={{ padding: '16px 24px', color: 'var(--text-muted)', fontSize: 13 }}>No time-off requests on record.</div>
+              ) : timeOffHistory.map(t => (
+                <div
+                  key={t.id}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center',
+                    padding: '12px 24px', borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{fmtDateShort(t.start_date)} – {fmtDateShort(t.end_date)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {expandDateRange(t.start_date, t.end_date).length} day{expandDateRange(t.start_date, t.end_date).length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', padding: '3px 10px', borderRadius: 20,
+                    background: t.status === 'approved' ? '#10b98122' : t.status === 'pending' ? '#f59e0b22' : '#ef444422',
+                    color:      t.status === 'approved' ? '#10b981'   : t.status === 'pending' ? '#f59e0b'   : '#ef4444',
+                    textTransform: 'uppercase',
+                  }}>
+                    {t.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </main>
