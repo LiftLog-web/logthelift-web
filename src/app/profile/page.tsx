@@ -380,7 +380,7 @@ function ProfilePageContent() {
               <div style={{ fontWeight: 700, color: '#EF4444', fontSize: 15, marginBottom: 4 }}>Subscription Required</div>
               <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
                 {isEmployer
-                  ? <>Your employer subscription has expired. Please contact us at <a href="mailto:logthelift@gmail.com" style={{ color: 'var(--accent)' }}>logthelift@gmail.com</a> to restore access to your team members and programs.</>
+                  ? <>Your employer subscription has expired. Please contact us at <a href="mailto:logthelift@gmail.com" onClick={e => { e.preventDefault(); window.open('mailto:logthelift@gmail.com'); }} style={{ color: 'var(--accent)', cursor: 'pointer' }}>logthelift@gmail.com</a> to restore access to your team members and programs.</>
                   : 'Your practitioner subscription has expired. Renew below to regain access to your plans, patients, and media library.'}
               </div>
             </div>
