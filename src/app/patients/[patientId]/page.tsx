@@ -325,7 +325,7 @@ function ActivityGrid({
         </div>
 
         {/* Day-of-week header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '96px repeat(7, 1fr)', gap: '4px 6px', marginBottom: 6 }}>
           <div />
           {DAY_COLS.map(d => (
             <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{d}</div>
@@ -353,10 +353,10 @@ function ActivityGrid({
             const statLine = parts.join(' · ');
 
             return (
-              <div key={wi} style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
+              <div key={wi} style={{ display: 'grid', gridTemplateColumns: '96px repeat(7, 1fr)', gap: '0 6px', alignItems: 'center' }}>
                 <div style={{ textAlign: 'right', paddingRight: 10 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{wkLabel(wi)}</div>
-                  {statLine && <div style={{ fontSize: 9, fontWeight: 500, color: 'var(--text-dim)', marginTop: 1, whiteSpace: 'nowrap' }}>{statLine}</div>}
+                  {statLine && <div style={{ fontSize: 9, fontWeight: 500, color: 'var(--text-dim)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{statLine}</div>}
                 </div>
                 {week.map(day => {
                   const hasWorkout = !day.isFuture && dateMap.has(day.date);
