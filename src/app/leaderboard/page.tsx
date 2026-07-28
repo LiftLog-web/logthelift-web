@@ -223,12 +223,15 @@ export default function LeaderboardPage() {
   const [scheduleType, setScheduleType]   = useState<string>('fixed');
   const [workDays, setWorkDays]           = useState<number[]>([1, 2, 3, 4, 5]);
   const [sessionToken, setSessionToken]   = useState('');
-  const [emailStatus, setEmailStatus]     = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [emailMsg, setEmailMsg]           = useState('');
+  const [emailStatus, setEmailStatus]         = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [emailMsg, setEmailMsg]               = useState('');
+  const [teamEmailStatus, setTeamEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [teamEmailMsg, setTeamEmailMsg]       = useState('');
   const [userId, setUserId]               = useState('');
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [approvedOffMap, setApprovedOffMap]   = useState<Record<string, string[]>>({});
-  const [autoApprove, setAutoApprove]         = useState(false);
+  const [autoApprove, setAutoApprove]           = useState(false);
+  const [includeTeamInReport, setIncludeTeamInReport] = useState(false);
   const [torExpanded, setTorExpanded]         = useState(false);
   const [hoveredRow, setHoveredRow]           = useState<string | null>(null);
   const [planMeta, setPlanMeta]               = useState<{ id: string; name: string }[]>([]);
@@ -278,6 +281,40 @@ export default function LeaderboardPage() {
     setAutoApprove(next);
   }
 
+  async function toggleIncludeTeam() {
+    const supabase = getSupabase();
+    const next = !includeTeamInReport;
+    await supabase.from('profiles').update({ include_team_in_report: next }).eq('id', userId);
+    setIncludeTeamInReport(next);
+  }
+
+  async function sendToTeam() {
+    if (teamEmailStatus === 'sending' || !sessionToken) return;
+    setTeamEmailStatus('sending');
+    setTeamEmailMsg('');
+    try {
+      const res  = await fetch('/api/weekly-leaderboard-report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body:    JSON.stringify({ period, includeTeam: true }),
+      });
+      const text = await res.text();
+      let json: any;
+      try { json = JSON.parse(text); } catch {
+        console.error('[Team Report] HTTP', res.status, text.slice(0, 1000));
+        setTeamEmailStatus('error');
+        setTeamEmailMsg(`Server error (HTTP ${res.status}) — see browser console.`);
+        return;
+      }
+      if (!res.ok) { setTeamEmailStatus('error'); setTeamEmailMsg(json.error ?? 'Failed to send.'); }
+      else         { setTeamEmailStatus('sent');  setTeamEmailMsg(`Sent to ${json.teamSent} employee${json.teamSent !== 1 ? 's' : ''}`); }
+    } catch (e) {
+      console.error('[Team Report] fetch threw:', e);
+      setTeamEmailStatus('error');
+      setTeamEmailMsg('Could not reach the server.');
+    }
+  }
+
   async function sendReport() {
     if (emailStatus === 'sending' || !sessionToken) return;
     setEmailStatus('sending');
@@ -317,7 +354,7 @@ export default function LeaderboardPage() {
 
       const { data: prof } = await supabase
         .from('profiles')
-        .select('role, is_employer, company_name, auto_approve_time_off')
+        .select('role, is_employer, company_name, auto_approve_time_off, include_team_in_report')
         .eq('id', user.id)
         .single();
 
@@ -327,6 +364,7 @@ export default function LeaderboardPage() {
       }
       setCompanyName(prof.company_name ?? 'Your Company');
       setAutoApprove(!!(prof as any).auto_approve_time_off);
+      setIncludeTeamInReport(!!(prof as any).include_team_in_report);
 
       const todayStr = new Date().toISOString().slice(0, 10);
       const [{ data: links }, { data: teamsData }, { data: planRows }, { data: activeSched }, { data: torRows }] = await Promise.all([
@@ -607,6 +645,51 @@ export default function LeaderboardPage() {
                 {emailMsg}
               </p>
             )}
+          </div>
+
+          {/* Share with team */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={sendToTeam}
+              disabled={teamEmailStatus === 'sending'}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${teamEmailStatus === 'error' ? '#F9731660' : '#C471ED50'}`,
+                borderRadius: 10,
+                padding: '8px 22px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: teamEmailStatus === 'sent'
+                  ? PURPLE
+                  : teamEmailStatus === 'error'
+                  ? '#F97316'
+                  : 'var(--text-muted)',
+                cursor: teamEmailStatus === 'sending' ? 'wait' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {teamEmailStatus === 'sending'
+                ? '⏳ Sending…'
+                : teamEmailStatus === 'sent'
+                ? '✓ Team Notified'
+                : teamEmailStatus === 'error'
+                ? '⚠ Failed — Retry'
+                : '📤 Share with Team'}
+            </button>
+            {teamEmailMsg && (
+              <p style={{ margin: 0, fontSize: 12, color: teamEmailStatus === 'error' ? '#F97316' : PURPLE }}>
+                {teamEmailMsg}
+              </p>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', marginTop: 2 }}>
+              <input
+                type="checkbox"
+                checked={includeTeamInReport}
+                onChange={toggleIncludeTeam}
+                style={{ accentColor: PURPLE, width: 12, height: 12 }}
+              />
+              Auto-send to team on Sundays
+            </label>
           </div>
         </div>
 

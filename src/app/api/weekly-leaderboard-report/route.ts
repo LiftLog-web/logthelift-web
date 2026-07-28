@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
 const FROM    = process.env.NOTIFY_FROM_EMAIL ?? 'programs@logthelift.ca';
@@ -113,7 +115,7 @@ function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] 
 interface Employee   { id: string; name: string; teamId: string | null; teamName: string | null; }
 interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; avgEffectiveness: number | null; avgEnjoyment: number | null; totalReps: number; totalDurationSecs: number; fullProgramDays: number; }
 interface TeamRow    { rank: number; name: string; total: number; active: number; members: number; }
-interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; numPrograms: number; }
+interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; numPrograms: number; employeeIds: string[]; }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
@@ -162,7 +164,7 @@ async function fetchLeaderboard(
   const numPrograms = programSet.size;
 
   if (!empIds.length || !planIds.length) {
-    return { individual: [], teamRows: [], hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms: 0 };
+    return { individual: [], teamRows: [], hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms: 0, employeeIds: empIds };
   }
 
   const planFilter = `(${planIds.join(',')})`;
@@ -263,7 +265,7 @@ async function fetchLeaderboard(
     .sort((a, b) => b.total - a.total)
     .map((r, i) => ({ ...r, rank: i + 1 }));
 
-  return { individual, teamRows, hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms };
+  return { individual, teamRows, hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms, employeeIds: empIds };
 }
 
 // ── Email HTML builders ───────────────────────────────────────────────────────
@@ -379,6 +381,76 @@ function buildTeamSection(teamRows: TeamRow[]) {
           </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+function buildTeamWeeklyHtml(
+  company:  string,
+  fromDate: string,
+  toDate:   string,
+  data:     LbData,
+): string {
+  const { individual, hasTeams, numPrograms } = data;
+  const totalWorkouts = individual.reduce((s, r) => s + r.count, 0);
+  const activeMembers = individual.filter(r => r.count > 0).length;
+  const totalReps     = individual.reduce((s, r) => s + r.totalReps, 0);
+  const totalDurSecs  = individual.reduce((s, r) => s + r.totalDurationSecs, 0);
+
+  const thead = `
+    <thead>
+      <tr style="background:#1e1e30;">
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;"></th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Name</th>
+        ${hasTeams ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Team</th>' : ''}
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Workouts</th>
+        <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Streak</th>
+        ${numPrograms > 1 ? '<th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">All Done</th>' : ''}
+      </tr>
+    </thead>`;
+
+  const content = `
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Weekly Update</p>
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#f0f0f0;">Your Team This Week 💪</h1>
+    <p style="margin:0 0 28px;font-size:14px;color:#6b7280;">${esc(company)} · ${fmtShort(fromDate)} – ${fmtDate(toDate)}</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#1EDBA8;">${totalWorkouts}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Total Workouts</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:#C471ED;">${activeMembers}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Active Members</div>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#F97316;">${totalReps > 0 ? totalReps.toLocaleString() : '—'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Team Total Reps 💪</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#818CF8;">${totalDurSecs > 0 ? fmtDuration(totalDurSecs) : '—'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Team Exercise Time ⏱️</div>
+        </td>
+      </tr>
+    </table>
+
+    ${buildSpotlights(individual, numPrograms)}
+
+    <p style="margin:32px 0 12px;font-size:11px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Leaderboard</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
+      ${thead}
+      <tbody style="background:#0f1117;">
+        ${buildIndividualRows(individual, hasTeams, true, false, numPrograms)}
+      </tbody>
+    </table>`;
+
+  return emailShell(content, `Shared by ${esc(company)} via LiftLog. Reply to your employer to unsubscribe from team reports.`);
 }
 
 function emailShell(content: string, footerNote: string) {
@@ -628,7 +700,7 @@ export async function GET(req: NextRequest) {
 
   const { data: profiles } = await client
     .from('profiles')
-    .select('id, company_name')
+    .select('id, company_name, include_team_in_report')
     .in('id', allEmployerIds);
 
   const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]));
@@ -657,7 +729,18 @@ export async function GET(req: NextRequest) {
           html:    buildWeeklyHtml(company, sevenAgo, todayStr, empActive, data),
         });
         if (error) { console.error('Weekly send failed', employerId, error); weekFailed++; }
-        else weekSent++;
+        else {
+          weekSent++;
+          if (profileMap.get(employerId)?.include_team_in_report && data.employeeIds.length) {
+            const teamSubject = `Your Team's Leaderboard — ${company} — Week of ${fmtDate(sevenAgo)}`;
+            const teamHtml    = buildTeamWeeklyHtml(company, sevenAgo, todayStr, data);
+            for (const empId of data.employeeIds) {
+              const { data: empUser } = await client.auth.admin.getUserById(empId);
+              const empEmail = empUser?.user?.email;
+              if (empEmail) await resend.emails.send({ from: FROM, to: empEmail, subject: teamSubject, html: teamHtml });
+            }
+          }
+        }
       }
     }
 
@@ -684,6 +767,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ weekSent, weekFailed, recapSent, recapFailed });
 }
 
+const postBodySchema = z.object({
+  period:      z.enum(['7d', '1m', '4m']).default('1m'),
+  includeTeam: z.boolean().optional(),
+});
+
 // ── POST — On-demand from the Leaderboard page ───────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -696,6 +784,13 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await client.auth.getUser(token);
     if (authErr || !user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const rl = rateLimit(`weekly-report:${user.id}`, 20, 60 * 60 * 1000);
+    if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+
+    const parsed = postBodySchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    const { period, includeTeam } = parsed.data;
+
     const { data: prof } = await client
       .from('profiles')
       .select('role, is_employer, company_name')
@@ -703,9 +798,6 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!prof?.is_employer) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-
-    const body = await req.json().catch(() => ({}));
-    const period: string = body.period ?? '1m';
 
     const today    = new Date();
     const todayStr = today.toISOString().slice(0, 10);
@@ -751,7 +843,22 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ sent: true, to: user.email });
+
+    let teamSent = 0;
+    if (includeTeam && data.employeeIds.length) {
+      const admin = sbAdmin();
+      const teamSubject = `Your Team's Leaderboard — ${company} — ${fmtShort(fromDate)} to ${fmtDate(todayStr)}`;
+      const teamHtml    = buildTeamWeeklyHtml(company, fromDate, todayStr, data);
+      for (const empId of data.employeeIds) {
+        const { data: empUser } = await admin.auth.admin.getUserById(empId);
+        const empEmail = empUser?.user?.email;
+        if (!empEmail) continue;
+        const { error: teamErr } = await resend.emails.send({ from: FROM, to: empEmail, subject: teamSubject, html: teamHtml });
+        if (!teamErr) teamSent++;
+      }
+    }
+
+    return NextResponse.json({ sent: true, to: user.email, teamSent });
   } catch (e: any) {
     console.error('[weekly-leaderboard-report POST]', e);
     return NextResponse.json({ error: e?.message ?? 'Internal server error' }, { status: 500 });
