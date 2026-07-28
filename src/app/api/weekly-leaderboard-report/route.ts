@@ -111,9 +111,9 @@ function calcStreak(dates: string[], scheduleType = 'fixed', workDays: number[] 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Employee   { id: string; name: string; teamId: string | null; teamName: string | null; }
-interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; avgEffectiveness: number | null; avgEnjoyment: number | null; }
+interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; avgEffectiveness: number | null; avgEnjoyment: number | null; totalReps: number; totalDurationSecs: number; fullProgramDays: number; }
 interface TeamRow    { rank: number; name: string; total: number; active: number; members: number; }
-interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; }
+interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; numPrograms: number; }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
@@ -135,7 +135,7 @@ async function fetchLeaderboard(
       .eq('employer_id', employerId)
       .order('name'),
     client.from('workout_plans')
-      .select('id')
+      .select('id, name')
       .eq('practitioner_id', employerId),
     client.from('time_off_requests')
       .select('employee_id, start_date, end_date')
@@ -156,8 +156,13 @@ async function fetchLeaderboard(
   const planIds = (planRows ?? []).map((p: any) => p.id as string);
   const empIds  = employees.map(e => e.id);
 
+  const planToProgram: Record<string, string> = {};
+  const programSet = new Set<string>();
+  for (const p of (planRows ?? [])) { planToProgram[p.id as string] = p.name as string; programSet.add(p.name as string); }
+  const numPrograms = programSet.size;
+
   if (!empIds.length || !planIds.length) {
-    return { individual: [], teamRows: [], hasTeams: teams.length > 0, employeeCount: employees.length };
+    return { individual: [], teamRows: [], hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms: 0 };
   }
 
   const planFilter = `(${planIds.join(',')})`;
@@ -177,13 +182,19 @@ async function fetchLeaderboard(
       .gte('date', new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)),
   ]);
 
-  const periodMap: Record<string, string[]> = {};
-  const streakMap: Record<string, string[]> = {};
+  const periodMap:  Record<string, string[]> = {};
+  const streakMap:  Record<string, string[]> = {};
   const ratingsMap: Record<string, { effSum: number; effCount: number; enjSum: number; enjCount: number }> = {};
+  const repsMap:    Record<string, number> = {};
+  const durMap:     Record<string, number> = {};
+  const empDayProg: Record<string, Record<string, Set<string>>> = {};
   for (const e of employees) {
-    periodMap[e.id] = [];
-    streakMap[e.id] = [];
+    periodMap[e.id]  = [];
+    streakMap[e.id]  = [];
     ratingsMap[e.id] = { effSum: 0, effCount: 0, enjSum: 0, enjCount: 0 };
+    repsMap[e.id]    = 0;
+    durMap[e.id]     = 0;
+    empDayProg[e.id] = {};
   }
   for (const w of (periodData ?? [])) {
     periodMap[w.user_id]?.push(w.date);
@@ -193,6 +204,18 @@ async function fetchLeaderboard(
       const enj = typeof w.data?.enjoymentRating === 'number' ? w.data.enjoymentRating : null;
       if (eff !== null) { r.effSum += eff; r.effCount++; }
       if (enj !== null) { r.enjSum += enj; r.enjCount++; }
+      for (const ex of (w.data?.exercises ?? [])) {
+        for (const s of (ex.sets ?? [])) {
+          repsMap[w.user_id] += (s.reps ?? 0) + ((s as any).leftReps ?? 0) + ((s as any).rightReps ?? 0);
+          durMap[w.user_id]  += (s.duration ?? 0) + ((s as any).cardioduration ?? 0);
+        }
+      }
+    }
+    const planId  = w.data?.planId as string | undefined;
+    const progName = planId ? planToProgram[planId] : undefined;
+    if (progName && empDayProg[w.user_id]) {
+      if (!empDayProg[w.user_id][w.date]) empDayProg[w.user_id][w.date] = new Set();
+      empDayProg[w.user_id][w.date].add(progName);
     }
   }
   for (const w of (streakData ?? [])) streakMap[w.user_id]?.push(w.date);
@@ -206,6 +229,9 @@ async function fetchLeaderboard(
   const individual: IndividualRow[] = employees
     .map(emp => {
       const rm = ratingsMap[emp.id];
+      const fullProgramDays = numPrograms > 1
+        ? Object.values(empDayProg[emp.id] ?? {}).filter(s => s.size >= numPrograms).length
+        : 0;
       return {
         rank:             0,
         name:             emp.name,
@@ -214,6 +240,9 @@ async function fetchLeaderboard(
         streak:           calcStreak(streakMap[emp.id], scheduleType, workDays, approvedOffMap[emp.id] ?? []),
         avgEffectiveness: rm.effCount > 0 ? rm.effSum / rm.effCount : null,
         avgEnjoyment:     rm.enjCount > 0 ? rm.enjSum / rm.enjCount : null,
+        totalReps:        repsMap[emp.id] ?? 0,
+        totalDurationSecs: durMap[emp.id] ?? 0,
+        fullProgramDays,
       };
     })
     .sort((a, b) => b.count - a.count || b.streak - a.streak)
@@ -234,7 +263,7 @@ async function fetchLeaderboard(
     .sort((a, b) => b.total - a.total)
     .map((r, i) => ({ ...r, rank: i + 1 }));
 
-  return { individual, teamRows, hasTeams: teams.length > 0, employeeCount: employees.length };
+  return { individual, teamRows, hasTeams: teams.length > 0, employeeCount: employees.length, numPrograms };
 }
 
 // ── Email HTML builders ───────────────────────────────────────────────────────
@@ -243,9 +272,75 @@ function medal(rank: number) {
   return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
 }
 
-function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStreak: boolean, showRatings = false) {
+function fmtDuration(secs: number): string {
+  if (secs <= 0) return '0m';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function buildSpotlights(rows: IndividualRow[], numPrograms: number): string {
+  if (!rows.length) return '';
+
+  const awards: { icon: string; title: string; winner: string; sub: string }[] = [];
+
+  if (numPrograms > 1) {
+    const champion = rows.slice().sort((a, b) => b.fullProgramDays - a.fullProgramDays)[0];
+    if (champion && champion.fullProgramDays > 0) {
+      awards.push({
+        icon:   '🏆',
+        title:  'Program Champion',
+        winner: champion.name,
+        sub:    `${champion.fullProgramDays} day${champion.fullProgramDays > 1 ? 's' : ''} completing all ${numPrograms} programs`,
+      });
+    }
+  }
+
+  const repKing = rows.slice().sort((a, b) => b.totalReps - a.totalReps)[0];
+  if (repKing && repKing.totalReps > 0) {
+    awards.push({
+      icon:   '💪',
+      title:  'Rep Machine',
+      winner: repKing.name,
+      sub:    `${repKing.totalReps.toLocaleString()} total reps`,
+    });
+  }
+
+  const timeKing = rows.slice().sort((a, b) => b.totalDurationSecs - a.totalDurationSecs)[0];
+  if (timeKing && timeKing.totalDurationSecs > 0) {
+    awards.push({
+      icon:   '⏱️',
+      title:  'Most Active',
+      winner: timeKing.name,
+      sub:    `${fmtDuration(timeKing.totalDurationSecs)} of timed exercises`,
+    });
+  }
+
+  if (!awards.length) return '';
+
+  return `
+    <p style="margin:32px 0 12px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">Spotlight Awards ✨</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.04);margin-bottom:8px;">
+      <tbody>
+        ${awards.map((a, i) => `
+        <tr style="${i > 0 ? 'border-top:1px solid rgba(255,215,0,0.15);' : ''}">
+          <td style="padding:14px 16px;font-size:22px;width:44px;">${a.icon}</td>
+          <td style="padding:14px 8px;">
+            <div style="font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">${a.title}</div>
+            <div style="font-size:15px;font-weight:800;color:#f0f0f0;">${esc(a.winner)}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${a.sub}</div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStreak: boolean, showRatings = false, numPrograms = 0) {
+  const showFullDays = numPrograms > 1;
   return rows.map(r => {
-    const streakPad = showRatings ? 'padding:11px 8px' : 'padding:11px 14px 11px 8px';
+    const lastPad = showRatings || showFullDays ? 'padding:11px 8px' : 'padding:11px 14px 11px 8px';
+    const streakPad = showRatings || showFullDays ? 'padding:11px 8px' : lastPad;
     return `
     <tr style="border-top:1px solid #2a2a3a;">
       <td style="padding:11px 14px;font-size:${r.rank <= 3 ? 16 : 13}px;">${medal(r.rank)}</td>
@@ -253,6 +348,7 @@ function buildIndividualRows(rows: IndividualRow[], showTeam: boolean, showStrea
       ${showTeam ? `<td style="padding:11px 8px;font-size:13px;color:#6b7280;">${r.teamName ? esc(r.teamName) : '—'}</td>` : ''}
       <td style="padding:11px 8px;font-size:15px;font-weight:700;color:#1EDBA8;text-align:center;">${r.count}</td>
       ${showStreak ? `<td style="${streakPad};font-size:13px;color:${r.streak > 0 ? '#F97316' : '#6b7280'};text-align:center;">${r.streak > 0 ? `🔥 ${r.streak}d` : '—'}</td>` : ''}
+      ${showFullDays ? `<td style="padding:11px 8px;font-size:13px;color:${r.fullProgramDays > 0 ? '#FFD700' : '#6b7280'};text-align:center;">${r.fullProgramDays > 0 ? `⭐ ${r.fullProgramDays}` : '—'}</td>` : ''}
       ${showRatings ? `
       <td style="padding:11px 8px;font-size:13px;color:${r.avgEffectiveness !== null ? '#f0f0f0' : '#6b7280'};text-align:center;">${r.avgEffectiveness !== null ? r.avgEffectiveness.toFixed(1) : '—'}</td>
       <td style="padding:11px 14px 11px 8px;font-size:13px;color:${r.avgEnjoyment !== null ? '#f0f0f0' : '#6b7280'};text-align:center;">${r.avgEnjoyment !== null ? r.avgEnjoyment.toFixed(1) : '—'}</td>` : ''}
@@ -326,11 +422,13 @@ function buildWeeklyHtml(
   programs: { name: string }[],
   data:     LbData,
 ): string {
-  const { individual, teamRows, hasTeams } = data;
-  const totalWorkouts = individual.reduce((s, r) => s + r.count, 0);
-  const activeMembers = individual.filter(r => r.count > 0).length;
-  const topRow        = individual[0];
-  const programLine   = programs.length
+  const { individual, teamRows, hasTeams, numPrograms } = data;
+  const totalWorkouts  = individual.reduce((s, r) => s + r.count, 0);
+  const activeMembers  = individual.filter(r => r.count > 0).length;
+  const topRow         = individual[0];
+  const totalReps      = individual.reduce((s, r) => s + r.totalReps, 0);
+  const totalDurSecs   = individual.reduce((s, r) => s + r.totalDurationSecs, 0);
+  const programLine    = programs.length
     ? `Active program${programs.length > 1 ? 's' : ''}: <strong style="color:#f0f0f0;">${programs.map(p => esc(p.name)).join(', ')}</strong>`
     : '';
 
@@ -342,6 +440,7 @@ function buildWeeklyHtml(
         ${hasTeams ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:left;">Team</th>' : ''}
         <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Workouts</th>
         <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Streak</th>
+        ${numPrograms > 1 ? '<th style="padding:10px 8px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">All Done</th>' : ''}
         <th style="padding:10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Effectiveness</th>
         <th style="padding:10px 14px 10px 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">Enjoyment</th>
       </tr>
@@ -353,7 +452,7 @@ function buildWeeklyHtml(
     <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">${esc(company)} · ${fmtShort(fromDate)} – ${fmtDate(toDate)}</p>
     ${programLine ? `<p style="margin:0 0 28px;font-size:13px;color:#9ca3af;">${programLine}</p>` : ''}
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
       <tr>
         <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
           <div style="font-size:32px;font-weight:900;color:#1EDBA8;">${totalWorkouts}</div>
@@ -372,11 +471,27 @@ function buildWeeklyHtml(
       </tr>
     </table>
 
-    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Individual Rankings</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#F97316;">${totalReps > 0 ? totalReps.toLocaleString() : '—'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Team Total Reps 💪</div>
+        </td>
+        <td width="12"></td>
+        <td style="background:#0f1117;border:1px solid #2a2a3a;border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#818CF8;">${totalDurSecs > 0 ? fmtDuration(totalDurSecs) : '—'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;">Team Exercise Time ⏱️</div>
+        </td>
+      </tr>
+    </table>
+
+    ${buildSpotlights(individual, numPrograms)}
+
+    <p style="margin:32px 0 12px;font-size:11px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;">Individual Rankings</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #2a2a3a;">
       ${thead}
       <tbody style="background:#0f1117;">
-        ${buildIndividualRows(individual, hasTeams, true, true)}
+        ${buildIndividualRows(individual, hasTeams, true, true, numPrograms)}
       </tbody>
     </table>
 
@@ -401,7 +516,7 @@ function buildRecapHtml(
   program: { name: string; started_at: string; ends_at: string },
   data:    LbData,
 ): string {
-  const { individual, teamRows, hasTeams } = data;
+  const { individual, teamRows, hasTeams, numPrograms } = data;
   const totalWorkouts = individual.reduce((s, r) => s + r.count, 0);
   const activeMembers = individual.filter(r => r.count > 0).length;
   const top3          = individual.slice(0, 3);
@@ -441,8 +556,10 @@ function buildRecapHtml(
       </tr>
     </table>
 
+    ${buildSpotlights(individual, numPrograms)}
+
     ${top3.length ? `
-    <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">Top Performers</p>
+    <p style="margin:32px 0 12px;font-size:11px;font-weight:700;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">Top Performers</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.04);margin-bottom:${rest.length ? 16 : 0}px;">
       ${topThead}
       <tbody>
