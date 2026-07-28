@@ -249,6 +249,17 @@ function ActivityGrid({
   const currentMonday = new Date(today.getTime() - todayDow * 86400000);
   const thisMonday    = new Date(currentMonday.getTime() - calPage * 5 * 7 * 86400000);
 
+  const minMondayMs = workouts.length > 0
+    ? (() => {
+        const minDate = new Date(
+          workouts.reduce((min, w) => w.date < min ? w.date : min, workouts[0].date) + 'T12:00:00'
+        );
+        const dow = (minDate.getDay() + 6) % 7;
+        return minDate.getTime() - dow * 86400000;
+      })()
+    : null;
+  const olderDisabled = minMondayMs !== null && thisMonday.getTime() <= minMondayMs;
+
   const dateMap = new Map<string, WorkoutLog[]>();
   for (const w of workouts) {
     if (!dateMap.has(w.date)) dateMap.set(w.date, []);
@@ -319,7 +330,7 @@ function ActivityGrid({
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{rangeLabel}</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setCalPage(p => p + 1)} style={navBtn(false)}>← Older</button>
+            <button onClick={() => setCalPage(p => p + 1)} disabled={olderDisabled} style={navBtn(olderDisabled)}>← Older</button>
             <button onClick={() => setCalPage(p => p - 1)} disabled={calPage === 0} style={navBtn(calPage === 0)}>Newer →</button>
           </div>
         </div>
