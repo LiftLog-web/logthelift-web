@@ -732,12 +732,12 @@ export default function PlansPage() {
                               {plan.description && (
                                 <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
                               )}
-                              <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
-                                Started: {new Date(plan.created_at).toLocaleDateString('en-CA')}
+                              <p style={{ color: 'var(--foreground)', fontSize: 12, margin: 0 }}>
+                                <strong>Started:</strong> {new Date(plan.created_at).toLocaleDateString('en-CA')}
                               </p>
                               {plan.end_date && (
-                                <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
-                                  Expires: {new Date(plan.end_date).toLocaleDateString('en-CA')}
+                                <p style={{ color: 'var(--foreground)', fontSize: 12, margin: 0 }}>
+                                  <strong>Expires:</strong> {new Date(plan.end_date).toLocaleDateString('en-CA')}
                                 </p>
                               )}
                               {!isEmployer && (
