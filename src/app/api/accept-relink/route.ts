@@ -3,6 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
+function serializeExercisesForMobile(exercises: any): any {
+  if (!exercises) return exercises;
+  function cvtSet(s: any, exType: string): any {
+    if (exType !== 'duration') return s;
+    const { seconds, ...rest } = s;
+    return seconds != null ? { ...rest, duration: rest.duration ?? seconds } : s;
+  }
+  function cvtEx(ex: any): any {
+    const type = ex.exercise?.type;
+    return { ...ex, sets: (ex.sets ?? []).map((s: any) => cvtSet(s, type)), weeks: (ex.weeks ?? []).map((w: any) => ({ ...w, sets: (w.sets ?? []).map((s: any) => cvtSet(s, type)) })) };
+  }
+  if (Array.isArray(exercises)) return exercises.map(cvtEx);
+  if (exercises.days) return { ...exercises, days: exercises.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(cvtEx) })) };
+  return exercises;
+}
+
 const Schema = z.object({ invite_id: z.string().uuid() });
 
 export async function POST(req: NextRequest) {
@@ -68,6 +84,43 @@ export async function POST(req: NextRequest) {
     .select('display_name, is_employer')
     .eq('id', invite.practitioner_id)
     .single();
+
+  // Auto-assign all active employer programs to the newly linked employee
+  if (practProf?.is_employer) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: activeProgs } = await sbAdmin
+      .from('employer_programs')
+      .select('id, plan_template_id, name, ends_at')
+      .eq('employer_id', invite.practitioner_id)
+      .gte('ends_at', today);
+
+    if (activeProgs && activeProgs.length > 0) {
+      const now = new Date().toISOString();
+      for (const prog of activeProgs) {
+        const { data: tpl } = await sbAdmin
+          .from('plan_templates')
+          .select('description, exercises')
+          .eq('id', prog.plan_template_id)
+          .single();
+        if (!tpl) continue;
+        // Remove any existing plan with this name (idempotent for re-links)
+        await sbAdmin.from('workout_plans').delete()
+          .eq('practitioner_id', invite.practitioner_id)
+          .eq('patient_id', user.id)
+          .eq('name', prog.name);
+        await sbAdmin.from('workout_plans').insert({
+          practitioner_id: invite.practitioner_id,
+          patient_id: user.id,
+          name: prog.name,
+          description: tpl.description ?? null,
+          exercises: serializeExercisesForMobile(tpl.exercises),
+          end_date: prog.ends_at,
+          created_at: now,
+          updated_at: now,
+        });
+      }
+    }
+  }
 
   return NextResponse.json({
     linked: true,

@@ -31,6 +31,14 @@ interface Plan {
   exercisesRaw: any;
 }
 
+interface EmployerProgram {
+  id: string;
+  plan_template_id: string;
+  name: string;
+  started_at: string;
+  ends_at: string;
+}
+
 interface PatientGroup {
   patient_id: string;
   patientName: string;
@@ -124,6 +132,22 @@ function makeCode(): string {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
+function serializeExercisesForMobile(exercises: any): any {
+  if (!exercises) return exercises;
+  function cvtSet(s: any, exType: string): any {
+    if (exType !== 'duration') return s;
+    const { seconds, ...rest } = s;
+    return seconds != null ? { ...rest, duration: rest.duration ?? seconds } : s;
+  }
+  function cvtEx(ex: any): any {
+    const type = ex.exercise?.type;
+    return { ...ex, sets: (ex.sets ?? []).map((s: any) => cvtSet(s, type)), weeks: (ex.weeks ?? []).map((w: any) => ({ ...w, sets: (w.sets ?? []).map((s: any) => cvtSet(s, type)) })) };
+  }
+  if (Array.isArray(exercises)) return exercises.map(cvtEx);
+  if (exercises.days) return { ...exercises, days: exercises.days.map((d: any) => ({ ...d, exercises: (d.exercises ?? []).map(cvtEx) })) };
+  return exercises;
+}
+
 export default function PlansPage() {
   const router = useRouter();
   const [plans, setPlans]         = useState<Plan[]>([]);
@@ -151,6 +175,12 @@ export default function PlansPage() {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [linkedPatientIds, setLinkedPatientIds] = useState<Set<string>>(new Set());
   const [showPrevious, setShowPrevious] = useState(false);
+
+  // Assign programs modal (employer only)
+  const [employerPrograms, setEmployerPrograms]     = useState<EmployerProgram[]>([]);
+  const [assignModal, setAssignModal]               = useState<{ patient_id: string; patientName: string } | null>(null);
+  const [assignSelectedIds, setAssignSelectedIds]   = useState<Set<string>>(new Set());
+  const [assigning, setAssigning]                   = useState(false);
 
   // Add Patient modal
   const [sessionToken, setSessionToken] = useState('');
@@ -187,6 +217,18 @@ export default function PlansPage() {
       setIsEmployer(!!(prof as any)?.is_employer);
       setSessionToken(data.session.access_token);
       setAuthed(true);
+
+      // Fetch active employer programs (employer accounts only)
+      if (!!(prof as any)?.is_employer) {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: progData } = await sb
+          .from('employer_programs')
+          .select('id, plan_template_id, name, started_at, ends_at')
+          .eq('employer_id', data.session.user.id)
+          .gte('ends_at', today)
+          .order('started_at', { ascending: false });
+        setEmployerPrograms(progData ?? []);
+      }
 
       // Load active invite code (for Add Patient modal)
       const { data: codeData } = await sb
@@ -265,6 +307,68 @@ export default function PlansPage() {
     await getSupabase().from('profiles').update({ inactivity_threshold_days: val }).eq('id', userId);
     setThreshold(val);
     setSavingThreshold(false);
+  };
+
+  const openAssignModal = (patient_id: string, patientName: string) => {
+    setAssignModal({ patient_id, patientName });
+    setAssignSelectedIds(new Set());
+  };
+
+  const handleAssignPlans = async () => {
+    if (!assignModal || assignSelectedIds.size === 0) return;
+    setAssigning(true);
+    const sb = getSupabase();
+    const now = new Date().toISOString();
+    const progsToAssign = employerPrograms.filter(p => assignSelectedIds.has(p.id));
+    for (const prog of progsToAssign) {
+      const { data: tpl } = await sb
+        .from('plan_templates')
+        .select('description, exercises')
+        .eq('id', prog.plan_template_id)
+        .single();
+      if (!tpl) continue;
+      // Remove any pre-existing plan with this name for this employee before inserting
+      await sb.from('workout_plans').delete()
+        .eq('practitioner_id', userId)
+        .eq('patient_id', assignModal.patient_id)
+        .eq('name', prog.name);
+      const { data: newPlan } = await sb
+        .from('workout_plans')
+        .insert({
+          practitioner_id: userId,
+          patient_id: assignModal.patient_id,
+          name: prog.name,
+          description: tpl.description ?? null,
+          exercises: serializeExercisesForMobile(tpl.exercises),
+          end_date: prog.ends_at,
+          created_at: now,
+          updated_at: now,
+        })
+        .select('id, name, description, patient_id, exercises, created_at, end_date')
+        .single();
+      if (newPlan) {
+        const list = flatExList(newPlan.exercises);
+        const mapped: Plan = {
+          id: newPlan.id,
+          name: newPlan.name,
+          description: newPlan.description,
+          patient_id: newPlan.patient_id,
+          patientName: assignModal.patientName,
+          created_at: newPlan.created_at,
+          end_date: newPlan.end_date ?? null,
+          exerciseCount: list.length,
+          weeks: deriveWeeks(newPlan.exercises),
+          exercisesRaw: newPlan.exercises,
+        };
+        setPlans(prev => {
+          // Remove any old plan with same id that was deleted, then add the new one
+          const without = prev.filter(p => !(p.patient_id === assignModal.patient_id && p.name === prog.name));
+          return [mapped, ...without];
+        });
+      }
+    }
+    setAssigning(false);
+    setAssignModal(null);
   };
 
   const handleSaveWeeks = async () => {
@@ -671,7 +775,7 @@ export default function PlansPage() {
                             View Progress
                           </button>
                           <button
-                            onClick={e => { e.stopPropagation(); router.push(`/plans/new?patient=${group.patient_id}`); }}
+                            onClick={e => { e.stopPropagation(); isEmployer ? openAssignModal(group.patient_id, group.patientName) : router.push(`/plans/new?patient=${group.patient_id}`); }}
                             style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                           >
                             + Add Plan
@@ -839,6 +943,80 @@ export default function PlansPage() {
           </>
         )}
       </main>
+
+      {/* Assign Programs modal (employer only) */}
+      {assignModal && (
+        <div
+          onClick={() => !assigning && setAssignModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 460, padding: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Assign Programs</h2>
+              <button onClick={() => !assigning && setAssignModal(null)} style={{ background: 'var(--card-alt)', border: 'none', color: 'var(--text-muted)', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px' }}>
+              Select programs to assign to <strong style={{ color: 'var(--text)' }}>{assignModal.patientName}</strong>.
+            </p>
+            {employerPrograms.length === 0 ? (
+              <p style={{ fontSize: 14, color: 'var(--text-dim)', fontStyle: 'italic', textAlign: 'center', padding: '24px 0' }}>No active programs. Launch a program from the Programs tab first.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                {employerPrograms.map(prog => {
+                  const alreadyAssigned = plans.some(p => p.patient_id === assignModal.patient_id && p.name === prog.name);
+                  const selected = assignSelectedIds.has(prog.id);
+                  return (
+                    <label
+                      key={prog.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 14, background: alreadyAssigned ? 'var(--card-alt)' : selected ? `${TEAL}15` : 'var(--card)', border: `1px solid ${alreadyAssigned ? 'var(--border)' : selected ? `${TEAL}60` : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', cursor: alreadyAssigned ? 'default' : 'pointer', opacity: alreadyAssigned ? 0.6 : 1, transition: 'background 0.15s, border-color 0.15s' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={alreadyAssigned || selected}
+                        disabled={alreadyAssigned}
+                        onChange={() => {
+                          if (alreadyAssigned) return;
+                          setAssignSelectedIds(prev => {
+                            const next = new Set(prev);
+                            next.has(prog.id) ? next.delete(prog.id) : next.add(prog.id);
+                            return next;
+                          });
+                        }}
+                        style={{ width: 18, height: 18, accentColor: TEAL, flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prog.name}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                          Expires: {new Date(prog.ends_at).toLocaleDateString('en-CA')}
+                        </p>
+                      </div>
+                      {alreadyAssigned && (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--border)', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>Assigned</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => !assigning && setAssignModal(null)}
+                disabled={assigning}
+                style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: assigning ? 0.5 : 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignPlans}
+                disabled={assigning || assignSelectedIds.size === 0}
+                style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 800, fontSize: 13, cursor: assigning || assignSelectedIds.size === 0 ? 'default' : 'pointer', opacity: assigning || assignSelectedIds.size === 0 ? 0.5 : 1 }}
+              >
+                {assigning ? 'Assigning…' : `Assign ${assignSelectedIds.size > 0 ? `(${assignSelectedIds.size})` : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Patient modal */}
       {showInviteModal && (
