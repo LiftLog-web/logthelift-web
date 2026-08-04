@@ -25,6 +25,7 @@ interface Plan {
   patient_id: string;
   patientName: string;
   created_at: string;
+  end_date?: string | null;
   exerciseCount: number;
   weeks: number[];
   exercisesRaw: any;
@@ -201,7 +202,7 @@ export default function PlansPage() {
 
       const { data: rawPlans } = await sb
         .from('workout_plans')
-        .select('id, name, description, patient_id, exercises, created_at, patient:patient_id(display_name)')
+        .select('id, name, description, patient_id, exercises, created_at, end_date, patient:patient_id(display_name)')
         .eq('practitioner_id', data.session.user.id)
         .order('created_at', { ascending: false });
 
@@ -215,6 +216,7 @@ export default function PlansPage() {
           patient_id: p.patient_id,
           patientName: patient?.display_name ?? 'Unknown',
           created_at: p.created_at,
+          end_date: p.end_date ?? null,
           exerciseCount: list.length,
           weeks: deriveWeeks(p.exercises),
           exercisesRaw: p.exercises,
@@ -731,7 +733,10 @@ export default function PlansPage() {
                                 <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{plan.description}</p>
                               )}
                               <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
-                                {new Date(plan.created_at).toLocaleDateString('en-CA')}
+                                Started: {new Date(plan.created_at).toLocaleDateString('en-CA')}
+                                {plan.end_date
+                                  ? ` · Expires: ${new Date(plan.end_date).toLocaleDateString('en-CA')}`
+                                  : ''}
                               </p>
                               {!isEmployer && (
                                 <div style={{ display: 'flex', gap: 8 }}>
