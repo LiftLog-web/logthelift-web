@@ -734,10 +734,12 @@ export default function PlansPage() {
                               )}
                               <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
                                 Started: {new Date(plan.created_at).toLocaleDateString('en-CA')}
-                                {plan.end_date
-                                  ? ` · Expires: ${new Date(plan.end_date).toLocaleDateString('en-CA')}`
-                                  : ''}
                               </p>
+                              {plan.end_date && (
+                                <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>
+                                  Expires: {new Date(plan.end_date).toLocaleDateString('en-CA')}
+                                </p>
+                              )}
                               {!isEmployer && (
                                 <div style={{ display: 'flex', gap: 8 }}>
                                   <button
