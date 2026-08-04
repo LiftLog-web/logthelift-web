@@ -355,7 +355,15 @@ export default function PlansPage() {
   const activeGrouped = grouped.filter(g => linkedPatientIds.has(g.patient_id));
   const previousGrouped = grouped.filter(g => !linkedPatientIds.has(g.patient_id));
 
-  const filtered = activeGrouped.filter(g =>
+  // Merge in linked patients who have no plans yet so they appear in the main list
+  const activeAll = [
+    ...activeGrouped,
+    ...noPlanPatients
+      .filter(p => !activeGrouped.some(g => g.patient_id === p.patient_id))
+      .map(p => ({ patient_id: p.patient_id, patientName: p.patientName, plans: [] as Plan[] })),
+  ];
+
+  const filtered = activeAll.filter(g =>
     g.patientName.toLowerCase().includes(search.toLowerCase())
   );
   const filteredPrevious = previousGrouped.filter(g =>
@@ -472,7 +480,7 @@ export default function PlansPage() {
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{isEmployer ? 'Team Members' : 'Workout Plans'}</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
-              {activeGrouped.length} {patientLabel}{activeGrouped.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
+              {activeAll.length} {patientLabel}{activeAll.length !== 1 ? 's' : ''} · {activePlanCount} plan{activePlanCount !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -629,12 +637,13 @@ export default function PlansPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {filtered.map(group => {
                   const isOpen = expanded.has(group.patient_id);
+                  const hasPlans = group.plans.length > 0;
                   return (
                     <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
 
                       {/* Patient header row */}
                       <button
-                        onClick={() => toggleExpanded(group.patient_id)}
+                        onClick={() => hasPlans && toggleExpanded(group.patient_id)}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
@@ -649,8 +658,8 @@ export default function PlansPage() {
                             <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
                               {group.patientName}
                             </p>
-                            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-                              {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''}
+                            <p style={{ margin: 0, fontSize: 13, color: hasPlans ? 'var(--text-muted)' : 'var(--text-dim)', marginTop: 2 }}>
+                              {hasPlans ? `${group.plans.length} plan${group.plans.length !== 1 ? 's' : ''}` : 'No plan assigned'}
                             </p>
                           </div>
                         </div>
@@ -675,9 +684,11 @@ export default function PlansPage() {
                           >
                             {unlinking === group.patient_id ? '…' : 'Unlink'}
                           </button>
-                          <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
-                            ▾
-                          </span>
+                          {hasPlans && (
+                            <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                              ▾
+                            </span>
+                          )}
                         </div>
                       </button>
 
