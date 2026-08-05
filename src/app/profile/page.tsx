@@ -84,6 +84,11 @@ function ProfilePageContent() {
   const [inviteSent, setInviteSent]   = useState(false);
   const [inviteError, setInviteError] = useState('');
 
+  // Collapsible section state
+  const [employeesOpen, setEmployeesOpen] = useState(true);
+  const [teamsOpen, setTeamsOpen]         = useState(true);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+
   useEffect(() => {
     const supabase = getSupabase();
     supabase.auth.getSession().then(async ({ data }) => {
@@ -416,62 +421,98 @@ function ProfilePageContent() {
         </div>
 
         {/* Connections */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-          <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
-              {isPractitioner ? `My ${isEmployer ? 'Employees' : 'Patients'} (${patients.length})` : `My Practitioners (${practitioners.length})`}
-            </h2>
-          </div>
+        {(() => {
+          const list = isPractitioner ? patients : practitioners;
+          const filteredList = (isPractitioner && isEmployer && employeeSearch)
+            ? list.filter(p => p.display_name.toLowerCase().includes(employeeSearch.toLowerCase()) || p.email.toLowerCase().includes(employeeSearch.toLowerCase()))
+            : list;
+          const label = isPractitioner ? (isEmployer ? 'Employees' : 'Patients') : 'Practitioners';
+          return (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+              <button
+                onClick={() => setEmployeesOpen(o => !o)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', background: 'none', border: 'none', borderBottom: employeesOpen ? '1px solid var(--border-subtle)' : 'none', cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0, color: 'var(--text)' }}>
+                  My {label} ({list.length})
+                </h2>
+                <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: employeesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
+              </button>
 
-          {(isPractitioner ? patients : practitioners).length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center' }}>
-              <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
-                {isPractitioner
-                  ? (isEmployer ? 'No employees linked yet. Send an invite email or upload a CSV to get started.' : 'No patients linked yet. Use your invite code below or send an invite email.')
-                  : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
-              </p>
-              {!isPractitioner && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
-                    style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
-                    App Store
-                  </a>
-                  <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
-                    style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
-                    Google Play
-                  </a>
-                </div>
+              {employeesOpen && (
+                <>
+                  {isPractitioner && isEmployer && (
+                    <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <input
+                        type="text"
+                        placeholder="Search employees…"
+                        value={employeeSearch}
+                        onChange={e => setEmployeeSearch(e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 14px', fontSize: 14, color: 'var(--text)', outline: 'none' }}
+                      />
+                    </div>
+                  )}
+                  {filteredList.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center' }}>
+                      <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
+                        {employeeSearch
+                          ? 'No results.'
+                          : isPractitioner
+                            ? (isEmployer ? 'No employees linked yet. Send an invite email or upload a CSV to get started.' : 'No patients linked yet. Use your invite code below or send an invite email.')
+                            : 'No practitioners linked yet. Use the LiftLog app to connect with a practitioner.'}
+                      </p>
+                      {!isPractitioner && !employeeSearch && (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <a href="https://apps.apple.com/app/id6762567982" target="_blank" rel="noopener noreferrer"
+                            style={{ background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                            App Store
+                          </a>
+                          <a href="https://play.google.com/store/apps/details?id=com.logthelift.app" target="_blank" rel="noopener noreferrer"
+                            style={{ background: YELLOW, color: '#0f1117', borderRadius: 12, padding: '12px 28px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
+                            Google Play
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      {filteredList.map((person, i) => (
+                        <a key={person.id} href={isPractitioner ? (isEmployer ? `/employee/${person.id}` : `/patients/${person.id}`) : undefined}
+                          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', color: 'inherit', cursor: isPractitioner ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                          onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
+                          onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
+                        >
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? 'var(--badge-teal-bg)' : 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                            {isPractitioner ? '🏋️' : '🩺'}
+                          </div>
+                          <div>
+                            <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{person.display_name}</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{person.email}</p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          ) : (
-            <div>
-              {(isPractitioner ? patients : practitioners).map((person, i) => (
-                <a key={person.id} href={isPractitioner ? (isEmployer ? `/employee/${person.id}` : `/patients/${person.id}`) : undefined}
-                  style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 28px', borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', color: 'inherit', cursor: isPractitioner ? 'pointer' : 'default', transition: 'background 0.15s' }}
-                  onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
-                  onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? 'var(--badge-teal-bg)' : 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                    {isPractitioner ? '🏋️' : '🩺'}
-                  </div>
-                  <div>
-                    <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{person.display_name}</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{person.email}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* My Teams (employer only) */}
         {isEmployer && (
           <div style={{ marginTop: 28, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-            <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>My Teams ({employerTeams.length})</h2>
-              <a href="/teams" style={{ fontSize: 13, color: TEAL, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Manage →</a>
-            </div>
-            {employerTeams.length === 0 ? (
+            <button
+              onClick={() => setTeamsOpen(o => !o)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', background: 'none', border: 'none', borderBottom: teamsOpen ? '1px solid var(--border-subtle)' : 'none', cursor: 'pointer', textAlign: 'left', gap: 12 }}
+            >
+              <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0, color: 'var(--text)' }}>My Teams ({employerTeams.length})</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <a href="/teams" onClick={e => e.stopPropagation()} style={{ fontSize: 13, color: TEAL, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Manage →</a>
+                <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: teamsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+              </div>
+            </button>
+            {teamsOpen && (employerTeams.length === 0 ? (
               <div style={{ padding: '32px 28px', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-dim)', fontSize: 14, margin: '0 0 16px' }}>No teams yet. Create teams to organize employees for the leaderboard.</p>
                 <a href="/teams" style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>Set Up Teams</a>
@@ -494,7 +535,7 @@ function ProfilePageContent() {
                   </a>
                 ))}
               </div>
-            )}
+            ))}
           </div>
         )}
 
