@@ -9,7 +9,7 @@ import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
-const GOLD   = '#F59E0B';
+
 
 interface WorkoutSet {
   reps?: number; weight?: number;
@@ -21,23 +21,7 @@ interface LoggedExercise {
 }
 interface WorkoutLog {
   exercises: LoggedExercise[];
-  effectivenessRating?: number;
-  satisfactionRating?: number;
-  enjoymentRating?: number;
   planId?: string;
-}
-
-function StarRating({ value }: { value: number | null }) {
-  if (value === null) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  const full    = Math.floor(value);
-  const half    = value % 1 >= 0.5;
-  const empty   = 5 - full - (half ? 1 : 0);
-  return (
-    <span style={{ color: GOLD, fontSize: 18, letterSpacing: 2 }}>
-      {'★'.repeat(full)}{half ? '⯨' : ''}{'☆'.repeat(empty)}
-      <span style={{ color: 'var(--text-muted)', fontSize: 13, marginLeft: 6 }}>({value.toFixed(1)})</span>
-    </span>
-  );
 }
 
 function StatCard({ label, value, sub, accent, icon }: {
@@ -277,8 +261,7 @@ export default function EmployeeOverviewPage() {
   const [employeeEmail, setEmployeeEmail] = useState('');
   const [totalWorkouts,  setTotalWorkouts]  = useState(0);
   const [totalStretches, setTotalStretches] = useState(0);
-  const [avgEffectiveness, setAvgEffectiveness] = useState<number | null>(null);
-  const [avgEnjoyment,     setAvgEnjoyment]     = useState<number | null>(null);
+
   const [activityDates,    setActivityDates]     = useState<string[]>([]);
   const [employerDates,    setEmployerDates]     = useState<string[]>([]);
   const [assignedPlans,    setAssignedPlans]     = useState<{ id: string; name: string }[]>([]);
@@ -344,22 +327,16 @@ export default function EmployeeOverviewPage() {
 
       const all = workouts ?? [];
 
-      // Employer-plan workouts only — used for office stretches and ratings
+      // Employer-plan workouts only — used for exercises completed count
       const employerWorkouts = all.filter((w: any) => {
         const pid = w.data?.planId;
         return pid && ptPlanIds.has(pid);
       });
 
-      let strCount  = 0;
-      const effRatings: number[] = [];
-      const enjRatings: number[] = [];
-
+      let strCount = 0;
       for (const w of employerWorkouts) {
         const log = w.data as WorkoutLog;
         strCount += (log.exercises ?? []).length;
-        const eff = log.effectivenessRating ?? log.satisfactionRating;
-        if (typeof eff === 'number' && eff > 0) effRatings.push(eff);
-        if (typeof log.enjoymentRating === 'number' && log.enjoymentRating > 0) enjRatings.push(log.enjoymentRating);
       }
 
       // Total workouts and activity = all logged workouts (count only, no details)
@@ -367,8 +344,6 @@ export default function EmployeeOverviewPage() {
 
       setTotalWorkouts(all.length);
       setTotalStretches(strCount);
-      setAvgEffectiveness(effRatings.length ? effRatings.reduce((a, b) => a + b, 0) / effRatings.length : null);
-      setAvgEnjoyment(enjRatings.length ? enjRatings.reduce((a, b) => a + b, 0) / enjRatings.length : null);
       const uniqueAllDates     = [...new Set(allDates)].sort();
       const uniqueEmployerDates = [...new Set(employerWorkouts.map((w: any) => w.date as string))].sort();
       setActivityDates(uniqueAllDates);
@@ -446,34 +421,6 @@ export default function EmployeeOverviewPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
           <StatCard label="Current Streak" value={`${currentStreak}d`} sub="employer-plan workouts" accent={TEAL} icon="🔥" />
           <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="employer-plan workouts" accent={PURPLE} icon="🏆" />
-        </div>
-
-        {/* Ratings */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-          <div style={{
-            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
-            padding: '24px 24px 20px',
-          }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 12 }}>
-              ⚡ Avg Effectiveness Rating
-            </div>
-            <StarRating value={avgEffectiveness} />
-            {avgEffectiveness === null && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>No ratings submitted yet</div>
-            )}
-          </div>
-          <div style={{
-            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
-            padding: '24px 24px 20px',
-          }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 12 }}>
-              😊 Avg Enjoyment Rating
-            </div>
-            <StarRating value={avgEnjoyment} />
-            {avgEnjoyment === null && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>No ratings submitted yet</div>
-            )}
-          </div>
         </div>
 
         {/* Activity dots */}
