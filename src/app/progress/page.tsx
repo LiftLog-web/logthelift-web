@@ -828,7 +828,7 @@ export default function ProgressPage() {
                                               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                                 {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
                                               </span>
-                                              {hasNote && <MessageSquare size={13} title="Note" />}
+                                              {hasNote && <span title="Note"><MessageSquare size={13} /></span>}
                                               <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                                             </button>
                                             {exOpen && (
