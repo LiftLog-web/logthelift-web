@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
-import { ClipboardList, AlertTriangle } from 'lucide-react';
+import { ClipboardList, AlertTriangle, MoreHorizontal } from 'lucide-react';
 
 function getInitials(name: string): string {
   return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -180,6 +180,7 @@ export default function PlansPage() {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [linkedPatientIds, setLinkedPatientIds] = useState<Set<string>>(new Set());
   const [showPrevious, setShowPrevious] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Assign programs modal (employer only)
   const [employerPrograms, setEmployerPrograms]     = useState<EmployerProgram[]>([]);
@@ -502,6 +503,16 @@ export default function PlansPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [showInviteModal]);
 
+  // Close ... row menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('[data-menu]')) setOpenMenuId(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openMenuId]);
+
   const handleGenerateCode = async () => {
     setInviteLoading(true);
     const sb = getSupabase();
@@ -748,53 +759,65 @@ export default function PlansPage() {
                   const isOpen = expanded.has(group.patient_id);
                   const hasPlans = group.plans.length > 0;
                   return (
-                    <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                    <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, transition: 'border-color 0.2s' }}>
 
                       {/* Patient header row */}
                       <button
                         onClick={() => hasPlans && toggleExpanded(group.patient_id)}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '18px 24px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
+                          padding: '10px 20px', background: isOpen ? `${PURPLE}12` : 'var(--card)',
                           border: 'none', cursor: 'pointer', transition: 'background 0.2s', textAlign: 'left',
+                          borderRadius: isOpen && hasPlans ? '15px 15px 0 0' : 15,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--badge-purple-text)', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--badge-purple-text)', flexShrink: 0 }}>
                             {getInitials(group.patientName)}
                           </div>
                           <div>
-                            <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
                               {group.patientName}
                             </p>
-                            <p style={{ margin: 0, fontSize: 13, color: hasPlans ? 'var(--text-muted)' : 'var(--text-dim)', marginTop: 2 }}>
+                            <p style={{ margin: 0, fontSize: 12, color: hasPlans ? 'var(--text-muted)' : 'var(--text-dim)', marginTop: 1 }}>
                               {hasPlans ? `${group.plans.length} plan${group.plans.length !== 1 ? 's' : ''}` : 'No plan assigned'}
                             </p>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <button
                             onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
-                            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
                             View Progress
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); isEmployer ? openAssignModal(group.patient_id, group.patientName) : router.push(`/plans/new?patient=${group.patient_id}`); }}
-                            style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            style={{ background: 'var(--btn-teal-bg)', color: 'var(--btn-teal-text)', border: '1px solid var(--btn-teal-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
                             + Add Plan
                           </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleUnlink(group.patient_id, group.patientName); }}
-                            disabled={unlinking === group.patient_id}
-                            title="Unlink patient"
-                            style={{ background: 'none', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: unlinking === group.patient_id ? 0.5 : 1 }}
-                          >
-                            {unlinking === group.patient_id ? '…' : 'Unlink'}
-                          </button>
+                          <div style={{ position: 'relative' }} data-menu onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === group.patient_id ? null : group.patient_id); }}
+                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 8px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                            >
+                              <MoreHorizontal size={15} />
+                            </button>
+                            {openMenuId === group.patient_id && (
+                              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 50, minWidth: 120, padding: '4px 0' }}>
+                                <button
+                                  onClick={e => { e.stopPropagation(); setOpenMenuId(null); handleUnlink(group.patient_id, group.patientName); }}
+                                  disabled={unlinking === group.patient_id}
+                                  style={{ width: '100%', textAlign: 'left', padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', opacity: unlinking === group.patient_id ? 0.5 : 1 }}
+                                >
+                                  {unlinking === group.patient_id ? 'Unlinking…' : 'Unlink'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           {hasPlans && (
-                            <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 16, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', marginLeft: 2 }}>
                               ▾
                             </span>
                           )}
@@ -803,7 +826,7 @@ export default function PlansPage() {
 
                       {/* Plans for this patient */}
                       {isOpen && (
-                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, borderRadius: '0 0 15px 15px' }}>
                           {group.plans.map(plan => (
                             <div key={plan.id} style={{ background: 'var(--card)', border: `1px solid ${PURPLE}25`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -908,32 +931,32 @@ export default function PlansPage() {
                 {showPrevious && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
                     {filteredPrevious.map(group => (
-                      <div key={group.patient_id} style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', opacity: 0.7 }}>
-                        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: 'var(--card)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--card-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+                      <div key={group.patient_id} style={{ border: '1px solid var(--border)', borderRadius: 16, opacity: 0.7 }}>
+                        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'var(--card)', borderRadius: 15 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--card-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
                               {getInitials(group.patientName)}
                             </div>
                             <div>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
                                 {group.patientName}
                               </p>
-                              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
                                 {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''} · Unlinked
                               </p>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
                             <button
                               onClick={() => router.push(`/patients/${group.patient_id}`)}
-                              style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                              style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
                               View Progress
                             </button>
                             <button
                               onClick={() => handleRelink(group.patient_id, group.patientName)}
                               disabled={relinking === group.patient_id || relinkSent.has(group.patient_id)}
-                              style={{ background: 'none', color: relinkSent.has(group.patient_id) ? 'var(--text-dim)' : TEAL, border: `1px solid ${relinkSent.has(group.patient_id) ? 'var(--border)' : `${TEAL}60`}`, borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: relinkSent.has(group.patient_id) ? 'default' : 'pointer', opacity: relinking === group.patient_id ? 0.5 : 1 }}
+                              style={{ background: 'none', color: relinkSent.has(group.patient_id) ? 'var(--text-dim)' : TEAL, border: `1px solid ${relinkSent.has(group.patient_id) ? 'var(--border)' : `${TEAL}60`}`, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: relinkSent.has(group.patient_id) ? 'default' : 'pointer', opacity: relinking === group.patient_id ? 0.5 : 1 }}
                             >
                               {relinking === group.patient_id ? '…' : relinkSent.has(group.patient_id) ? 'Invite sent' : 'Re-link'}
                             </button>
