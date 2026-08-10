@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { Mail, Upload, AlertTriangle } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -637,8 +638,8 @@ export default function LeaderboardPage() {
                 : emailStatus === 'sent'
                 ? '✓ Report Sent'
                 : emailStatus === 'error'
-                ? '⚠ Failed — Retry'
-                : '📧 Email Report'}
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={13} /> Failed — Retry</span>
+                : <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={13} /> Email Report</span>}
             </button>
             {emailMsg && (
               <p style={{ margin: 0, fontSize: 12, color: emailStatus === 'error' ? '#F97316' : TEAL }}>
@@ -673,8 +674,8 @@ export default function LeaderboardPage() {
                 : teamEmailStatus === 'sent'
                 ? '✓ Team Notified'
                 : teamEmailStatus === 'error'
-                ? '⚠ Failed — Retry'
-                : '📤 Share with Team'}
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={13} /> Failed — Retry</span>
+                : <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={13} /> Share with Team</span>}
             </button>
             {teamEmailMsg && (
               <p style={{ margin: 0, fontSize: 12, color: teamEmailStatus === 'error' ? '#F97316' : PURPLE }}>

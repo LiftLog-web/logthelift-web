@@ -8,6 +8,11 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { MUSCLE_GROUPS } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
+import { MessageSquare } from 'lucide-react';
+
+function getInitials(name: string): string {
+  return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -512,7 +517,7 @@ function ActivityGrid({
                   {/* Patient notes */}
                   {w.notes?.trim() && (
                     <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}28`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 14, flexShrink: 0 }}>💬</span>
+                      <MessageSquare size={14} style={{ flexShrink: 0 }} />
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
                     </div>
                   )}
@@ -552,7 +557,7 @@ function ActivityGrid({
                           )}
                           {ex.notes?.trim() && (
                             <div style={{ borderTop: `1px solid ${STATUS_COLOR[st]}20`, padding: '8px 14px', display: 'flex', gap: 6 }}>
-                              <span style={{ fontSize: 12, color: TEAL, flexShrink: 0 }}>💬</span>
+                              <MessageSquare size={12} style={{ color: TEAL, flexShrink: 0 }} />
                               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
                             </div>
                           )}
@@ -1038,8 +1043,8 @@ export default function PatientProgressPage() {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-            🏋️
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--badge-purple-text)', flexShrink: 0 }}>
+            {getInitials(patientName)}
           </div>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>{patientName}</h1>

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { Bell, Archive, ClipboardList } from 'lucide-react';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -499,7 +500,7 @@ export default function PlanLibraryPage() {
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>📋 Plan Library</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><ClipboardList size={24} /> Plan Library</h1>
             <p style={{ color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
               {showArchived ? 'Archived templates — restore or permanently delete' : 'Reusable templates with week-by-week progression'}
             </p>
@@ -545,7 +546,7 @@ export default function PlanLibraryPage() {
                 onClick={() => setShowArchived(v => !v)}
                 style={{ background: showArchived ? 'var(--badge-teal-bg)' : 'var(--card-alt)', border: `1px solid ${showArchived ? 'var(--btn-teal-border)' : 'var(--border-strong)'}`, borderRadius: 10, padding: '10px 16px', color: showArchived ? 'var(--badge-teal-text)' : 'var(--text-muted)', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
-                🗄 Archived
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Archive size={14} /> Archived</span>
               </button>
             )}
             {/* Body part filter */}
@@ -643,7 +644,7 @@ export default function PlanLibraryPage() {
             </p>
             {reminders.map(r => (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
-                <span style={{ fontSize: 18 }}>🔔</span>
+                <Bell size={18} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
                     {r.plan_name}
@@ -703,7 +704,7 @@ export default function PlanLibraryPage() {
         {/* Empty state */}
         {templates.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
-            <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
+            <ClipboardList size={40} style={{ marginBottom: 16, color: 'var(--text-muted)' }} />
             <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>
               No templates yet. Create your first reusable plan template.
             </p>

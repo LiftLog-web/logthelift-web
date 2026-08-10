@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { Dumbbell } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -315,7 +316,7 @@ export default function FriendsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {feed.length === 0 ? (
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-                <p style={{ fontSize: 36, marginBottom: 12 }}>🏋️</p>
+                <Dumbbell size={40} style={{ marginBottom: 12, color: 'var(--text-muted)' }} />
                 <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>
                   {friends.length === 0 ? 'Add friends to see their workouts here.' : 'No workouts from friends yet.'}
                 </p>

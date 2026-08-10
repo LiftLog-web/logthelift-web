@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Dumbbell, ClipboardList } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -10,7 +11,7 @@ const features = [
   { icon: '📊', title: 'Progress Tracking',      desc: 'Track strength gains, body weight, and progress photos over time.',       color: PURPLE },
   { icon: '💡', title: 'Smart Recommendations',  desc: 'Get personalized workout suggestions based on your history.',             color: YELLOW },
   { icon: '🩺', title: 'Practitioner Connect',   desc: 'Link with your PT or physio so they can monitor your progress.',         color: TEAL   },
-  { icon: '📋', title: 'Custom Plans',           desc: 'Follow structured programs built by your practitioner.',                  color: PURPLE },
+  { icon: <ClipboardList size={26} />, title: 'Custom Plans',           desc: 'Follow structured programs built by your practitioner.',                  color: PURPLE },
   { icon: '👥', title: 'Social Feed',            desc: 'Share milestones and stay motivated with friends.',                      color: YELLOW },
 ];
 
@@ -28,7 +29,7 @@ const audiences = [
     ],
   },
   {
-    icon: '🏋️',
+    icon: <Dumbbell size={30} />,
     title: 'Gyms & Studios',
     color: TEAL,
     points: [
@@ -118,7 +119,7 @@ export default function Home() {
               className="rounded-2xl p-6 flex flex-col gap-3"
               style={{ background: 'var(--card)', border: `1px solid ${f.color}40` }}
             >
-              <span className="text-3xl">{f.icon}</span>
+              <div style={{ display: 'flex', alignItems: 'center', height: 36 }}>{f.icon}</div>
               <h3 className="font-bold text-lg" style={{ color: f.color }}>{f.title}</h3>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
             </div>
@@ -139,7 +140,7 @@ export default function Home() {
               className="rounded-2xl p-6 flex flex-col gap-4"
               style={{ background: 'var(--card)', border: `1px solid ${a.color}44` }}
             >
-              <span className="text-4xl">{a.icon}</span>
+              <div style={{ display: 'flex', alignItems: 'center', height: 40 }}>{a.icon}</div>
               <h3 className="font-bold text-xl" style={{ color: a.color }}>{a.title}</h3>
               <ul className="flex flex-col gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                 {a.points.map((p) => (

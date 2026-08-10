@@ -9,6 +9,7 @@ import { DayPicker } from 'react-day-picker';
 import type { DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { addMonths, startOfMonth, endOfMonth, format } from 'date-fns';
+import { Clock } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -583,7 +584,7 @@ export default function ProgramsPage() {
           const days = daysRemaining(expiring.ends_at);
           return (
             <div style={{ background: `${AMBER}12`, border: `1.5px solid ${AMBER}50`, borderRadius: 16, padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span style={{ fontSize: 22, flexShrink: 0 }}>⏰</span>
+              <Clock size={22} style={{ flexShrink: 0, color: AMBER }} />
               <div style={{ flex: 1 }}>
                 <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 2px', color: AMBER }}>
                   {expiring.name} ends in {days} day{days !== 1 ? 's' : ''}

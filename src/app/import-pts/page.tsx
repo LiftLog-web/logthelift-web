@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { FolderOpen } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -336,7 +337,7 @@ export default function ImportPTsPage() {
                 transition: 'border-color 0.2s, background 0.2s', marginBottom: 16,
               }}
             >
-              <div style={{ fontSize: 44, marginBottom: 14 }}>📂</div>
+              <div style={{ marginBottom: 14 }}><FolderOpen size={44} color="var(--text-muted)" /></div>
               <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>Drop your file here or click to browse</p>
               <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Accepts .csv, .xlsx, .xls, or .txt · Columns: email, name (optional)</p>
               <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />

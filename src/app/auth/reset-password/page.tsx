@@ -1,6 +1,7 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { AlertTriangle } from 'lucide-react';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -96,7 +97,7 @@ function ResetPasswordContent() {
           </>
         ) : (
           <>
-            <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
+            <AlertTriangle size={24} style={{ marginBottom: '12px', color: 'var(--text-muted)' }} />
             <h1 style={{ color: 'var(--text)', fontSize: '18px', fontWeight: 600, margin: '0 0 12px' }}>
               Invalid Reset Link
             </h1>

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
+import { Calendar } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -441,7 +442,7 @@ export default function EmployeeOverviewPage() {
               color: 'var(--text)', fontWeight: 700, fontSize: 14,
             }}
           >
-            <span>🗓 Time-off History</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={16} /> Time-off History</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {timeOffHistory.length} request{timeOffHistory.length !== 1 ? 's' : ''}
               <span style={{ fontSize: 16 }}>{torExpanded ? '▲' : '▼'}</span>

@@ -8,6 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import { EXERCISES } from '@/data/exercises';
+import { ClipboardList } from 'lucide-react';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -862,7 +863,7 @@ export default function MediaLibraryPage() {
                       >
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{v.patientName}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>📋 {v.planName}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><ClipboardList size={12} /> {v.planName}</div>
                         </div>
                         <a
                           href={`/patients/${v.patientId}`}

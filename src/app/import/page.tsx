@@ -8,6 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import * as XLSX from 'xlsx';
+import { FolderOpen, AlertTriangle } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -228,7 +229,7 @@ export default function ImportPage() {
               className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors"
               style={{ borderColor: dragOver ? TEAL : 'rgba(255,255,255,0.15)', backgroundColor: dragOver ? 'rgba(95,207,191,0.05)' : 'rgba(255,255,255,0.02)' }}
             >
-              <div className="text-5xl mb-4">📂</div>
+              <div style={{ marginBottom: 16 }}><FolderOpen size={44} color="rgba(255,255,255,0.6)" /></div>
               <p className="text-white/70 font-semibold mb-1">Drop your CSV here or click to browse</p>
               <p className="text-white/30 text-sm">Accepts .csv, .txt, or .xlsx · Columns: email, name (optional)</p>
               <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
@@ -335,7 +336,7 @@ mike@example.com`}
               const failed  = results.filter(r => !r.success && !r.error?.includes('Invalid email')).length;
               return (
                 <div className="flex items-center gap-3 mb-6">
-                  <span className="text-3xl">{failed > 0 ? '⚠️' : '✅'}</span>
+                  <span>{failed > 0 ? <AlertTriangle size={28} style={{ color: '#F59E0B' }} /> : '✅'}</span>
                   <div>
                     <p className="font-bold text-lg">{sent} invite{sent !== 1 ? 's' : ''} sent</p>
                     <p className="text-white/50 text-sm">

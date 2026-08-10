@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { AlertTriangle } from 'lucide-react';
 
 type Status = 'loading' | 'ready' | 'success' | 'already' | 'error';
 
@@ -159,7 +160,7 @@ export default function InvitePage() {
 
         {status === 'error' && (
           <>
-            <span className="text-5xl">⚠️</span>
+            <AlertTriangle size={48} style={{ color: 'var(--text-muted)' }} />
             <h1 className="text-2xl font-bold">Something went wrong</h1>
             <p className="text-white/50 text-sm">{error}</p>
             <a href="/" className="text-[#5fcfbf] text-sm hover:underline">Back to LiftLog</a>

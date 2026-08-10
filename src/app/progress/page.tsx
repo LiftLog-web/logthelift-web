@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { MessageSquare } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -805,7 +806,7 @@ export default function ProgressPage() {
                                 <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 22px', background: 'var(--card-alt)' }}>
                                   {w.notes?.trim() && (
                                     <div style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
-                                      <span style={{ fontSize: 14 }}>💬</span>
+                                      <MessageSquare size={14} />
                                       <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{w.notes}"</p>
                                     </div>
                                   )}
@@ -827,7 +828,7 @@ export default function ProgressPage() {
                                               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                                                 {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}{(ex.targetSets ?? []).length > 0 ? ` / ${ex.targetSets!.length} target` : ''}
                                               </span>
-                                              {hasNote && <span title="Note" style={{ fontSize: 13 }}>💬</span>}
+                                              {hasNote && <MessageSquare size={13} title="Note" />}
                                               <span style={{ color: 'var(--text-faint)', fontSize: 12, transform: exOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block', flexShrink: 0 }}>▾</span>
                                             </button>
                                             {exOpen && (
@@ -864,7 +865,7 @@ export default function ProgressPage() {
                                                 )}
                                                 {hasNote && (
                                                   <div style={{ background: `${TEAL}0d`, border: `1px solid ${TEAL}25`, borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8 }}>
-                                                    <span style={{ fontSize: 13 }}>💬</span>
+                                                    <MessageSquare size={13} />
                                                     <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{ex.notes}"</p>
                                                   </div>
                                                 )}

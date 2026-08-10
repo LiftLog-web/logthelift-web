@@ -7,6 +7,11 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { ClipboardList, AlertTriangle } from 'lucide-react';
+
+function getInitials(name: string): string {
+  return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
 
 const TEAL    = '#5fcfbf';
 const PURPLE  = '#C471ED';
@@ -619,7 +624,7 @@ export default function PlansPage() {
 
         {plans.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center', marginTop: 32 }}>
-            <p style={{ fontSize: 40, marginBottom: 16 }}>📋</p>
+            <ClipboardList size={40} style={{ marginBottom: 16, color: 'var(--text-muted)' }} />
             {isEmployer ? (
               <>
                 <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No active plans yet. Launch a program to assign plans to your team.</p>
@@ -644,7 +649,7 @@ export default function PlansPage() {
                 {/* Header */}
                 <div style={{ background: `${AMBER}12`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 15 }}>⚠️</span>
+                    <AlertTriangle size={15} style={{ color: AMBER }} />
                     <span style={{ fontWeight: 700, fontSize: 15, color: AMBER }}>Needs Attention</span>
                     {attentionItems.length > 0 && (
                       <span style={{ background: AMBER, color: '#0f1117', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
@@ -704,8 +709,8 @@ export default function PlansPage() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${flagColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                              🏋️
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${flagColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: flagColor, flexShrink: 0 }}>
+                              {getInitials(item.patientName)}
                             </div>
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{item.patientName}</p>
@@ -755,8 +760,8 @@ export default function PlansPage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                            🏋️
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--badge-purple-text)', flexShrink: 0 }}>
+                            {getInitials(group.patientName)}
                           </div>
                           <div>
                             <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>
@@ -906,8 +911,8 @@ export default function PlansPage() {
                       <div key={group.patient_id} style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', opacity: 0.7 }}>
                         <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: 'var(--card)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--card-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                              🏋️
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--card-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+                              {getInitials(group.patientName)}
                             </div>
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>

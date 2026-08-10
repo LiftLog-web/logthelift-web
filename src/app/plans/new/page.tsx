@@ -9,6 +9,7 @@ import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { useNavGuard } from '@/lib/NavGuardContext';
 import { EXERCISES, MUSCLE_GROUPS, Exercise } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
+import { ClipboardList } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -1439,8 +1440,8 @@ function NewPlanInner() {
                   transition: 'left 0.2s',
                 }} />
               </div>
-              <span style={{ color: saveToLibrary ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>
-                📋 Also save to my Plan Library
+              <span style={{ color: saveToLibrary ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ClipboardList size={14} /> Also save to my Plan Library
               </span>
             </label>
 

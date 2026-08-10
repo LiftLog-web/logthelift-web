@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { Dumbbell } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -281,7 +282,7 @@ export default function ExercisesPage() {
 
         {exercises.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-            <p style={{ fontSize: 40, marginBottom: 16 }}>🏋️</p>
+            <Dumbbell size={40} style={{ marginBottom: 16, color: 'var(--text-muted)' }} />
             <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>No custom exercises yet. Add your first one.</p>
             <button
               onClick={() => { resetForm(); setShowForm(true); }}

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
+import { ClipboardList } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -194,7 +195,7 @@ export default function MyPlansPage() {
 
         {plans.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-            <p style={{ fontSize: 40, marginBottom: 12 }}>📋</p>
+            <ClipboardList size={40} style={{ marginBottom: 12, color: 'var(--text-muted)' }} />
             <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>No plans assigned yet.</p>
             <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>Your practitioner will assign plans to you through the LiftLog app.</p>
           </div>

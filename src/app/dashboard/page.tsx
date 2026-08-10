@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SHIMMER_CSS } from '@/components/Skeleton';
+import { AlertTriangle } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -420,7 +421,7 @@ export default function DashboardPage() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 400 }}>
-          <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
+          <AlertTriangle size={48} style={{ marginBottom: 16, color: 'var(--text-muted)' }} />
           <h1 style={{ color: 'var(--text)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Not a gym owner account</h1>
           <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>This dashboard is only accessible to approved gym owner accounts.</p>
           <a href="/profile" style={{ display: 'inline-block', background: TEAL, color: '#0f1117', borderRadius: 12, padding: '12px 24px', fontWeight: 700, textDecoration: 'none' }}>

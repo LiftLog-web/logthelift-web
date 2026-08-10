@@ -6,6 +6,11 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { Sk, SkPage } from '@/components/Skeleton';
+import { Lock } from 'lucide-react';
+
+function getInitials(name: string): string {
+  return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -380,7 +385,7 @@ function ProfilePageContent() {
         {/* Subscription expired banner */}
         {subscriptionExpired && (
           <div style={{ background: '#EF444418', border: '1px solid #EF444466', borderRadius: 12, padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>🔒</span>
+            <Lock size={20} style={{ flexShrink: 0, color: '#EF4444' }} />
             <div>
               <div style={{ fontWeight: 700, color: '#EF4444', fontSize: 15, marginBottom: 4 }}>Subscription Required</div>
               <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
@@ -394,10 +399,10 @@ function ProfilePageContent() {
 
         {/* Profile card */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', flexShrink: 0, overflow: 'hidden' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : (isEmployer ? '🏢' : isPractitioner ? '🩺' : '🏋️')}
+              : (isEmployer ? '🏢' : getInitials(profile?.display_name || profile?.email || '?'))}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -482,8 +487,8 @@ function ProfilePageContent() {
                           onMouseEnter={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = 'var(--card-alt)'; }}
                           onMouseLeave={e => { if (isPractitioner) (e.currentTarget as HTMLElement).style.background = ''; }}
                         >
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? 'var(--badge-teal-bg)' : 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                            {isPractitioner ? '🏋️' : '🩺'}
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: isPractitioner ? 'var(--badge-teal-bg)' : 'var(--badge-purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: isPractitioner ? 'var(--badge-teal-text)' : 'var(--badge-purple-text)', flexShrink: 0 }}>
+                            {getInitials(person.display_name || person.email || '?')}
                           </div>
                           <div>
                             <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{person.display_name}</p>
