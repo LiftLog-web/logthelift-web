@@ -1,23 +1,23 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Dumbbell, ClipboardList } from 'lucide-react';
+import { Dumbbell, ClipboardList, Calendar, TrendingUp, Lightbulb, Stethoscope, Users, Building2 } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
 const YELLOW = '#F9F295';
 
 const features = [
-  { icon: '📅', title: 'Workout Calendar',      desc: 'Log every session and visualize your consistency at a glance.',          color: TEAL   },
-  { icon: '📊', title: 'Progress Tracking',      desc: 'Track strength gains, body weight, and progress photos over time.',       color: PURPLE },
-  { icon: '💡', title: 'Smart Recommendations',  desc: 'Get personalized workout suggestions based on your history.',             color: YELLOW },
-  { icon: '🩺', title: 'Practitioner Connect',   desc: 'Link with your PT or physio so they can monitor your progress.',         color: TEAL   },
+  { icon: <Calendar size={26} />, title: 'Workout Calendar',      desc: 'Log every session and visualize your consistency at a glance.',          color: TEAL   },
+  { icon: <TrendingUp size={26} />, title: 'Progress Tracking',      desc: 'Track strength gains, body weight, and progress photos over time.',       color: PURPLE },
+  { icon: <Lightbulb size={26} />, title: 'Smart Recommendations',  desc: 'Get personalized workout suggestions based on your history.',             color: YELLOW },
+  { icon: <Stethoscope size={26} />, title: 'Practitioner Connect',   desc: 'Link with your PT or physio so they can monitor your progress.',         color: TEAL   },
   { icon: <ClipboardList size={26} />, title: 'Custom Plans',           desc: 'Follow structured programs built by your practitioner.',                  color: PURPLE },
-  { icon: '👥', title: 'Social Feed',            desc: 'Share milestones and stay motivated with friends.',                      color: YELLOW },
+  { icon: <Users size={26} />, title: 'Social Feed',            desc: 'Share milestones and stay motivated with friends.',                      color: YELLOW },
 ];
 
 const audiences = [
   {
-    icon: '🩺',
+    icon: <Stethoscope size={30} />,
     title: 'Practitioners',
     color: PURPLE,
     points: [
@@ -41,7 +41,7 @@ const audiences = [
     ],
   },
   {
-    icon: '🏢',
+    icon: <Building2 size={30} />,
     title: 'Offices & Employers',
     color: YELLOW,
     points: [

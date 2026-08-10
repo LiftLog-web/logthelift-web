@@ -6,7 +6,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { Sk, SkPage } from '@/components/Skeleton';
-import { Lock } from 'lucide-react';
+import { Lock, Building2 } from 'lucide-react';
 
 function getInitials(name: string): string {
   return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -402,7 +402,7 @@ function ProfilePageContent() {
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', flexShrink: 0, overflow: 'hidden' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt={profile.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : (isEmployer ? '🏢' : getInitials(profile?.display_name || profile?.email || '?'))}
+              : (isEmployer ? <Building2 size={28} /> : getInitials(profile?.display_name || profile?.email || '?'))}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
