@@ -281,7 +281,7 @@ export default function PlansPage() {
         patientIds.length > 0
           ? sb.from('synced_workouts').select('user_id, date').in('user_id', patientIds).order('date', { ascending: false })
           : Promise.resolve({ data: [] }),
-        sb.from('patient_links').select('patient_id, patient:patient_id(display_name)').eq('practitioner_id', data.session.user.id),
+        sb.from('patient_links').select('patient_id, patient:patient_id(display_name)').eq('practitioner_id', data.session.user.id).is('unlinked_at', null),
       ]);
 
       // Last workout map
