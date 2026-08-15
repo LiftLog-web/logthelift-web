@@ -570,12 +570,12 @@ export default function MediaLibraryPage() {
                             ) : item.media_type === 'video' && signedUrl ? (
                               <button
                                 onClick={() => setViewMedia({ url: signedUrl, type: 'video', name: item.exercise_name })}
-                                style={{ width: 64, height: 48, background: '#1a1a2e', borderRadius: 8, border: '1px solid var(--border-strong)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontSize: 18 }}
+                                style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, border: '1px solid var(--border-strong)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontSize: 18 }}
                               >
                                 ▶
                               </button>
                             ) : item.media_type === 'link' ? (
-                              <div style={{ width: 64, height: 48, background: '#0f2a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
+                              <div style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
                             ) : (
                               <div style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <div style={{ width: 16, height: 16, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -734,7 +734,7 @@ export default function MediaLibraryPage() {
                         style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: `1px solid ${exerciseName && !exDropdownOpen ? TEAL : 'var(--border-strong)'}`, borderRadius: listOpen ? '10px 10px 0 0' : 10, padding: '11px 14px', color: exerciseName && !exDropdownOpen ? TEAL : 'var(--text)', fontSize: 15, outline: 'none', fontWeight: exerciseName && !exDropdownOpen ? 600 : 400 }}
                       />
                       {listOpen && (
-                        <div style={{ background: '#1e2130', border: '1px solid var(--border-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
+                        <div style={{ background: 'var(--modal-bg)', border: '1px solid var(--border-strong)', borderTop: 'none', borderRadius: '0 0 10px 10px', marginTop: -6 }}>
                           {/* Scrollable results — capped so Create is always in view */}
                           <div style={{ maxHeight: 111, overflowY: 'auto' }}>
                             {filtered.map(ex => (
