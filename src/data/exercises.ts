@@ -213,6 +213,7 @@ export const EXERCISES: Exercise[] = [
   { id: 'g9',  name: 'Clamshell',                  muscleGroup: 'Glutes',     equipment: 'Bodyweight', type: 'weighted' },
   { id: 'g10', name: 'Lateral Band Walk',          muscleGroup: 'Glutes',     equipment: 'Other',      type: 'weighted' },
   { id: 'g11', name: 'Romanian Split Squat',       muscleGroup: 'Glutes',     equipment: 'Barbell',    type: 'weighted' },
+  { id: 'g12', name: 'Fire Hydrant',              muscleGroup: 'Glutes',     equipment: 'Bodyweight', type: 'weighted' },
 
   // ── Calves ─────────────────────────────────────────────
   { id: 'ca1', name: 'Standing Calf Raise',        muscleGroup: 'Calves',     equipment: 'Machine',    type: 'weighted' },
