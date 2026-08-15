@@ -1297,7 +1297,7 @@ export default function TemplateEditorPage() {
                               </button>
                             )}
                             {(weekExercise.type === 'weighted' || weekExercise.type === 'duration') && (
-                              <button onClick={e => { e.stopPropagation(); toggleExerciseType(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title={Convert to }>
+                              <button onClick={e => { e.stopPropagation(); toggleExerciseType(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title={'Convert to ' + (weekExercise.type === 'weighted' ? 'duration' : 'reps x weight')}>
                                 {weekExercise.type === 'weighted' ? 'reps ⇄ sec' : 'sec ⇄ reps'}
                               </button>
                             )}
