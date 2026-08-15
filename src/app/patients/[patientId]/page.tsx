@@ -838,7 +838,8 @@ export default function PatientProgressPage() {
     const exs = planWs.flatMap(w => w.exercises ?? []);
     const withT = exs.filter(e => (e.targetSets ?? []).length > 0);
     const done  = withT.filter(e => exStatus(e) === 'completed').length;
-    const rate  = withT.length > 0 ? Math.round((done / withT.length) * 100) : null;
+    // Show 0% (not blank) when plans are assigned but none were completed that week
+    const rate  = withT.length > 0 ? Math.round((done / withT.length) * 100) : (assignedPlanIdSet.size > 0 ? 0 : null);
     // Sets per week still counts all workouts (personal + plan) for volume context
     const totalSets = ws.flatMap(w => w.exercises ?? []).reduce((a, e) => a + e.sets.length, 0);
     const { badge } = weekLabel(key);
