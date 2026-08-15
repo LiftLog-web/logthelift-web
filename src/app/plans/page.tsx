@@ -116,7 +116,7 @@ function assignWeeks(raw: any, sel: number[]): any {
     const w1 = active.find(w => w.week === 1);
     const others = active.filter(w => w.week !== 1);
     const { weeks: _w, inactiveWeeks: _iw, ...exBase } = ex as any;
-    const result: any = { ...exBase, sets: w1?.sets ?? ex.sets };
+    const result: any = { ...exBase, sets: w1?.sets ?? [] };
     if (others.length > 0) result.weeks = others;
     if (inactive.length > 0) result.inactiveWeeks = inactive;
     return result;
