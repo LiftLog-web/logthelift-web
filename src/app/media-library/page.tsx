@@ -8,7 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import { EXERCISES } from '@/data/exercises';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Clapperboard } from 'lucide-react';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -518,7 +518,7 @@ export default function MediaLibraryPage() {
 
         {items.length === 0 ? (
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-            <p style={{ fontSize: 48, marginBottom: 16 }}>🎬</p>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Clapperboard size={48} color="var(--text-muted)" /></div>
             <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>No demos yet</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: 15 }}>
               Add a video link or upload a file to get started.
