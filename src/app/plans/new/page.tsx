@@ -529,6 +529,20 @@ function NewPlanInner() {
     }));
   };
 
+  const toggleExerciseType = (peId: string) => {
+    updateActiveDay(prev => prev.map(pe => {
+      if (pe.id !== peId) return pe;
+      const newType: 'weighted' | 'duration' = pe.exercise.type === 'weighted' ? 'duration' : 'weighted';
+      const newDefaultSet: WorkoutSet = newType === 'duration' ? { seconds: 30 } : { reps: 10, weight: 0 };
+      return {
+        ...pe,
+        exercise: { ...pe.exercise, type: newType },
+        sets: pe.sets.map(() => ({ ...newDefaultSet })),
+        allWeeks: (pe.allWeeks ?? []).map(w => ({ ...w, sets: w.sets.map(() => ({ ...newDefaultSet })) })),
+      };
+    }));
+  };
+
   const removeExercise = (id: string) => updateActiveDay(prev => prev.filter(pe => pe.id !== id));
 
   const updateSet = (peId: string, setIdx: number, field: keyof WorkoutSet, value: number) => {
@@ -1233,6 +1247,15 @@ function NewPlanInner() {
                                 title="Toggle weight unit"
                               >
                                 {pe.unit ?? preferredUnit} ⇄ {(pe.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                              </button>
+                            )}
+                            {(pe.exercise.type === 'weighted' || pe.exercise.type === 'duration') && (
+                              <button
+                                onClick={() => toggleExerciseType(pe.id)}
+                                style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+                                title={'Convert to ' + (pe.exercise.type === 'weighted' ? 'duration' : 'reps x weight')}
+                              >
+                                {pe.exercise.type === 'weighted' ? 'reps ⇄ sec' : 'sec ⇄ reps'}
                               </button>
                             )}
                             <button
