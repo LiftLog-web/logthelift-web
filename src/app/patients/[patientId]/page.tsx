@@ -815,6 +815,11 @@ export default function PatientProgressPage() {
     }
   };
 
+  /* ── Plan ID set (needed for both charts and calendar) ── */
+  const assignedPlanIdSet = new Set(assignedPlans.map(p => p.id));
+  // Only workouts belonging to plans this practitioner assigned
+  const planWorkouts = workouts.filter(w => w.planId && assignedPlanIdSet.has(w.planId));
+
   /* ── Week groups ── */
   const weekMap = new Map<string, WorkoutLog[]>();
   for (const w of workouts) {
@@ -825,14 +830,17 @@ export default function PatientProgressPage() {
   const sortedWeekKeys = [...weekMap.keys()].sort().reverse();
   const chronoWeekKeys = [...sortedWeekKeys].reverse(); // oldest → newest
 
-  /* ── Progress chart data ── */
+  /* ── Progress chart data (plan workouts only) ── */
   const weekTrends = chronoWeekKeys.map(key => {
     const ws  = weekMap.get(key)!;
-    const exs = ws.flatMap(w => w.exercises ?? []);
+    // Completion rate counts only this PT's assigned plan workouts
+    const planWs = ws.filter(w => w.planId && assignedPlanIdSet.has(w.planId));
+    const exs = planWs.flatMap(w => w.exercises ?? []);
     const withT = exs.filter(e => (e.targetSets ?? []).length > 0);
     const done  = withT.filter(e => exStatus(e) === 'completed').length;
     const rate  = withT.length > 0 ? Math.round((done / withT.length) * 100) : null;
-    const totalSets = exs.reduce((a, e) => a + e.sets.length, 0);
+    // Sets per week still counts all workouts (personal + plan) for volume context
+    const totalSets = ws.flatMap(w => w.exercises ?? []).reduce((a, e) => a + e.sets.length, 0);
     const { badge } = weekLabel(key);
     const shortLabel = new Date(key + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
     return { key, shortLabel, badge, rate, totalSets };
@@ -893,15 +901,14 @@ export default function PatientProgressPage() {
   const planNameById = Object.fromEntries(assignedPlans.map(p => [p.id, p.name]));
 
   /* ── Activity calendar data ── */
-  const assignedPlanIdSet = new Set(assignedPlans.map(p => p.id));
   const allDates  = workouts.map(w => w.date);
   const planDates = workouts.filter(w => w.planId && assignedPlanIdSet.has(w.planId)).map(w => w.date);
 
   /* ── Stats ── */
   const totalWorkouts  = workouts.length;
   const withPlan       = workouts.filter(w => w.planId);
-  const allExercises   = workouts.flatMap(w => w.exercises ?? []);
-  const withTargets    = allExercises.filter(e => (e.targetSets ?? []).length > 0);
+  const allPlanExercises = planWorkouts.flatMap(w => w.exercises ?? []);
+  const withTargets    = allPlanExercises.filter(e => (e.targetSets ?? []).length > 0);
   const completedCount = withTargets.filter(e => exStatus(e) === 'completed').length;
   const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
   const effectivenessRatings = workouts.map(w => w.effectivenessRating ?? w.satisfactionRating).filter((r): r is number => typeof r === 'number' && r > 0);
