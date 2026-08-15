@@ -905,15 +905,15 @@ export default function PatientProgressPage() {
   const allDates  = workouts.map(w => w.date);
   const planDates = workouts.filter(w => w.planId && assignedPlanIdSet.has(w.planId)).map(w => w.date);
 
-  /* ── Stats ── */
+  /* ── Stats (all scoped to this PT's assigned plan workouts) ── */
   const totalWorkouts  = workouts.length;
-  const withPlan       = workouts.filter(w => w.planId);
+  const withPlan       = planWorkouts;
   const allPlanExercises = planWorkouts.flatMap(w => w.exercises ?? []);
   const withTargets    = allPlanExercises.filter(e => (e.targetSets ?? []).length > 0);
   const completedCount = withTargets.filter(e => exStatus(e) === 'completed').length;
   const completionRate = withTargets.length > 0 ? Math.round((completedCount / withTargets.length) * 100) : null;
-  const effectivenessRatings = workouts.map(w => w.effectivenessRating ?? w.satisfactionRating).filter((r): r is number => typeof r === 'number' && r > 0);
-  const enjoymentRatings     = workouts.map(w => w.enjoymentRating).filter((r): r is number => typeof r === 'number' && r > 0);
+  const effectivenessRatings = planWorkouts.map(w => w.effectivenessRating ?? w.satisfactionRating).filter((r): r is number => typeof r === 'number' && r > 0);
+  const enjoymentRatings     = planWorkouts.map(w => w.enjoymentRating).filter((r): r is number => typeof r === 'number' && r > 0);
   const avgEffectiveness     = effectivenessRatings.length ? effectivenessRatings.reduce((a, b) => a + b, 0) / effectivenessRatings.length : null;
   const avgEnjoyment         = enjoymentRatings.length ? enjoymentRatings.reduce((a, b) => a + b, 0) / enjoymentRatings.length : null;
 
