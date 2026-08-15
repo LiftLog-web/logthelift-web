@@ -605,6 +605,20 @@ export default function TemplateEditorPage() {
     }));
   };
 
+  const toggleExerciseType = (exId: string) => {
+    updateActiveDay(prev => prev.map(ex => {
+      if (ex.id !== exId) return ex;
+      const newType: 'weighted' | 'duration' = ex.exercise.type === 'weighted' ? 'duration' : 'weighted';
+      const newDefaultSet: WorkoutSet = newType === 'duration' ? { seconds: 30 } : { reps: 10, weight: 0 };
+      return {
+        ...ex,
+        exercise: { ...ex.exercise, type: newType },
+        sets: ex.sets.map(() => ({ ...newDefaultSet })),
+        weeks: (ex.weeks ?? []).map(w => ({ ...w, sets: (w.sets ?? []).map(() => ({ ...newDefaultSet })) })),
+      };
+    }));
+  };
+
   const updateExerciseRest = (exId: string, value: number) => {
     lastRestRef.current = value;
     updateActiveDay(prev => prev.map(ex => ex.id === exId ? { ...ex, rest: value } : ex));
@@ -1280,6 +1294,11 @@ export default function TemplateEditorPage() {
                             {weekExercise.type === 'weighted' && (
                               <button onClick={e => { e.stopPropagation(); toggleUnit(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: TEAL, borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title="Toggle weight unit">
                                 {ex.unit ?? preferredUnit} ⇄ {(ex.unit ?? preferredUnit) === 'lbs' ? 'kg' : 'lbs'}
+                              </button>
+                            )}
+                            {(weekExercise.type === 'weighted' || weekExercise.type === 'duration') && (
+                              <button onClick={e => { e.stopPropagation(); toggleExerciseType(ex.id); }} style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }} title={Convert to }>
+                                {weekExercise.type === 'weighted' ? 'reps ⇄ sec' : 'sec ⇄ reps'}
                               </button>
                             )}
                             <button onClick={e => { e.stopPropagation(); removeExercise(ex.id); }} style={{ background: 'var(--btn-red-bg)', border: '1px solid var(--btn-red-border)', borderRadius: 8, padding: '4px 12px', color: 'var(--btn-red-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Remove</button>
