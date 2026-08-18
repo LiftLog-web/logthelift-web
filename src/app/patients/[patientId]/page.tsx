@@ -101,6 +101,7 @@ type ExStatus = 'completed' | 'partial' | 'none';
 function exStatus(ex: LoggedExercise): ExStatus {
   const targets = ex.targetSets ?? [];
   if (targets.length === 0) return ex.sets.length > 0 ? 'completed' : 'none';
+  if (ex.sets.length === 0) return 'partial';
 
   let met = 0;
   for (let i = 0; i < targets.length; i++) {
@@ -121,7 +122,6 @@ function exStatus(ex: LoggedExercise): ExStatus {
     }
   }
 
-  if (met === 0 && ex.sets.length === 0) return 'none';
   if (met >= targets.length) return 'completed';
   return 'partial';
 }
