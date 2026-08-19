@@ -52,8 +52,9 @@ function exStatus(ex: LoggedExercise): ExStatus {
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i]; const a = ex.sets[i];
     if (!a) break;
+    const tDuration = t.duration ?? (t as any).seconds;
     if (t.reps !== undefined) { if ((a.reps ?? 0) >= t.reps && (a.weight ?? 0) >= (t.weight ?? 0)) met++; }
-    else if (t.duration !== undefined) { if ((a.duration ?? 0) >= t.duration) met++; }
+    else if (tDuration !== undefined) { if ((a.duration ?? 0) >= tDuration) met++; }
     else if (t.cardioduration !== undefined) { if ((a.cardioduration ?? 0) >= t.cardioduration) met++; }
     else met++;
   }

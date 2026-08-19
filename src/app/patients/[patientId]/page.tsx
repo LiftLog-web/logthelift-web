@@ -112,9 +112,10 @@ function exStatus(ex: LoggedExercise): ExStatus {
       const actualReps   = a.isSplit ? Math.min(a.leftReps   ?? 0, a.rightReps   ?? 0) : (a.reps   ?? 0);
       const actualWeight = a.isSplit ? Math.min(a.leftWeight ?? 0, a.rightWeight ?? 0) : (a.weight ?? 0);
       if (actualReps >= t.reps && actualWeight >= (t.weight ?? 0)) met++;
-    } else if (t.duration !== undefined) {
+    } else if ((t.duration ?? (t as any).seconds) !== undefined) {
+      const tDuration = t.duration ?? (t as any).seconds;
       const actualDuration = a.isSplit ? Math.min(a.leftDuration ?? 0, a.rightDuration ?? 0) : (a.duration ?? 0);
-      if (actualDuration >= t.duration) met++;
+      if (actualDuration >= tDuration) met++;
     } else if (t.cardioduration !== undefined) {
       if ((a.cardioduration ?? 0) >= t.cardioduration) met++;
     } else {
