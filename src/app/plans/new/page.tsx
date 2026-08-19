@@ -442,7 +442,8 @@ function NewPlanInner() {
       : section
         ? section.members.includes(ex.muscleGroup)
         : ex.muscleGroup === muscleFilter;
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = ex.name.toLowerCase().includes(q) || ex.muscleGroup.toLowerCase().includes(q);
     return matchesMuscle && matchesSearch;
   });
 
@@ -1195,7 +1196,25 @@ function NewPlanInner() {
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-dim)' }}>
                                 {pe.exercise.muscleGroup} · {pe.exercise.equipment}
                               </span>
-                              {mediaMap[pe.exercise.name] ? (() => {
+                              {isCollapsed && (() => {
+                                const s0 = pe.sets[0] ?? {};
+                                if (pe.exercise.type === 'weighted') {
+                                  const reps = s0.reps ?? 10;
+                                  const wt = s0.weight ?? 0;
+                                  const u = pe.unit ?? preferredUnit;
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{pe.targetSets} sets · {reps} reps{wt > 0 ? ` @ ${wt} ${u}` : ''}</span>;
+                                }
+                                if (pe.exercise.type === 'duration') {
+                                  const secs = s0.seconds ?? 30;
+                                  const t = secs >= 60 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : `${secs}s`;
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{pe.targetSets} × {t}</span>;
+                                }
+                                if (pe.exercise.type === 'cardio') {
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{s0.minutes ?? 20} min</span>;
+                                }
+                                return null;
+                              })()}
+                              {!isCollapsed && (mediaMap[pe.exercise.name] ? (() => {
                                 const m = mediaMap[pe.exercise.name];
                                 return (
                                   <button
@@ -1216,7 +1235,6 @@ function NewPlanInner() {
                                     setVideoSaved(false);
                                     setVideoMode('url');
                                     setVideoFile(null);
-                                    // auto-fill muscle group from exercise library if available
                                     const exLib = EXERCISES.find(ex => ex.name === pe.exercise.name);
                                     setVideoMuscleGroup(exLib?.muscleGroup ?? (pe.exercise as any).muscleGroup ?? '');
                                   }}
@@ -1225,7 +1243,7 @@ function NewPlanInner() {
                                 >
                                   + Add Video
                                 </button>
-                              )}
+                              ))}
                             </div>
                             {isSuperset && (
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', flexShrink: 0 }}>SS</span>

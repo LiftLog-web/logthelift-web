@@ -965,7 +965,8 @@ export default function TemplateEditorPage() {
       : section
         ? section.members.includes(ex.muscleGroup)
         : ex.muscleGroup === muscleFilter;
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = ex.name.toLowerCase().includes(q) || ex.muscleGroup.toLowerCase().includes(q);
     return matchesMuscle && matchesSearch;
   });
 
@@ -1251,7 +1252,7 @@ export default function TemplateEditorPage() {
                               <span style={{ fontWeight: 700, fontSize: 15 }}>{weekExercise.name}</span>
                               {isOverridden && <span style={{ background: 'var(--badge-purple-bg)', color: 'var(--badge-purple-text)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, marginLeft: 8 }}>Week {activeWeek} sub</span>}
                               <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-dim)' }}>{weekExercise.muscleGroup} · {weekExercise.equipment}</span>
-                              {mediaMap[weekExercise.name] ? (
+                              {!isCollapsed && (mediaMap[weekExercise.name] ? (
                                 <button
                                   onClick={e => { e.stopPropagation(); setDemoPreview({ name: weekExercise.name, ...mediaMap[weekExercise.name] }); }}
                                   style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--badge-teal-bg)', color: 'var(--badge-teal-text)', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
@@ -1267,7 +1268,7 @@ export default function TemplateEditorPage() {
                                 >
                                   + Add Video
                                 </button>
-                              )}
+                              ))}
                               {ex.illustrationUrl && (
                                 <img
                                   src={ex.illustrationUrl}
