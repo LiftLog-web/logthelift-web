@@ -1317,7 +1317,7 @@ export default function TemplateEditorPage() {
                           </div>
                         </div>
 
-                        {isCollapsed && <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>}
+                        {isCollapsed && <p style={{ margin: 0, color: 'var(--text)', fontSize: 13 }}>{collapseSummary}</p>}
 
                         {!isCollapsed && (
                           <div style={{ padding: '0' }}>

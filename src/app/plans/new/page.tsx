@@ -1202,15 +1202,15 @@ function NewPlanInner() {
                                   const reps = s0.reps ?? 10;
                                   const wt = s0.weight ?? 0;
                                   const u = pe.unit ?? preferredUnit;
-                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{pe.targetSets} sets · {reps} reps{wt > 0 ? ` @ ${wt} ${u}` : ''}</span>;
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{pe.targetSets} sets · {reps} reps{wt > 0 ? ` @ ${wt} ${u}` : ''}</span>;
                                 }
                                 if (pe.exercise.type === 'duration') {
                                   const secs = s0.seconds ?? 30;
                                   const t = secs >= 60 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : `${secs}s`;
-                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{pe.targetSets} × {t}</span>;
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{pe.targetSets} × {t}</span>;
                                 }
                                 if (pe.exercise.type === 'cardio') {
-                                  return <span style={{ marginLeft: 10, fontSize: 12, color: TEAL, fontWeight: 600 }}>{s0.minutes ?? 20} min</span>;
+                                  return <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{s0.minutes ?? 20} min</span>;
                                 }
                                 return null;
                               })()}
