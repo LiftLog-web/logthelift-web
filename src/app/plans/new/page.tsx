@@ -909,35 +909,39 @@ function NewPlanInner() {
       </div>
 
       {/* Plan meta */}
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '24px 32px 20px' }}>
-        <input
-          value={planName}
-          onChange={e => setPlanName(e.target.value)}
-          placeholder="Plan name"
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 6 }}
-        />
-        <select
-          value={patientId}
-          onChange={e => setPatientId(e.target.value)}
-          style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, outline: 'none', color: 'var(--badge-purple-text)', fontSize: 14, fontWeight: 600, padding: '7px 12px', marginBottom: 12, cursor: 'pointer', width: '100%' }}
-        >
-          <option value="">Select patient…</option>
-          {patients.map(p => (
-            <option key={p.id} value={p.id} style={{ background: 'var(--card)' }}>{p.display_name}</option>
-          ))}
-        </select>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '10px 32px 12px' }}>
+        {/* Row 1: Name | Patient | Times/Week */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 6 }}>
+          <input
+            value={planName}
+            onChange={e => setPlanName(e.target.value)}
+            placeholder="Plan name"
+            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 20, fontWeight: 800, flex: 1, minWidth: 0, padding: 0 }}
+          />
+          <select
+            value={patientId}
+            onChange={e => setPatientId(e.target.value)}
+            style={{ background: 'var(--badge-purple-bg)', border: '1px solid var(--btn-purple-border)', borderRadius: 10, outline: 'none', color: 'var(--badge-purple-text)', fontSize: 13, fontWeight: 600, padding: '5px 10px', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <option value="">Select patient…</option>
+            {patients.map(p => (
+              <option key={p.id} value={p.id} style={{ background: 'var(--card)' }}>{p.display_name}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Times / Week</span>
+            <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>−</button>
+            <span style={{ width: 24, textAlign: 'center', fontWeight: 700, fontSize: 16, color: TEAL }}>{frequencyPerWeek}</span>
+            <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</button>
+          </div>
+        </div>
+        {/* Row 2: Description */}
         <input
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="Description (optional) — e.g. Week 1 strength program for knee rehab"
-          style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0, marginBottom: 14 }}
+          placeholder="Description (optional)"
+          style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 13, width: '100%', padding: 0 }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Times / Week</span>
-          <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>−</button>
-          <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
-          <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
-        </div>
       </div>
 
       {/* Two-column builder */}

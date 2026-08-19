@@ -1020,15 +1020,19 @@ export default function TemplateEditorPage() {
       </div>
 
       {/* Pinned: Template name + description */}
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 32px 16px', flexShrink: 0 }}>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 28, fontWeight: 800, width: '100%', padding: 0, marginBottom: 6 }} />
-        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional) — e.g. 4-week hypertrophy block for intermediate lifters" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 14, width: '100%', padding: 0, marginBottom: 14 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Times / Week</span>
-          <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>−</button>
-          <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: 18, color: TEAL }}>{frequencyPerWeek}</span>
-          <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>+</button>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: '10px 32px 12px', flexShrink: 0 }}>
+        {/* Row 1: Name | Times/Week */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 6 }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 20, fontWeight: 800, flex: 1, minWidth: 0, padding: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Times / Week</span>
+            <button onClick={() => setFrequencyPerWeek(v => Math.max(1, v - 1))} style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>−</button>
+            <span style={{ width: 24, textAlign: 'center', fontWeight: 700, fontSize: 16, color: TEAL }}>{frequencyPerWeek}</span>
+            <button onClick={() => setFrequencyPerWeek(v => Math.min(7, v + 1))} style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</button>
+          </div>
         </div>
+        {/* Row 2: Description */}
+        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-muted)', fontSize: 13, width: '100%', padding: 0 }} />
       </div>
 
       {/* Two-column body */}
