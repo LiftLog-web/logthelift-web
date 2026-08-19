@@ -252,6 +252,15 @@ export default function TemplateEditorPage() {
   // ── Load ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    document.body.style.height = '100dvh';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.height = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
@@ -876,6 +885,7 @@ export default function TemplateEditorPage() {
                 <input type="number" value={set.weight ?? ''} onChange={e => updateSet(ex.id, setIdx, 'weight', Number(e.target.value))} onFocus={e => e.target.select()} style={inputStyle} placeholder="0" />
                 <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{unit}</span>
               </div>
+              <button onClick={() => addDropSet(ex.id, setIdx)} style={{ marginLeft: 4, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>↓ Drop</button>
             </>
           )}
 
@@ -903,9 +913,6 @@ export default function TemplateEditorPage() {
           </div>
         ))}
 
-        {exType === 'weighted' && (
-          <button onClick={() => addDropSet(ex.id, setIdx)} style={{ alignSelf: 'flex-start', marginLeft: 28, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>↓ Drop Set</button>
-        )}
       </div>
     );
   };
@@ -1225,15 +1232,15 @@ export default function TemplateEditorPage() {
                           background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
                           border: `1px solid ${isDragOver ? `${TEAL}80` : isSuperset ? `${PURPLE}60` : isSupersetFirst ? `${PURPLE}99` : `${PURPLE}30`}`,
                           borderRadius: `${topR}px ${topR}px ${bottomR}px ${bottomR}px`,
-                          padding: '18px 20px',
+                          padding: '12px 16px',
                           opacity: isDragging ? 0.4 : 1,
-                          marginBottom: showConnector ? 0 : 12,
+                          marginBottom: showConnector ? 0 : 8,
                           cursor: 'grab',
                           transition: 'border-color 0.15s, opacity 0.15s',
                         }}
                       >
                         {/* Card header — left side clicks to collapse */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isCollapsed ? 0 : 14, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isCollapsed ? 0 : 8, flexWrap: 'wrap' }}>
                           <div onClick={() => toggleCollapse(ex.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' }}>
                             <span style={{ color: 'var(--text-faint)', fontSize: 16, userSelect: 'none', flexShrink: 0 }}>⠿</span>
                             <div>
@@ -1308,8 +1315,8 @@ export default function TemplateEditorPage() {
                         {isCollapsed && <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: 13 }}>{collapseSummary}</p>}
 
                         {!isCollapsed && (
-                          <div style={{ padding: '4px 0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                          <div style={{ padding: '0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>SETS</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <button onClick={() => removeSet(ex.id, weekSets.length - 1)} disabled={weekSets.length <= 1} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--input-bg)', color: 'var(--text)', cursor: weekSets.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 18, fontWeight: 700, lineHeight: 1, opacity: weekSets.length <= 1 ? 0.3 : 1 }}>−</button>
@@ -1318,19 +1325,19 @@ export default function TemplateEditorPage() {
                               </div>
                             </div>
                             {weekSets.map((set, setIdx) => renderSetRow(ex, set, setIdx, weekSets.length))}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Rest between sets</span>
                               <input type="number" min={0} value={Math.floor((ex.rest ?? lastRestRef.current) / 60)} onChange={e => updateExerciseRest(ex.id, Number(e.target.value) * 60 + ((ex.rest ?? lastRestRef.current) % 60))} onFocus={e => e.target.select()} style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} />
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>m</span>
                               <input type="number" min={0} max={59} value={(ex.rest ?? lastRestRef.current) % 60} onChange={e => updateExerciseRest(ex.id, Math.floor((ex.rest ?? lastRestRef.current) / 60) * 60 + Math.min(59, Number(e.target.value)))} onFocus={e => e.target.select()} style={{ width: 48, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 8px', color: 'var(--text)', fontSize: 13, outline: 'none', textAlign: 'center' }} />
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>s</span>
                             </div>
-                            <div style={{ marginTop: 8 }}>
+                            <div style={{ marginTop: 4 }}>
                               <input
                                 value={ex.notes ?? ''}
                                 onChange={e => updateNotes(ex.id, e.target.value)}
                                 placeholder="Practitioner notes (e.g. focus on form, keep elbows tucked)…"
-                                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                                style={{ width: '100%', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '6px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                               />
                             </div>
                           </div>

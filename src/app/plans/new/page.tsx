@@ -137,6 +137,15 @@ function NewPlanInner() {
   const { register: registerGuard, unregister: unregisterGuard } = useNavGuard();
 
   useEffect(() => {
+    document.body.style.height = '100dvh';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.height = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.push('/login'); return; }
@@ -1164,14 +1173,14 @@ function NewPlanInner() {
                           background: isDragOver ? 'rgba(95,207,191,0.06)' : 'var(--card)',
                           border: `1px solid ${isDragOver ? `${TEAL}80` : isSuperset ? `${PURPLE}60` : isSupersetFirst ? `${PURPLE}99` : `${PURPLE}30`}`,
                           borderRadius: `${topR}px ${topR}px ${bottomR}px ${bottomR}px`,
-                          padding: '18px 20px',
+                          padding: '12px 16px',
                           opacity: isDragging ? 0.4 : 1,
                           transition: 'opacity 0.15s, border-color 0.15s, background 0.15s',
-                          marginBottom: showConnector ? 0 : 12,
+                          marginBottom: showConnector ? 0 : 8,
                         }}
                       >
                         {/* Card header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isCollapsed ? 0 : 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isCollapsed ? 0 : 8 }}>
                           <div
                             onClick={() => setCollapsedExercises(prev => { const n = new Set(prev); n.has(pe.id) ? n.delete(pe.id) : n.add(pe.id); return n; })}
                             style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' }}
@@ -1267,7 +1276,7 @@ function NewPlanInner() {
 
                         {!isCollapsed && (<>
                         {/* Sets header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>SETS</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <button
@@ -1310,6 +1319,10 @@ function NewPlanInner() {
                                     />
                                     <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{pe.unit ?? preferredUnit}</span>
                                   </div>
+                                  <button
+                                    onClick={() => addDropSet(pe.id, si)}
+                                    style={{ marginLeft: 4, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                  >↓ Drop</button>
                                 </>
                               )}
 
@@ -1366,18 +1379,12 @@ function NewPlanInner() {
                                   >✕</button>
                                 </div>
                               ))}
-                              {pe.exercise.type === 'weighted' && (
-                                <button
-                                  onClick={() => addDropSet(pe.id, si)}
-                                  style={{ alignSelf: 'flex-start', marginLeft: 30, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 10px', color: TEAL, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                                >↓ Drop Set</button>
-                              )}
                             </div>
                           ))}
                         </div>
 
                         {/* Shared rest between sets */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rest between sets</span>
                           <input
                             type="number" min={0}
@@ -1398,12 +1405,12 @@ function NewPlanInner() {
                         </div>
 
                         {/* Practitioner notes */}
-                        <div style={{ marginTop: 12 }}>
+                        <div style={{ marginTop: 4 }}>
                           <input
                             value={pe.notes}
                             onChange={e => updateNotes(pe.id, e.target.value)}
                             placeholder="Practitioner notes (e.g. focus on form, keep elbows tucked)…"
-                            style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
                         </>)}
