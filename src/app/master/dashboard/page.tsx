@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
@@ -17,6 +17,16 @@ interface Stats {
   enjoyment_count:       number;
   active_employer_count: number;
   total_employee_count:  number;
+}
+
+interface DayRating {
+  plan_name:         string;
+  day_id:            string;
+  day_label:         string;
+  day_order:         number;
+  avg_effectiveness: number | null;
+  avg_enjoyment:     number | null;
+  rating_count:      number;
 }
 
 interface UpcomingProgram {
@@ -54,6 +64,36 @@ export default function MasterDashboardPage() {
   const [upcoming, setUpcoming]               = useState<UpcomingProgram[]>([]);
   const [loading, setLoading]                 = useState(true);
   const [monthlyWorkouts, setMonthlyWorkouts] = useState<number | null>(null);
+  const [drillMetric, setDrillMetric]         = useState<'effectiveness' | 'enjoyment' | null>(null);
+  const [drillData, setDrillData]             = useState<DayRating[] | null>(null);
+  const [drillLoading, setDrillLoading]       = useState(false);
+  const drillRef = useRef<HTMLDivElement>(null);
+
+  const closeDrill = useCallback(() => {
+    setDrillMetric(null);
+    setDrillData(null);
+  }, []);
+
+  const openDrill = useCallback(async (metric: 'effectiveness' | 'enjoyment') => {
+    setDrillMetric(metric);
+    setDrillData(null);
+    setDrillLoading(true);
+    const sb = getSupabase();
+    const { data } = await sb.rpc('get_featured_program_day_ratings', { p_practitioner_id: MASTER_ID });
+    setDrillData((data as DayRating[]) ?? []);
+    setDrillLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!drillMetric) return;
+    const handler = (e: MouseEvent) => {
+      if (drillRef.current && !drillRef.current.contains(e.target as Node)) {
+        closeDrill();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [drillMetric, closeDrill]);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -155,7 +195,10 @@ export default function MasterDashboardPage() {
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>across all employees</p>
           </div>
 
-          <div style={{ background: 'var(--card)', border: `1px solid ${PURPLE}30`, borderRadius: 16, padding: '22px 20px' }}>
+          <div
+            onClick={() => stats?.avg_effectiveness != null && openDrill('effectiveness')}
+            style={{ background: 'var(--card)', border: `1px solid ${PURPLE}30`, borderRadius: 16, padding: '22px 20px', cursor: stats?.avg_effectiveness != null ? 'pointer' : 'default', userSelect: 'none' }}
+          >
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Avg Effectiveness</p>
             {stats?.avg_effectiveness != null ? (
               <>
@@ -167,13 +210,17 @@ export default function MasterDashboardPage() {
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>
                   {stats.effectiveness_count} rating{stats.effectiveness_count !== 1 ? 's' : ''}
                 </p>
+                <p style={{ fontSize: 11, color: PURPLE, margin: '8px 0 0', fontWeight: 600 }}>View breakdown →</p>
               </>
             ) : (
               <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-dim)', margin: 0 }}>—</p>
             )}
           </div>
 
-          <div style={{ background: 'var(--card)', border: `1px solid ${TEAL}30`, borderRadius: 16, padding: '22px 20px' }}>
+          <div
+            onClick={() => stats?.avg_enjoyment != null && openDrill('enjoyment')}
+            style={{ background: 'var(--card)', border: `1px solid ${TEAL}30`, borderRadius: 16, padding: '22px 20px', cursor: stats?.avg_enjoyment != null ? 'pointer' : 'default', userSelect: 'none' }}
+          >
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 10px' }}>Avg Enjoyment</p>
             {stats?.avg_enjoyment != null ? (
               <>
@@ -185,6 +232,7 @@ export default function MasterDashboardPage() {
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>
                   {stats.enjoyment_count} rating{stats.enjoyment_count !== 1 ? 's' : ''}
                 </p>
+                <p style={{ fontSize: 11, color: TEAL, margin: '8px 0 0', fontWeight: 600 }}>View breakdown →</p>
               </>
             ) : (
               <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-dim)', margin: 0 }}>—</p>
@@ -268,6 +316,135 @@ export default function MasterDashboardPage() {
         </div>
 
       </main>
+
+      {/* Ratings drill-down modal */}
+      {drillMetric && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, padding: '40px 24px' }}>
+          <div
+            ref={drillRef}
+            style={{ background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 24, width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}
+          >
+            {/* Modal header */}
+            <div style={{ padding: '24px 28px 18px', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)' }}>
+                  {drillMetric === 'effectiveness' ? 'Effectiveness' : 'Enjoyment'} Breakdown
+                </h2>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                  Per workout day · plans ranked {drillMetric === 'effectiveness' ? 'by effectiveness' : 'by enjoyment'}
+                </p>
+              </div>
+              <button
+                onClick={closeDrill}
+                style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}
+              >×</button>
+            </div>
+
+            {/* Scrollable content */}
+            <div style={{ overflowY: 'auto', padding: '20px 28px 28px', flex: 1 }}>
+              {drillLoading && (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', margin: 0 }}>Loading…</p>
+              )}
+              {!drillLoading && drillData?.length === 0 && (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', margin: 0, fontSize: 14 }}>No rated workouts found.</p>
+              )}
+              {!drillLoading && drillData && drillData.length > 0 && (() => {
+                const color      = drillMetric === 'effectiveness' ? PURPLE : TEAL;
+                const otherColor = drillMetric === 'effectiveness' ? TEAL : PURPLE;
+                const metricKey  = drillMetric === 'effectiveness' ? 'avg_effectiveness' as const : 'avg_enjoyment' as const;
+                const otherKey   = drillMetric === 'effectiveness' ? 'avg_enjoyment' as const : 'avg_effectiveness' as const;
+                const otherLabel = drillMetric === 'effectiveness' ? 'enj' : 'eff';
+
+                // Group by plan
+                const planMap = new Map<string, DayRating[]>();
+                drillData.forEach(row => {
+                  const existing = planMap.get(row.plan_name);
+                  if (existing) existing.push(row);
+                  else planMap.set(row.plan_name, [row]);
+                });
+
+                // Sort plans by weighted avg of focused metric (best first)
+                const sortedPlans = [...planMap.entries()].sort((a, b) => {
+                  const wavg = (rows: DayRating[], key: typeof metricKey) => {
+                    let total = 0, count = 0;
+                    rows.forEach(r => { if (r[key] != null) { total += (r[key] as number) * r.rating_count; count += r.rating_count; } });
+                    return count > 0 ? total / count : 0;
+                  };
+                  return wavg(b[1], metricKey) - wavg(a[1], metricKey);
+                });
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* Column header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ width: 130, flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Day</span>
+                      <span style={{ flex: 1, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Score</span>
+                      <span style={{ width: 36, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color }}>★</span>
+                      <span style={{ width: 44, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: otherColor }}>{otherLabel}</span>
+                      <span style={{ width: 28, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>#</span>
+                    </div>
+
+                    {sortedPlans.map(([planName, days]) => {
+                      const sortedDays = [...days].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
+                      const totalCount = days.reduce((s, r) => s + r.rating_count, 0);
+                      const wavgNum    = days.reduce((s, r) => s + ((r[metricKey] ?? 0) * r.rating_count), 0) / (totalCount || 1);
+
+                      return (
+                        <div key={planName}>
+                          {/* Plan row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid var(--border-subtle)` }}>
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {planName}
+                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{totalCount} ratings</span>
+                            <span style={{ fontSize: 18, fontWeight: 800, color, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                              {wavgNum.toFixed(1)}<span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>/5</span>
+                            </span>
+                          </div>
+
+                          {/* Day rows */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                            {sortedDays.map(day => {
+                              const score      = day[metricKey];
+                              const otherScore = day[otherKey];
+                              const barPct     = score != null ? Math.round((score / 5) * 100) : 0;
+
+                              return (
+                                <div key={day.day_id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                  {/* Day label */}
+                                  <span style={{ width: 130, flexShrink: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {day.day_label || `Day ${day.day_order}`}
+                                  </span>
+                                  {/* Bar */}
+                                  <div style={{ flex: 1, height: 7, background: `${color}20`, borderRadius: 99, overflow: 'hidden' }}>
+                                    <div style={{ width: `${barPct}%`, height: '100%', background: color, borderRadius: 99 }} />
+                                  </div>
+                                  {/* Score */}
+                                  <span style={{ width: 36, textAlign: 'right', flexShrink: 0, fontSize: 13, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+                                    {score != null ? score.toFixed(1) : '—'}
+                                  </span>
+                                  {/* Other metric */}
+                                  <span style={{ width: 44, textAlign: 'right', flexShrink: 0, fontSize: 11, fontWeight: 600, color: otherColor, fontVariantNumeric: 'tabular-nums' }}>
+                                    {otherScore != null ? otherScore.toFixed(1) : '—'}
+                                  </span>
+                                  {/* Rating count */}
+                                  <span style={{ width: 28, textAlign: 'right', flexShrink: 0, fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {day.rating_count}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
