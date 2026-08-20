@@ -54,7 +54,7 @@ function ScoreDisplay({ value, color, size = 44 }: { value: number; color: strin
       <span style={{ fontSize: size, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>
         {value.toFixed(1)}
       </span>
-      <span style={{ fontSize: Math.round(size * 0.38), fontWeight: 700, color, opacity: 0.45 }}>
+      <span style={{ fontSize: Math.round(size * 0.38), fontWeight: 700, color, opacity: 0.65 }}>
         /5
       </span>
     </div>
@@ -438,16 +438,6 @@ export default function MasterDashboardPage() {
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                    {/* Column header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ width: 16, flexShrink: 0 }} />
-                      <span style={{ width: 120, flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>Day</span>
-                      <span style={{ flex: 1, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>Score</span>
-                      <span style={{ width: 36, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color }}>★</span>
-                      <span style={{ width: 44, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: otherColor }}>{otherLabel}</span>
-                      <span style={{ width: 24, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>#</span>
-                    </div>
-
                     {sortedPlans.map(([planName, days]) => {
                       const sortedDays    = [...days].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
                       const sortedByScore = [...days].sort((a, b) => ((b[metricKey] ?? 0) - (a[metricKey] ?? 0)));
@@ -475,7 +465,7 @@ export default function MasterDashboardPage() {
                               <span style={{ fontSize: 20, fontWeight: 900, color, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
                                 {wavgNum.toFixed(1)}
                               </span>
-                              <span style={{ fontSize: 11, fontWeight: 700, color, opacity: 0.45 }}>/5</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color, opacity: 0.65 }}>/5</span>
                             </div>
                           </div>
 
@@ -508,6 +498,16 @@ export default function MasterDashboardPage() {
                               </div>
                             </div>
                           )}
+
+                          {/* Column header */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 10px', marginBottom: 2 }}>
+                            <span style={{ width: 16, flexShrink: 0 }} />
+                            <span style={{ width: 120, flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>Day</span>
+                            <span style={{ flex: 1, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>Score</span>
+                            <span style={{ width: 36, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color }}>★</span>
+                            <span style={{ width: 44, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: otherColor }}>{otherLabel}</span>
+                            <span style={{ width: 24, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-dim)' }}>#</span>
+                          </div>
 
                           {/* Day rows */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
