@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SHIMMER_CSS } from '@/components/Skeleton';
 import { AlertTriangle } from 'lucide-react';
@@ -112,6 +112,10 @@ export default function DashboardPage() {
   const [targetEdits, setTargetEdits]   = useState<Record<string, string>>({});
   const [savingTarget, setSavingTarget] = useState<Record<string, boolean>>({});
   const [expandedPtId, setExpandedPtId] = useState<string | null>(null);
+  const [adherenceOpen, setAdherenceOpen] = useState(false);
+  const [workoutsTooltipOpen, setWorkoutsTooltipOpen] = useState(false);
+  const adherenceRef = useRef<HTMLDivElement>(null);
+  const workoutsRef  = useRef<HTMLTableCellElement>(null);
 
   useEffect(() => {
     getSupabase().auth.getSession().then(({ data }) => {
@@ -121,6 +125,19 @@ export default function DashboardPage() {
         setAuthState('login');
       }
     });
+  }, []);
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (adherenceRef.current && !adherenceRef.current.contains(e.target as Node)) {
+        setAdherenceOpen(false);
+      }
+      if (workoutsRef.current && !workoutsRef.current.contains(e.target as Node)) {
+        setWorkoutsTooltipOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
 
   const loadDashboard = async (userId: string) => {
@@ -480,15 +497,35 @@ export default function DashboardPage() {
         {/* Summary header */}
         <div className="summary-grid">
           <StatCard
-            label="Active PTs"
+            label="Active Practitioners"
             value={`${activePTs} / ${gym?.max_pts ?? '—'}`}
             color={TEAL}
           />
-          <StatCard
-            label="Avg Adherence"
-            value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
-            color={avgAdherence === null ? 'var(--text-muted)' : avgAdherence >= 70 ? TEAL : avgAdherence >= 50 ? YELLOW : '#EF4444'}
-          />
+          <div style={{ position: 'relative' }} ref={adherenceRef}>
+            <StatCard
+              label="Avg Adherence"
+              value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
+              color={avgAdherence === null ? 'var(--text-muted)' : avgAdherence >= 70 ? TEAL : avgAdherence >= 50 ? YELLOW : '#EF4444'}
+              onInfo={() => setAdherenceOpen(o => !o)}
+            />
+            {adherenceOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 200, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', minWidth: 230, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}>
+                <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Adherence by Practitioner</p>
+                {acceptedPts.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>No active practitioners</p>
+                ) : (
+                  acceptedPts.map((pt, i) => (
+                    <div key={pt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderTop: i === 0 ? '1px solid var(--border-subtle)' : '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: 'var(--text)', fontSize: 13 }}>{pt.ptName}</span>
+                      <span style={{ color: pt.adherencePct === null ? 'var(--text-dim)' : pt.adherencePct >= 70 ? TEAL : pt.adherencePct >= 50 ? YELLOW : '#EF4444', fontWeight: 700, fontSize: 13 }}>
+                        {pt.adherencePct !== null ? `${pt.adherencePct}%` : '—'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <StatCard
             label="Total Patients"
             value={String(totalPatients)}
@@ -506,7 +543,7 @@ export default function DashboardPage() {
         {/* PT roster */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>PT Roster</h2>
+            <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Practitioner Roster</h2>
           </div>
 
           {loadingData ? (
@@ -516,19 +553,29 @@ export default function DashboardPage() {
             </div>
           ) : pts.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)' }}>
-              No PTs invited yet. Use the LiftLog app to invite PTs to your gym.
+              No practitioners invited yet. Use the LiftLog app to invite practitioners to your gym.
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ color: 'var(--text)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <th style={{ padding: '10px 20px', textAlign: 'left',   fontWeight: 600 }}>PT</th>
+                  <th style={{ padding: '10px 20px', textAlign: 'left',   fontWeight: 600 }}>Practitioner</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Patients</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Plans</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, cursor: 'help', whiteSpace: 'nowrap' }}
-                      title="Overall workout adherence · completed workouts ÷ prescribed workouts · all time, current week excluded">
-                    Logged Workouts ℹ
+                  <th ref={workoutsRef} style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap', position: 'relative' }}>
+                    Logged Workouts{' '}
+                    <button
+                      onClick={() => setWorkoutsTooltipOpen(o => !o)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13, padding: '0 2px', lineHeight: 1, verticalAlign: 'middle' }}
+                    >
+                      ℹ
+                    </button>
+                    {workoutsTooltipOpen && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', minWidth: 270, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', fontSize: 12, color: 'var(--text)', textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', lineHeight: 1.5 }}>
+                        Overall workout adherence — completed workouts ÷ prescribed workouts — all time (current week excluded)
+                      </div>
+                    )}
                   </th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Satisfaction</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Last Active</th>
@@ -706,12 +753,17 @@ function SkeletonRow({ first }: { first: boolean }) {
   );
 }
 
-function StatCard({ label, value, sub, color, badge, badgeColor }: {
-  label: string; value: string; sub?: string; color: string; badge?: string; badgeColor?: string;
+function StatCard({ label, value, sub, color, badge, badgeColor, onInfo }: {
+  label: string; value: string; sub?: string; color: string; badge?: string; badgeColor?: string; onInfo?: () => void;
 }) {
   return (
     <div style={{ background: 'var(--card)', border: `1px solid ${color}30`, borderRadius: 16, padding: '20px 24px' }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{label}</p>
+        {onInfo && (
+          <button onClick={onInfo} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13, padding: '0 2px', lineHeight: 1, display: 'flex', alignItems: 'center' }}>ℹ</button>
+        )}
+      </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <p style={{ color, fontSize: 28, fontWeight: 800, margin: 0 }}>{value}</p>
         {badge && (
