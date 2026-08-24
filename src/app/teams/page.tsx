@@ -215,7 +215,7 @@ export default function TeamsPage() {
               const menuId     = `menu-${team.id}`;
 
               return (
-                <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, overflow: 'hidden' }}>
+                <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
 
                   {/* Card header */}
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -337,7 +337,7 @@ export default function TeamsPage() {
 
             {/* Unassigned column */}
             {unassigned.length > 0 && (
-              <div style={{ border: '2px dashed rgba(245,158,11,0.40)', background: 'rgba(245,158,11,0.03)', borderRadius: 18, overflow: 'hidden' }}>
+              <div style={{ border: '2px dashed rgba(245,158,11,0.40)', background: 'rgba(245,158,11,0.03)', borderRadius: 18 }}>
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px dashed #F59E0B', flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
