@@ -84,6 +84,18 @@ function toDateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
+function relativeTime(dateStr: string): string {
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const diffMs = new Date(dateStr).getTime() - Date.now();
+  const diffDays = Math.round(diffMs / 86400000);
+  if (diffDays === 0) return 'today';
+  if (Math.abs(diffDays) < 7) return rtf.format(diffDays, 'day');
+  const diffWeeks = Math.round(diffDays / 7);
+  if (Math.abs(diffWeeks) < 5) return rtf.format(diffWeeks, 'week');
+  const diffMonths = Math.round(diffDays / 30);
+  return rtf.format(diffMonths, 'month');
+}
+
 function statusBadge(status: string) {
   const styles: Record<string, { bg: string; color: string; label: string }> = {
     accepted: { bg: 'var(--badge-teal-bg)',   color: 'var(--badge-teal-text)',   label: 'Active'   },
@@ -600,7 +612,13 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {pts.map((pt, i) => (
-                  <tr key={pt.id} style={{ borderTop: '1px solid var(--border-subtle)', background: i % 2 === 0 ? 'transparent' : 'var(--card)' }}>
+                  <tr key={pt.id} style={{
+                    borderTop: '1px solid var(--border-subtle)',
+                    background: i % 2 === 0 ? 'transparent' : 'var(--card)',
+                    boxShadow: pt.status === 'accepted' && pt.adherencePct !== null
+                      ? `inset 4px 0 0 ${pt.adherencePct >= 70 ? TEAL : pt.adherencePct >= 50 ? 'var(--badge-yellow-text)' : '#EF4444'}`
+                      : 'none',
+                  }}>
 
                     {/* PT name + email */}
                     <td style={{ padding: '14px 20px' }}>
@@ -636,6 +654,22 @@ export default function DashboardPage() {
                                   {pt.adherencePct}%
                                 </span>
                               </span>
+                              {/* 6-week sparkline */}
+                              {pt.weeklyAdherence.length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 28, marginTop: 2 }}>
+                                  {pt.weeklyAdherence.slice(-6).map((w, idx, arr) => (
+                                    <div
+                                      key={w.weekStart}
+                                      style={{
+                                        width: 8,
+                                        height: Math.max(2, Math.round(w.pct * 28 / 100)),
+                                        borderRadius: 2,
+                                        background: idx === arr.length - 1 ? TEAL : `${TEAL}66`,
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                               {/* Weekly breakdown toggle */}
                               {pt.weeklyAdherence.length > 0 && (
                                 <button
@@ -715,7 +749,7 @@ export default function DashboardPage() {
                     {/* Last Active */}
                     <td style={{ padding: '14px 14px', textAlign: 'center', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {pt.status === 'accepted' && pt.lastActive
-                        ? new Date(pt.lastActive).toLocaleDateString('en-CA')
+                        ? relativeTime(pt.lastActive)
                         : '—'}
                     </td>
                   </tr>
