@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import { Sk, SkPage, SHIMMER_CSS } from '@/components/Skeleton';
 import { AlertTriangle } from 'lucide-react';
@@ -130,6 +130,8 @@ export default function DashboardPage() {
   const adherenceRef = useRef<HTMLDivElement>(null);
   const workoutsBtnRef = useRef<HTMLButtonElement>(null);
   const workoutsTooltipRef = useRef<HTMLDivElement>(null);
+  const [resendingInvite, setResendingInvite] = useState<Record<string, boolean>>({});
+  const [resendSent, setResendSent] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     getSupabase().auth.getSession().then(({ data }) => {
@@ -360,6 +362,14 @@ export default function DashboardPage() {
     setSavingTarget(s => ({ ...s, [ptLinkId]: false }));
   };
 
+  const handleResendInvite = async (pt: PTRow) => {
+    setResendingInvite(s => ({ ...s, [pt.id]: true }));
+    await getSupabase().from('gym_pt_links').update({ invited_at: new Date().toISOString() }).eq('id', pt.id);
+    setResendingInvite(s => ({ ...s, [pt.id]: false }));
+    setResendSent(s => ({ ...s, [pt.id]: true }));
+    setTimeout(() => setResendSent(s => ({ ...s, [pt.id]: false })), 3000);
+  };
+
   const activePTs  = pts.filter(p => p.status === 'accepted').length;
   const pendingPTs = pts.filter(p => p.status === 'pending').length;
 
@@ -486,6 +496,7 @@ export default function DashboardPage() {
       <style>{`
         .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
         @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
 
       {/* Nav */}
@@ -612,7 +623,8 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {pts.map((pt, i) => (
-                  <tr key={pt.id} style={{
+                  <Fragment key={pt.id}>
+                  <tr style={{
                     borderTop: '1px solid var(--border-subtle)',
                     background: i % 2 === 0 ? 'transparent' : 'var(--card)',
                     boxShadow: pt.status === 'accepted' && pt.adherencePct !== null
@@ -620,10 +632,18 @@ export default function DashboardPage() {
                       : 'none',
                   }}>
 
-                    {/* PT name + email */}
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{pt.ptName}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{pt.ptEmail}</div>
+                    {/* PT name + email — click to expand row */}
+                    <td
+                      style={{ padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => setExpandedPtId(expandedPtId === pt.id ? null : pt.id)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{pt.ptName}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{pt.ptEmail}</div>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 10, flexShrink: 0, display: 'inline-block', transform: expandedPtId === pt.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -668,44 +688,6 @@ export default function DashboardPage() {
                                       }}
                                     />
                                   ))}
-                                </div>
-                              )}
-                              {/* Weekly breakdown toggle */}
-                              {pt.weeklyAdherence.length > 0 && (
-                                <button
-                                  onClick={() => setExpandedPtId(expandedPtId === pt.id ? null : pt.id)}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, textDecoration: 'underline', padding: 0 }}
-                                >
-                                  {expandedPtId === pt.id ? 'Hide weeks ▲' : 'Weekly breakdown ▼'}
-                                </button>
-                              )}
-                              {/* Per-week breakdown table */}
-                              {expandedPtId === pt.id && (
-                                <div style={{ marginTop: 4, background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', width: 190 }}>
-                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                                    <thead>
-                                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                                        <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600 }}>Week of</th>
-                                        <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Done/Goal</th>
-                                        <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Rate</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {pt.weeklyAdherence.slice().reverse().map(w => (
-                                        <tr key={w.weekStart} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                                          <td style={{ padding: '4px 8px', color: 'var(--text-muted)' }}>
-                                            {new Date(w.weekStart + 'T00:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}
-                                          </td>
-                                          <td style={{ padding: '4px 8px', textAlign: 'center', color: 'var(--text)' }}>
-                                            {w.logged}/{w.prescribed}
-                                          </td>
-                                          <td style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 700, color: w.pct >= 80 ? TEAL : w.pct >= 50 ? YELLOW : '#EF4444' }}>
-                                            {w.pct}%
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
                                 </div>
                               )}
                             </>
@@ -753,6 +735,96 @@ export default function DashboardPage() {
                         : '—'}
                     </td>
                   </tr>
+                  {expandedPtId === pt.id && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 0, background: 'var(--card-alt)', borderTop: '1px solid var(--border-subtle)' }}>
+                        <div style={{ padding: '16px 24px 20px' }}>
+                          {pt.status === 'pending' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                              <button
+                                onClick={() => handleResendInvite(pt)}
+                                disabled={resendingInvite[pt.id] || resendSent[pt.id]}
+                                style={{
+                                  background: resendSent[pt.id] ? 'var(--badge-teal-bg)' : 'none',
+                                  border: `1px solid ${resendSent[pt.id] ? TEAL : 'var(--border)'}`,
+                                  borderRadius: 8,
+                                  padding: '8px 16px',
+                                  color: resendSent[pt.id] ? TEAL : 'var(--text)',
+                                  cursor: resendingInvite[pt.id] || resendSent[pt.id] ? 'default' : 'pointer',
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  transition: 'all 0.2s',
+                                }}
+                              >
+                                {resendingInvite[pt.id]
+                                  ? <><span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>⟳</span> Sending…</>
+                                  : resendSent[pt.id]
+                                  ? <>✓ Sent</>
+                                  : 'Re-send Invite'}
+                              </button>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                                Originally invited {relativeTime(pt.invited_at)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                              {(pt.avgEffectiveness !== null || pt.avgEnjoyment !== null) && (
+                                <div style={{ display: 'flex', gap: 24 }}>
+                                  {pt.avgEffectiveness !== null && (
+                                    <ScoreDisplay value={pt.avgEffectiveness} count={pt.effectivenessCount} label="Effectiveness" color={YELLOW} />
+                                  )}
+                                  {pt.avgEnjoyment !== null && (
+                                    <ScoreDisplay value={pt.avgEnjoyment} count={pt.enjoymentCount} label="Enjoyment" color={TEAL} />
+                                  )}
+                                </div>
+                              )}
+                              {pt.weeklyAdherence.length >= 2 && (
+                                <div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>6-Week Trend</div>
+                                  <AdherencePolyline data={pt.weeklyAdherence} />
+                                </div>
+                              )}
+                              {pt.weeklyAdherence.length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Weekly Breakdown</div>
+                                  <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', width: 190 }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                                      <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                                          <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600 }}>Week of</th>
+                                          <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Done/Goal</th>
+                                          <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600 }}>Rate</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {pt.weeklyAdherence.slice().reverse().map(w => (
+                                          <tr key={w.weekStart} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                            <td style={{ padding: '4px 8px', color: 'var(--text-muted)' }}>
+                                              {new Date(w.weekStart + 'T00:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}
+                                            </td>
+                                            <td style={{ padding: '4px 8px', textAlign: 'center', color: 'var(--text)' }}>
+                                              {w.logged}/{w.prescribed}
+                                            </td>
+                                            <td style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 700, color: w.pct >= 80 ? TEAL : w.pct >= 50 ? YELLOW : '#EF4444' }}>
+                                              {w.pct}%
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -760,6 +832,41 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ScoreDisplay({ value, count, label, color }: { value: number; count: number; label: string; color: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: 32, fontWeight: 800, color, lineHeight: 1 }}>
+        {value.toFixed(1)}<span style={{ fontSize: 16, opacity: 0.65 }}>/5</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{count} rating{count !== 1 ? 's' : ''}</div>
+    </div>
+  );
+}
+
+function AdherencePolyline({ data }: { data: { weekStart: string; pct: number }[] }) {
+  const w = 120, h = 40;
+  const pts = data.slice(-6);
+  if (pts.length < 2) return null;
+  const xs = pts.map((_, i) => Math.round((i / (pts.length - 1)) * (w - 8)) + 4);
+  const ys = pts.map(d => Math.round(h - 4 - (d.pct / 100) * (h - 8)));
+  const polyPoints = pts.map((_, i) => `${xs[i]},${ys[i]}`).join(' ');
+  const areaPoints = `${xs[0]},${h} ${polyPoints} ${xs[xs.length - 1]},${h}`;
+  const endX = xs[xs.length - 1];
+  const endY = ys[ys.length - 1];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+      {[25, 50, 75].map(pct => {
+        const gy = Math.round(h - 4 - (pct / 100) * (h - 8));
+        return <line key={pct} x1={0} y1={gy} x2={w} y2={gy} stroke="var(--border-subtle)" strokeWidth={1} />;
+      })}
+      <polygon points={areaPoints} fill="#5fcfbf26" />
+      <polyline points={polyPoints} fill="none" stroke="#5fcfbf" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={endX} cy={endY} r={3} fill="#5fcfbf" />
+    </svg>
   );
 }
 
