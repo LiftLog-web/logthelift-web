@@ -262,7 +262,7 @@ export default function TeamsPage() {
 
         {/* Kanban grid — team columns + unassigned */}
         {(teams.length > 0 || unassigned.length > 0) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 16, alignItems: 'start' }}>
 
             {teams.map((team, teamIdx) => {
               const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
@@ -541,7 +541,7 @@ export default function TeamsPage() {
                           <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
                             {avatarInitial(emp.displayName)}
                           </div>
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.displayName}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', minWidth: 0, wordBreak: 'break-word' }}>{emp.displayName}</span>
                           {teams.length > 0 && (
                             <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
                               <button
