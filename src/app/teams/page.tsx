@@ -6,8 +6,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 
-const TEAL   = '#1EDBA8';
-const PURPLE = '#C471ED';
+const TEAL        = '#1EDBA8';
+const TEAM_COLORS = ['#5fcfbf', '#C471ED', '#F59E0B', '#60A5FA', '#34D399', '#F87171', '#A78BFA', '#FB923C'];
+
+function avatarInitial(name: string) {
+  return name.trim().charAt(0).toUpperCase();
+}
 
 interface Team {
   id: string;
@@ -157,7 +161,7 @@ export default function TeamsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
-      <main style={{ maxWidth: 800, margin: '0 auto', padding: '40px 32px' }}>
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
@@ -168,7 +172,7 @@ export default function TeamsPage() {
         </div>
 
         {/* Create Team */}
-        <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: 10, marginBottom: 36 }}>
+        <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: 10, marginBottom: 36, maxWidth: 480 }}>
           <input
             value={newTeamName}
             onChange={e => setNewTeamName(e.target.value)}
@@ -184,77 +188,119 @@ export default function TeamsPage() {
           </button>
         </form>
 
-        {/* Team cards */}
-        {teams.length === 0 && (
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '40px 24px', textAlign: 'center', marginBottom: 24 }}>
-            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>No teams yet. Create one above to start organizing employees.</p>
+        {/* No employees state */}
+        {employees.length === 0 && (
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-muted)', margin: '0 0 14px', fontSize: 14 }}>
+              No employees linked yet. Invite employees via your Profile page.
+            </p>
+            <button
+              onClick={() => router.push('/profile')}
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+            >
+              Go to Profile
+            </button>
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
-          {teams.map(team => {
-            const members = employees.filter(e => e.teamId === team.id);
-            const isDeleting = deletingId === team.id;
-            const isEditing  = editingTeam?.id === team.id;
+        {/* Kanban grid — team columns + unassigned */}
+        {(teams.length > 0 || unassigned.length > 0) && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, alignItems: 'start' }}>
 
-            return (
-              <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
-                {/* Team header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: members.length > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
-                  {isEditing ? (
-                    <div style={{ display: 'flex', gap: 10, flex: 1, marginRight: 12 }}>
-                      <input
-                        value={editingName}
-                        onChange={e => setEditingName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleRenameTeam(); if (e.key === 'Escape') setEditingTeam(null); }}
-                        autoFocus
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                      <button onClick={handleRenameTeam} disabled={savingEdit} style={{ background: TEAL, color: '#0f1117', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-                        {savingEdit ? '…' : 'Save'}
-                      </button>
-                      <button onClick={() => setEditingTeam(null)} style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 700, border: '1px solid var(--border-strong)', cursor: 'pointer' }}>
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>{team.name}</h3>
-                      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>{members.length} member{members.length !== 1 ? 's' : ''}</p>
-                    </div>
-                  )}
+            {teams.map((team, teamIdx) => {
+              const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+              const members   = employees.filter(e => e.teamId === team.id);
+              const isDeleting = deletingId === team.id;
+              const isEditing  = editingTeam?.id === team.id;
+              const menuId     = `menu-${team.id}`;
 
-                  {!isEditing && (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => { setEditingTeam(team); setEditingName(team.name); }}
-                        style={{ background: 'var(--card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTeam(team)}
-                        disabled={isDeleting}
-                        style={{ background: 'transparent', color: '#EF4444', border: '1px solid #EF444430', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
-                      >
-                        {isDeleting ? 'Deleting…' : 'Delete'}
-                      </button>
-                    </div>
-                  )}
-                </div>
+              return (
+                <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, overflow: 'hidden' }}>
 
-                {/* Members */}
-                {members.length > 0 && (
-                  <div style={{ padding: '16px 24px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {members.map(emp => {
+                  {/* Card header */}
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: teamColor, flexShrink: 0 }} />
+
+                    {isEditing ? (
+                      <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+                        <input
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleRenameTeam(); if (e.key === 'Escape') setEditingTeam(null); }}
+                          autoFocus
+                          style={{ ...inputStyle, flex: 1, padding: '5px 8px', fontSize: 13, borderRadius: 7 }}
+                        />
+                        <button
+                          onClick={handleRenameTeam}
+                          disabled={savingEdit}
+                          style={{ background: TEAL, color: '#0f1117', borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {savingEdit ? '…' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setEditingTeam(null)}
+                          style={{ background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{members.length} member{members.length !== 1 ? 's' : ''}</div>
+                        </div>
+
+                        {/* ⋯ menu */}
+                        <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === menuId ? null : menuId)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer', padding: '2px 5px', borderRadius: 6, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                          >
+                            ⋯
+                          </button>
+                          {openDropdown === menuId && (
+                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 150, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                              <button
+                                onClick={() => { setEditingTeam(team); setEditingName(team.name); setOpenDropdown(null); }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                Rename
+                              </button>
+                              <button
+                                onClick={() => { handleDeleteTeam(team); setOpenDropdown(null); }}
+                                disabled={isDeleting}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', color: '#EF4444', fontSize: 13, cursor: 'pointer', opacity: isDeleting ? 0.5 : 1 }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                {isDeleting ? 'Deleting…' : 'Delete team'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Member chips */}
+                  <div style={{ padding: '12px 14px', minHeight: 56, maxHeight: 220, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
+                    {members.length === 0 ? (
+                      <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>No members yet.</p>
+                    ) : members.map(emp => {
                       const dropId = `member-${emp.patientId}`;
                       return (
-                        <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, background: `${PURPLE}15`, border: `1px solid ${PURPLE}30`, borderRadius: 999, padding: '6px 14px' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{emp.displayName}</span>
+                        <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: `${teamColor}18`, border: `1px solid ${teamColor}35`, borderRadius: 999, padding: '3px 9px 3px 4px' }}>
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: teamColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#0f1117', flexShrink: 0 }}>
+                            {avatarInitial(emp.displayName)}
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
                           <button
                             onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
                             disabled={savingMove === emp.patientId}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', padding: '0 1px', lineHeight: 1 }}
                           >
                             {savingMove === emp.patientId ? '…' : '▾'}
                           </button>
@@ -285,77 +331,62 @@ export default function TeamsPage() {
                       );
                     })}
                   </div>
-                )}
-
-                {members.length === 0 && (
-                  <div style={{ padding: '14px 24px' }}>
-                    <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>No members yet — assign employees from the Unassigned list below.</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Unassigned Employees */}
-        {unassigned.length > 0 && (
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-              Unassigned Employees ({unassigned.length})
-            </p>
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
-              {unassigned.map((emp, idx) => (
-                <div
-                  key={emp.patientId}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', borderTop: idx > 0 ? '1px solid var(--border-subtle)' : 'none' }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{emp.displayName}</span>
-                  {teams.length > 0 ? (
-                    <div data-dropdown style={{ position: 'relative' }}>
-                      <button
-                        onClick={() => setOpenDropdown(openDropdown === emp.patientId ? null : emp.patientId)}
-                        disabled={savingMove === emp.patientId}
-                        style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 12px', color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-                      >
-                        {savingMove === emp.patientId ? 'Moving…' : 'Add to team…'}
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>▾</span>
-                      </button>
-                      {openDropdown === emp.patientId && (
-                        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-                          {teams.map((t, ti) => (
-                            <button
-                              key={t.id}
-                              onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
-                              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
-                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                            >
-                              {t.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Create a team above first</span>
-                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              );
+            })}
 
-        {employees.length === 0 && (
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-muted)', margin: '0 0 14px', fontSize: 14 }}>
-              No employees linked yet. Invite employees via your Profile page.
-            </p>
-            <button
-              onClick={() => router.push('/profile')}
-              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
-            >
-              Go to Profile
-            </button>
+            {/* Unassigned column */}
+            {unassigned.length > 0 && (
+              <div style={{ border: '2px dashed rgba(245,158,11,0.40)', background: 'rgba(245,158,11,0.03)', borderRadius: 18, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px dashed #F59E0B', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>Unassigned</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{unassigned.length} employee{unassigned.length !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+                <div style={{ padding: '12px 14px', minHeight: 56, maxHeight: 220, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
+                  {unassigned.map(emp => {
+                    const dropId = emp.patientId;
+                    return (
+                      <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '3px 9px 3px 4px' }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
+                          {avatarInitial(emp.displayName)}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
+                        {teams.length > 0 && (
+                          <>
+                            <button
+                              onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
+                              disabled={savingMove === emp.patientId}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', padding: '0 1px', lineHeight: 1 }}
+                            >
+                              {savingMove === emp.patientId ? '…' : '▾'}
+                            </button>
+                            {openDropdown === dropId && (
+                              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                                {teams.map((t, ti) => (
+                                  <button
+                                    key={t.id}
+                                    onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
+                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                  >
+                                    {t.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
           </div>
         )}
       </main>
