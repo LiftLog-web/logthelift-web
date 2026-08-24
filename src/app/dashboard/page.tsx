@@ -114,8 +114,10 @@ export default function DashboardPage() {
   const [expandedPtId, setExpandedPtId] = useState<string | null>(null);
   const [adherenceOpen, setAdherenceOpen] = useState(false);
   const [workoutsTooltipOpen, setWorkoutsTooltipOpen] = useState(false);
+  const [workoutsTooltipPos, setWorkoutsTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const adherenceRef = useRef<HTMLDivElement>(null);
-  const workoutsRef  = useRef<HTMLTableCellElement>(null);
+  const workoutsBtnRef = useRef<HTMLButtonElement>(null);
+  const workoutsTooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getSupabase().auth.getSession().then(({ data }) => {
@@ -132,8 +134,12 @@ export default function DashboardPage() {
       if (adherenceRef.current && !adherenceRef.current.contains(e.target as Node)) {
         setAdherenceOpen(false);
       }
-      if (workoutsRef.current && !workoutsRef.current.contains(e.target as Node)) {
+      if (
+        workoutsBtnRef.current && !workoutsBtnRef.current.contains(e.target as Node) &&
+        (!workoutsTooltipRef.current || !workoutsTooltipRef.current.contains(e.target as Node))
+      ) {
         setWorkoutsTooltipOpen(false);
+        setWorkoutsTooltipPos(null);
       }
     }
     document.addEventListener('mousedown', onMouseDown);
@@ -536,6 +542,16 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Workouts tooltip — rendered outside the overflow:hidden table card so it isn't clipped */}
+        {workoutsTooltipOpen && workoutsTooltipPos && (
+          <div
+            ref={workoutsTooltipRef}
+            style={{ position: 'fixed', top: workoutsTooltipPos.top, left: workoutsTooltipPos.left, transform: 'translateX(-50%)', zIndex: 9999, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', width: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', fontSize: 12, color: 'var(--text)', textAlign: 'left', fontWeight: 400, lineHeight: 1.5, textTransform: 'none' }}
+          >
+            How consistently each practitioner&apos;s patients complete their assigned workouts. Calculated as completed ÷ prescribed workouts across all time (current week excluded to avoid partial-week skew).
+          </div>
+        )}
+
         {/* PT roster */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -559,19 +575,24 @@ export default function DashboardPage() {
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Patients</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Plans</th>
-                  <th ref={workoutsRef} style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap', position: 'relative' }}>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>
                     Logged Workouts{' '}
                     <button
-                      onClick={() => setWorkoutsTooltipOpen(o => !o)}
+                      ref={workoutsBtnRef}
+                      onClick={() => {
+                        if (workoutsTooltipOpen) {
+                          setWorkoutsTooltipOpen(false);
+                          setWorkoutsTooltipPos(null);
+                        } else {
+                          const rect = workoutsBtnRef.current?.getBoundingClientRect();
+                          if (rect) setWorkoutsTooltipPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+                          setWorkoutsTooltipOpen(true);
+                        }
+                      }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13, padding: '0 2px', lineHeight: 1, verticalAlign: 'middle' }}
                     >
                       ℹ
                     </button>
-                    {workoutsTooltipOpen && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', minWidth: 270, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', fontSize: 12, color: 'var(--text)', textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', lineHeight: 1.5 }}>
-                        How consistently each practitioner&apos;s patients complete their assigned workouts. Calculated as completed ÷ prescribed workouts across all time (current week excluded to avoid partial-week skew).
-                      </div>
-                    )}
                   </th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Satisfaction</th>
                   <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Last Active</th>
