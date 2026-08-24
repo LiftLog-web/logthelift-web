@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
-const YELLOW = 'var(--yellow)';
+const YELLOW = 'var(--badge-yellow-text)';
 
 type AuthState = 'loading' | 'login' | 'not_owner' | 'ready';
 
@@ -468,10 +468,6 @@ export default function DashboardPage() {
       <style>{`
         .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
         @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
-        :root { --yellow: #C48A00; }
-        @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --yellow: #F9F295; } }
-        :root[data-theme="dark"] { --yellow: #F9F295; }
-        :root[data-theme="light"] { --yellow: #C48A00; }
       `}</style>
 
       {/* Nav */}
@@ -573,7 +569,7 @@ export default function DashboardPage() {
                     </button>
                     {workoutsTooltipOpen && (
                       <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', minWidth: 270, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', fontSize: 12, color: 'var(--text)', textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', lineHeight: 1.5 }}>
-                        Overall workout adherence — completed workouts ÷ prescribed workouts — all time (current week excluded)
+                        How consistently each practitioner&apos;s patients complete their assigned workouts. Calculated as completed ÷ prescribed workouts across all time (current week excluded to avoid partial-week skew).
                       </div>
                     )}
                   </th>
