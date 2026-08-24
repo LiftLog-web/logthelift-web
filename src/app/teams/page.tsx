@@ -99,6 +99,8 @@ export default function TeamsPage() {
     if (!error && data) {
       setTeams(prev => [...prev, data as Team].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTeamName('');
+    } else if (error) {
+      alert('Could not create team: ' + error.message);
     }
     setCreating(false);
   }
@@ -182,7 +184,7 @@ export default function TeamsPage() {
           <button
             type="submit"
             disabled={creating || !newTeamName.trim()}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1, whiteSpace: 'nowrap' }}
+            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: (creating || !newTeamName.trim()) ? 'not-allowed' : 'pointer', opacity: (creating || !newTeamName.trim()) ? 0.45 : 1, whiteSpace: 'nowrap' }}
           >
             {creating ? 'Creating…' : '+ Create Team'}
           </button>
@@ -286,7 +288,7 @@ export default function TeamsPage() {
                   </div>
 
                   {/* Member chips */}
-                  <div style={{ padding: '12px 14px', minHeight: 56, maxHeight: 220, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
+                  <div style={{ padding: '12px 14px', minHeight: 56, display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
                     {members.length === 0 ? (
                       <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>No members yet.</p>
                     ) : members.map(emp => {
@@ -345,26 +347,26 @@ export default function TeamsPage() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{unassigned.length} employee{unassigned.length !== 1 ? 's' : ''}</div>
                   </div>
                 </div>
-                <div style={{ padding: '12px 14px', minHeight: 56, maxHeight: 220, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
-                  {unassigned.map(emp => {
+                <div style={{ paddingBottom: 4 }}>
+                  {unassigned.map((emp, idx) => {
                     const dropId = emp.patientId;
                     return (
-                      <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '3px 9px 3px 4px' }}>
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
+                      <div key={emp.patientId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderTop: idx > 0 ? '1px solid rgba(245,158,11,0.12)' : 'none' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
                           {avatarInitial(emp.displayName)}
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.displayName}</span>
                         {teams.length > 0 && (
-                          <>
+                          <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
                             <button
                               onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
                               disabled={savingMove === emp.patientId}
-                              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', padding: '0 1px', lineHeight: 1 }}
+                              style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
                             >
-                              {savingMove === emp.patientId ? '…' : '▾'}
+                              {savingMove === emp.patientId ? 'Moving…' : 'Assign ▾'}
                             </button>
                             {openDropdown === dropId && (
-                              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
                                 {teams.map((t, ti) => (
                                   <button
                                     key={t.id}
@@ -378,7 +380,7 @@ export default function TeamsPage() {
                                 ))}
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                     );
