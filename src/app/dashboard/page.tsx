@@ -781,12 +781,6 @@ export default function DashboardPage() {
                                   )}
                                 </div>
                               )}
-                              {pt.weeklyAdherence.length >= 2 && (
-                                <div>
-                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>6-Week Trend</div>
-                                  <AdherencePolyline data={pt.weeklyAdherence} />
-                                </div>
-                              )}
                               {pt.weeklyAdherence.length > 0 && (
                                 <div>
                                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Weekly Breakdown</div>
@@ -847,28 +841,6 @@ function ScoreDisplay({ value, count, label, color }: { value: number; count: nu
   );
 }
 
-function AdherencePolyline({ data }: { data: { weekStart: string; pct: number }[] }) {
-  const w = 120, h = 40;
-  const pts = data.slice(-6);
-  if (pts.length < 2) return null;
-  const xs = pts.map((_, i) => Math.round((i / (pts.length - 1)) * (w - 8)) + 4);
-  const ys = pts.map(d => Math.round(h - 4 - (d.pct / 100) * (h - 8)));
-  const polyPoints = pts.map((_, i) => `${xs[i]},${ys[i]}`).join(' ');
-  const areaPoints = `${xs[0]},${h} ${polyPoints} ${xs[xs.length - 1]},${h}`;
-  const endX = xs[xs.length - 1];
-  const endY = ys[ys.length - 1];
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
-      {[25, 50, 75].map(pct => {
-        const gy = Math.round(h - 4 - (pct / 100) * (h - 8));
-        return <line key={pct} x1={0} y1={gy} x2={w} y2={gy} stroke="var(--border-subtle)" strokeWidth={1} />;
-      })}
-      <polygon points={areaPoints} fill="#5fcfbf26" />
-      <polyline points={polyPoints} fill="none" stroke="#5fcfbf" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={endX} cy={endY} r={3} fill="#5fcfbf" />
-    </svg>
-  );
-}
 
 function SkeletonRow({ first }: { first: boolean }) {
   return (
