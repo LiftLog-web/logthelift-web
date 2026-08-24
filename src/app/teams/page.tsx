@@ -370,7 +370,17 @@ export default function TeamsPage() {
                             {avatarInitial(emp.displayName)}
                           </div>
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
-                          {isCaptain && <span style={{ fontSize: 10, lineHeight: 1, flexShrink: 0 }}>👑</span>}
+                          <button
+                            onClick={e => { e.stopPropagation(); handleSetCaptain(team.id, isCaptain ? null : emp.patientId); }}
+                            title={isCaptain ? 'Remove as captain' : 'Make captain'}
+                            style={{ background: 'none', border: 'none', padding: '0 1px', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}
+                            onMouseEnter={e => { if (!isCaptain) (e.currentTarget.querySelector('svg') as SVGElement | null)?.setAttribute('stroke', '#F59E0B'); }}
+                            onMouseLeave={e => { if (!isCaptain) (e.currentTarget.querySelector('svg') as SVGElement | null)?.setAttribute('stroke', 'var(--text-faint)'); }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill={isCaptain ? '#F59E0B' : 'none'} stroke={isCaptain ? '#F59E0B' : 'var(--text-faint)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                            </svg>
+                          </button>
                           <button
                             onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
                             disabled={savingMove === emp.patientId}
@@ -380,14 +390,6 @@ export default function TeamsPage() {
                           </button>
                           {openDropdown === dropId && (
                             <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-                              <button
-                                onClick={() => { handleSetCaptain(team.id, isCaptain ? null : emp.patientId); setOpenDropdown(null); }}
-                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: '#F59E0B', fontSize: 13, cursor: 'pointer' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                              >
-                                {isCaptain ? '👑 Remove as captain' : '👑 Make captain'}
-                              </button>
                               <button
                                 onClick={() => { handleMoveEmployee(emp.patientId, null); setOpenDropdown(null); }}
                                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}
