@@ -33,6 +33,7 @@ export default function TeamsPage() {
   const [loading,      setLoading]      = useState(true);
   const [newTeamName,  setNewTeamName]  = useState('');
   const [creating,     setCreating]     = useState(false);
+  const [showCreate,   setShowCreate]   = useState(false);
   const [editingTeam,  setEditingTeam]  = useState<Team | null>(null);
   const [editingName,  setEditingName]  = useState('');
   const [savingEdit,   setSavingEdit]   = useState(false);
@@ -103,6 +104,7 @@ export default function TeamsPage() {
     if (!error && data) {
       setTeams(prev => [...prev, data as Team].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTeamName('');
+      setShowCreate(false);
     } else if (error) {
       alert('Could not create team: ' + error.message);
     }
@@ -198,21 +200,41 @@ export default function TeamsPage() {
         </div>
 
         {/* Create Team */}
-        <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: 10, marginBottom: 36, maxWidth: 480 }}>
-          <input
-            value={newTeamName}
-            onChange={e => setNewTeamName(e.target.value)}
-            placeholder="New team name…"
-            style={inputStyle}
-          />
-          <button
-            type="submit"
-            disabled={creating || !newTeamName.trim()}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1, whiteSpace: 'nowrap' }}
-          >
-            {creating ? 'Creating…' : '+ Create Team'}
-          </button>
-        </form>
+        <div style={{ marginBottom: 36 }}>
+          {!showCreate ? (
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+            >
+              + Create Team
+            </button>
+          ) : (
+            <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: 10, maxWidth: 480 }}>
+              <input
+                value={newTeamName}
+                onChange={e => setNewTeamName(e.target.value)}
+                placeholder="Team name…"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Escape') { setShowCreate(false); setNewTeamName(''); } }}
+                style={inputStyle}
+              />
+              <button
+                type="submit"
+                disabled={creating || !newTeamName.trim()}
+                style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1, whiteSpace: 'nowrap' }}
+              >
+                {creating ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowCreate(false); setNewTeamName(''); }}
+                style={{ background: 'none', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 10, padding: '10px 16px', fontSize: 14, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
 
         {/* No employees state */}
         {employees.length === 0 && (
