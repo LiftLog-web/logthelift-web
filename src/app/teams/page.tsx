@@ -16,6 +16,7 @@ function avatarInitial(name: string) {
 interface Team {
   id: string;
   name: string;
+  captainId: string | null;
 }
 
 interface Employee {
@@ -77,11 +78,11 @@ export default function TeamsPage() {
 
   async function loadData(sb: ReturnType<typeof getSupabase>, uid: string) {
     const [teamsRes, linksRes] = await Promise.all([
-      sb.from('employer_teams').select('id, name').eq('employer_id', uid).order('name'),
+      sb.from('employer_teams').select('id, name, captain_id').eq('employer_id', uid).order('name'),
       sb.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', uid),
     ]);
 
-    setTeams((teamsRes.data as Team[]) ?? []);
+    setTeams(((teamsRes.data ?? []) as any[]).map(t => ({ id: t.id, name: t.name, captainId: t.captain_id ?? null })));
     setEmployees(
       ((linksRes.data ?? []) as any[]).map(l => ({
         patientId:   l.patient_id,
@@ -102,7 +103,7 @@ export default function TeamsPage() {
       .select('id, name')
       .single();
     if (!error && data) {
-      setTeams(prev => [...prev, data as Team].sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams(prev => [...prev, { id: (data as any).id, name: (data as any).name, captainId: null }].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTeamName('');
       setShowCreate(false);
     } else if (error) {
@@ -168,6 +169,14 @@ export default function TeamsPage() {
     }
     setBulkAssigning(false);
     setOpenDropdown(null);
+  }
+
+  async function handleSetCaptain(teamId: string, patientId: string | null) {
+    const sb = getSupabase();
+    const { error } = await sb.from('employer_teams').update({ captain_id: patientId }).eq('id', teamId);
+    if (!error) {
+      setTeams(prev => prev.map(t => t.id === teamId ? { ...t, captainId: patientId } : t));
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -347,6 +356,7 @@ export default function TeamsPage() {
                       <p style={{ color: 'var(--text-dim)', fontSize: 12, margin: 0 }}>No members yet.</p>
                     ) : members.map(emp => {
                       const dropId = `member-${emp.patientId}`;
+                      const isCaptain = team.captainId === emp.patientId;
                       return (
                         <div
                           key={emp.patientId}
@@ -354,12 +364,13 @@ export default function TeamsPage() {
                           draggable
                           onDragStart={() => setDraggingId(emp.patientId)}
                           onDragEnd={() => { setDraggingId(null); setDragOver(null); }}
-                          style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: `${teamColor}18`, border: `1px solid ${teamColor}35`, borderRadius: 999, padding: '3px 9px 3px 4px', cursor: 'grab', opacity: draggingId === emp.patientId ? 0.4 : 1 }}
+                          style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: isCaptain ? `${teamColor}28` : `${teamColor}18`, border: isCaptain ? '1.5px solid #F59E0B' : `1px solid ${teamColor}35`, borderRadius: 999, padding: '3px 9px 3px 4px', cursor: 'grab', opacity: draggingId === emp.patientId ? 0.4 : 1 }}
                         >
                           <div style={{ width: 20, height: 20, borderRadius: '50%', background: teamColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#0f1117', flexShrink: 0 }}>
                             {avatarInitial(emp.displayName)}
                           </div>
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
+                          {isCaptain && <span style={{ fontSize: 10, lineHeight: 1, flexShrink: 0 }}>👑</span>}
                           <button
                             onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
                             disabled={savingMove === emp.patientId}
@@ -369,6 +380,14 @@ export default function TeamsPage() {
                           </button>
                           {openDropdown === dropId && (
                             <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                              <button
+                                onClick={() => { handleSetCaptain(team.id, isCaptain ? null : emp.patientId); setOpenDropdown(null); }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: '#F59E0B', fontSize: 13, cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                {isCaptain ? '👑 Remove as captain' : '👑 Make captain'}
+                              </button>
                               <button
                                 onClick={() => { handleMoveEmployee(emp.patientId, null); setOpenDropdown(null); }}
                                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}
