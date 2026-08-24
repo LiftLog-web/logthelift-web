@@ -269,7 +269,9 @@ export default function TeamsPage() {
               const members   = employees.filter(e => e.teamId === team.id);
               const isDeleting = deletingId === team.id;
               const isEditing  = editingTeam?.id === team.id;
-              const menuId     = `menu-${team.id}`;
+              const menuId      = `menu-${team.id}`;
+              const captainDropId = `captain-${team.id}`;
+              const captainName  = team.captainId ? (members.find(m => m.patientId === team.captainId)?.displayName ?? null) : null;
 
               const isDragTarget = dragOver === team.id;
 
@@ -350,6 +352,47 @@ export default function TeamsPage() {
                     )}
                   </div>
 
+                  {/* Captain row */}
+                  <div data-dropdown style={{ position: 'relative', padding: '7px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill={captainName ? '#F59E0B' : 'none'} stroke={captainName ? '#F59E0B' : 'var(--text-faint)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                    </svg>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', flex: 1 }}>Captain</span>
+                    <button
+                      onClick={() => setOpenDropdown(openDropdown === captainDropId ? null : captainDropId)}
+                      style={{ background: 'none', border: 'none', color: captainName ? 'var(--text)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px', borderRadius: 6, fontWeight: captainName ? 600 : 400 }}
+                    >
+                      {captainName ?? 'None'}
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 12,15 18,9" /></svg>
+                    </button>
+                    {openDropdown === captainDropId && (
+                      <div style={{ position: 'absolute', right: 14, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 170, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                        {members.map((m, mi) => (
+                          <button
+                            key={m.patientId}
+                            onClick={() => { handleSetCaptain(team.id, team.captainId === m.patientId ? null : m.patientId); setOpenDropdown(null); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: mi < members.length - 1 || team.captainId ? '1px solid var(--border-subtle)' : 'none', color: team.captainId === m.patientId ? '#F59E0B' : 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                          >
+                            <span style={{ flex: 1 }}>{m.displayName}</span>
+                            {team.captainId === m.patientId && <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" /></svg>}
+                          </button>
+                        ))}
+                        {team.captainId && (
+                          <button
+                            onClick={() => { handleSetCaptain(team.id, null); setOpenDropdown(null); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                          >
+                            Remove captain
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Member chips */}
                   <div style={{ padding: '12px 14px', minHeight: 56, display: 'flex', flexWrap: 'wrap', gap: 8, alignContent: 'flex-start' }}>
                     {members.length === 0 ? (
@@ -370,17 +413,11 @@ export default function TeamsPage() {
                             {avatarInitial(emp.displayName)}
                           </div>
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.displayName}</span>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleSetCaptain(team.id, isCaptain ? null : emp.patientId); }}
-                            title={isCaptain ? 'Remove as captain' : 'Make captain'}
-                            style={{ background: 'none', border: 'none', padding: '0 1px', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}
-                            onMouseEnter={e => { if (!isCaptain) (e.currentTarget.querySelector('svg') as SVGElement | null)?.setAttribute('stroke', '#F59E0B'); }}
-                            onMouseLeave={e => { if (!isCaptain) (e.currentTarget.querySelector('svg') as SVGElement | null)?.setAttribute('stroke', 'var(--text-faint)'); }}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill={isCaptain ? '#F59E0B' : 'none'} stroke={isCaptain ? '#F59E0B' : 'var(--text-faint)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          {isCaptain && (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                               <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
                             </svg>
-                          </button>
+                          )}
                           <button
                             onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
                             disabled={savingMove === emp.patientId}
