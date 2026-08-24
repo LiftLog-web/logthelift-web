@@ -39,6 +39,10 @@ export default function TeamsPage() {
   const [deletingId,   setDeletingId]   = useState<string | null>(null);
   const [savingMove,   setSavingMove]   = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [draggingId,   setDraggingId]   = useState<string | null>(null);
+  const [dragOver,     setDragOver]     = useState<string | null>(null);
+  const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set());
+  const [bulkAssigning, setBulkAssigning] = useState(false);
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -141,7 +145,27 @@ export default function TeamsPage() {
       return;
     }
     setEmployees(prev => prev.map(e => e.patientId === patientId ? { ...e, teamId: newTeamId } : e));
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(patientId); return n; });
     setSavingMove(null);
+  }
+
+  async function handleBulkAssign(teamId: string) {
+    setBulkAssigning(true);
+    const ids = Array.from(selectedIds);
+    const sb = getSupabase();
+    const { error } = await sb
+      .from('patient_links')
+      .update({ team_id: teamId })
+      .eq('practitioner_id', userId)
+      .in('patient_id', ids);
+    if (!error) {
+      setEmployees(prev => prev.map(e => selectedIds.has(e.patientId) ? { ...e, teamId } : e));
+      setSelectedIds(new Set());
+    } else {
+      alert('Could not assign employees: ' + error.message);
+    }
+    setBulkAssigning(false);
+    setOpenDropdown(null);
   }
 
   const inputStyle: React.CSSProperties = {
@@ -184,7 +208,7 @@ export default function TeamsPage() {
           <button
             type="submit"
             disabled={creating || !newTeamName.trim()}
-            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: (creating || !newTeamName.trim()) ? 'not-allowed' : 'pointer', opacity: (creating || !newTeamName.trim()) ? 0.45 : 1, whiteSpace: 'nowrap' }}
+            style={{ background: TEAL, color: '#0f1117', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 14, border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1, whiteSpace: 'nowrap' }}
           >
             {creating ? 'Creating…' : '+ Create Team'}
           </button>
@@ -216,8 +240,16 @@ export default function TeamsPage() {
               const isEditing  = editingTeam?.id === team.id;
               const menuId     = `menu-${team.id}`;
 
+              const isDragTarget = dragOver === team.id;
+
               return (
-                <div key={team.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18 }}>
+                <div
+                  key={team.id}
+                  onDragOver={e => { e.preventDefault(); setDragOver(team.id); }}
+                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
+                  onDrop={() => { if (draggingId) { handleMoveEmployee(draggingId, team.id); setDraggingId(null); } setDragOver(null); }}
+                  style={{ background: 'var(--card)', border: isDragTarget ? `2px solid ${teamColor}` : '1px solid var(--border)', borderRadius: 18, boxShadow: isDragTarget ? `0 0 0 3px ${teamColor}22` : 'none', transition: 'border 0.15s, box-shadow 0.15s' }}
+                >
 
                   {/* Card header */}
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -294,7 +326,14 @@ export default function TeamsPage() {
                     ) : members.map(emp => {
                       const dropId = `member-${emp.patientId}`;
                       return (
-                        <div key={emp.patientId} data-dropdown style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: `${teamColor}18`, border: `1px solid ${teamColor}35`, borderRadius: 999, padding: '3px 9px 3px 4px' }}>
+                        <div
+                          key={emp.patientId}
+                          data-dropdown
+                          draggable
+                          onDragStart={() => setDraggingId(emp.patientId)}
+                          onDragEnd={() => { setDraggingId(null); setDragOver(null); }}
+                          style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5, background: `${teamColor}18`, border: `1px solid ${teamColor}35`, borderRadius: 999, padding: '3px 9px 3px 4px', cursor: 'grab', opacity: draggingId === emp.patientId ? 0.4 : 1 }}
+                        >
                           <div style={{ width: 20, height: 20, borderRadius: '50%', background: teamColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#0f1117', flexShrink: 0 }}>
                             {avatarInitial(emp.displayName)}
                           </div>
@@ -338,56 +377,124 @@ export default function TeamsPage() {
             })}
 
             {/* Unassigned column */}
-            {unassigned.length > 0 && (
-              <div style={{ border: '2px dashed rgba(245,158,11,0.40)', background: 'rgba(245,158,11,0.03)', borderRadius: 18 }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px dashed #F59E0B', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>Unassigned</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{unassigned.length} employee{unassigned.length !== 1 ? 's' : ''}</div>
-                  </div>
-                </div>
-                <div style={{ paddingBottom: 4 }}>
-                  {unassigned.map((emp, idx) => {
-                    const dropId = emp.patientId;
-                    return (
-                      <div key={emp.patientId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderTop: idx > 0 ? '1px solid rgba(245,158,11,0.12)' : 'none' }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
-                          {avatarInitial(emp.displayName)}
-                        </div>
-                        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.displayName}</span>
-                        {teams.length > 0 && (
-                          <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
-                            <button
-                              onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
-                              disabled={savingMove === emp.patientId}
-                              style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
-                            >
-                              {savingMove === emp.patientId ? 'Moving…' : 'Assign ▾'}
-                            </button>
-                            {openDropdown === dropId && (
-                              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-                                {teams.map((t, ti) => (
-                                  <button
-                                    key={t.id}
-                                    onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                  >
-                                    {t.name}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+            {unassigned.length > 0 && (() => {
+              const allSelected = unassigned.length > 0 && unassigned.every(e => selectedIds.has(e.patientId));
+              const anySelected = unassigned.some(e => selectedIds.has(e.patientId));
+              const isUnassignedDrop = dragOver === 'unassigned';
+              return (
+                <div
+                  onDragOver={e => { e.preventDefault(); setDragOver('unassigned'); }}
+                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
+                  onDrop={() => { if (draggingId) { handleMoveEmployee(draggingId, null); setDraggingId(null); } setDragOver(null); }}
+                  style={{ border: isUnassignedDrop ? '2px dashed #F59E0B' : '2px dashed rgba(245,158,11,0.40)', background: isUnassignedDrop ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.03)', borderRadius: 18, transition: 'background 0.15s, border 0.15s' }}
+                >
+                  {/* Header */}
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => { if (el) el.indeterminate = anySelected && !allSelected; }}
+                      onChange={() => {
+                        if (allSelected) setSelectedIds(new Set());
+                        else setSelectedIds(new Set(unassigned.map(e => e.patientId)));
+                      }}
+                      style={{ width: 15, height: 15, accentColor: '#F59E0B', flexShrink: 0, cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>Unassigned</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{unassigned.length} employee{unassigned.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    {anySelected && teams.length > 0 && (
+                      <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'bulk-assign' ? null : 'bulk-assign')}
+                          disabled={bulkAssigning}
+                          style={{ background: '#F59E0B', color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {bulkAssigning ? 'Assigning…' : `Assign ${selectedIds.size} ▾`}
+                        </button>
+                        {openDropdown === 'bulk-assign' && (
+                          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                            {teams.map((t, ti) => (
+                              <button
+                                key={t.id}
+                                onClick={() => handleBulkAssign(t.id)}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                {t.name}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  {/* Rows */}
+                  <div style={{ paddingBottom: 4 }}>
+                    {unassigned.map((emp, idx) => {
+                      const dropId = emp.patientId;
+                      const isChecked = selectedIds.has(emp.patientId);
+                      return (
+                        <div
+                          key={emp.patientId}
+                          draggable
+                          onDragStart={() => setDraggingId(emp.patientId)}
+                          onDragEnd={() => { setDraggingId(null); setDragOver(null); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderTop: idx > 0 ? '1px solid rgba(245,158,11,0.12)' : 'none', cursor: 'grab', opacity: draggingId === emp.patientId ? 0.4 : 1, background: isChecked ? 'rgba(245,158,11,0.07)' : 'none' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedIds(prev => {
+                                const n = new Set(prev);
+                                isChecked ? n.delete(emp.patientId) : n.add(emp.patientId);
+                                return n;
+                              });
+                            }}
+                            onClick={e => e.stopPropagation()}
+                            style={{ width: 15, height: 15, accentColor: '#F59E0B', flexShrink: 0, cursor: 'pointer' }}
+                          />
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 }}>
+                            {avatarInitial(emp.displayName)}
+                          </div>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.displayName}</span>
+                          {teams.length > 0 && (
+                            <div data-dropdown style={{ position: 'relative', flexShrink: 0 }}>
+                              <button
+                                onClick={() => setOpenDropdown(openDropdown === dropId ? null : dropId)}
+                                disabled={savingMove === emp.patientId}
+                                style={{ background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '5px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
+                              >
+                                {savingMove === emp.patientId ? 'Moving…' : 'Assign ▾'}
+                              </button>
+                              {openDropdown === dropId && (
+                                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                                  {teams.map((t, ti) => (
+                                    <button
+                                      key={t.id}
+                                      onClick={() => { handleMoveEmployee(emp.patientId, t.id); setOpenDropdown(null); }}
+                                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: ti < teams.length - 1 ? '1px solid var(--border-subtle)' : 'none', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}
+                                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-alt)')}
+                                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >
+                                      {t.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
           </div>
         )}
