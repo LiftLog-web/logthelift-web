@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
-const YELLOW = '#F9F295';
+const YELLOW = 'var(--yellow)';
 
 type AuthState = 'loading' | 'login' | 'not_owner' | 'ready';
 
@@ -451,6 +451,10 @@ export default function DashboardPage() {
       <style>{`
         .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
         @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+        :root { --yellow: #C48A00; }
+        @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --yellow: #F9F295; } }
+        :root[data-theme="dark"] { --yellow: #F9F295; }
+        :root[data-theme="light"] { --yellow: #C48A00; }
       `}</style>
 
       {/* Nav */}
