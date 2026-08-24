@@ -78,11 +78,11 @@ export default function TeamsPage() {
 
   async function loadData(sb: ReturnType<typeof getSupabase>, uid: string) {
     const [teamsRes, linksRes] = await Promise.all([
-      sb.from('employer_teams').select('id, name, captain_id').eq('employer_id', uid).order('name'),
+      sb.from('employer_teams').select('id, name').eq('employer_id', uid).order('name'),
       sb.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', uid),
     ]);
 
-    setTeams(((teamsRes.data ?? []) as any[]).map(t => ({ id: t.id, name: t.name, captainId: t.captain_id ?? null })));
+    setTeams(((teamsRes.data ?? []) as any[]).map(t => ({ id: t.id, name: t.name, captainId: (t.captain_id ?? null) as string | null })));
     setEmployees(
       ((linksRes.data ?? []) as any[]).map(l => ({
         patientId:   l.patient_id,
