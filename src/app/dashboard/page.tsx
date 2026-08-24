@@ -328,6 +328,17 @@ export default function DashboardPage() {
   const activePTs  = pts.filter(p => p.status === 'accepted').length;
   const pendingPTs = pts.filter(p => p.status === 'pending').length;
 
+  const acceptedPts      = pts.filter(p => p.status === 'accepted');
+  const adherenceValues  = acceptedPts.map(p => p.adherencePct).filter((v): v is number => v !== null);
+  const avgAdherence     = adherenceValues.length > 0
+    ? Math.round(adherenceValues.reduce((a, b) => a + b, 0) / adherenceValues.length)
+    : null;
+  const totalPatients    = acceptedPts.reduce((sum, p) => sum + p.patientCount, 0);
+  const isTrialing       = sub?.status === 'trialing';
+  const trialDaysLeft    = sub?.trial_end
+    ? Math.max(0, Math.ceil((new Date(sub.trial_end).getTime() - Date.now()) / 86400000))
+    : null;
+
   /* ── Loading skeleton ── */
   if (authState === 'loading') {
     return (
@@ -433,12 +444,14 @@ export default function DashboardPage() {
   }
 
   /* ── Dashboard ── */
-  const tierLabel = TIER_LABELS[gym?.tier ?? ''] ?? gym?.tier ?? '—';
   const subStatus = sub?.status ?? '—';
-  const trialEnd  = sub?.trial_end ? new Date(sub.trial_end).toLocaleDateString('en-CA') : null;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
+      <style>{`
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+        @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+      `}</style>
 
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto' }}>
@@ -460,16 +473,29 @@ export default function DashboardPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{gym?.address}</p>
         </div>
 
-        {/* Stats cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
-          <StatCard label="Active PTs" value={`${activePTs} / ${gym?.max_pts ?? '—'}`} color={TEAL} />
-          <StatCard label="Pending Invites" value={String(pendingPTs)} color={YELLOW} />
-          <StatCard label="Plan" value={tierLabel} color={PURPLE} />
+        {/* Summary header */}
+        <div className="summary-grid">
+          <StatCard
+            label="Active PTs"
+            value={`${activePTs} / ${gym?.max_pts ?? '—'}`}
+            color={TEAL}
+          />
+          <StatCard
+            label="Avg Adherence"
+            value={avgAdherence !== null ? `${avgAdherence}%` : '—'}
+            color={avgAdherence === null ? 'var(--text-muted)' : avgAdherence >= 70 ? TEAL : avgAdherence >= 50 ? YELLOW : '#EF4444'}
+          />
+          <StatCard
+            label="Total Patients"
+            value={String(totalPatients)}
+            color={TEAL}
+          />
           <StatCard
             label="Subscription"
-            value={subStatus.charAt(0).toUpperCase() + subStatus.slice(1)}
-            sub={trialEnd ? `Trial ends ${trialEnd}` : undefined}
-            color={subStatus === 'active' ? TEAL : YELLOW}
+            value={isTrialing ? 'Trial' : subStatus.charAt(0).toUpperCase() + subStatus.slice(1)}
+            badge={isTrialing && trialDaysLeft !== null ? `${trialDaysLeft}d left` : undefined}
+            badgeColor={isTrialing ? YELLOW : undefined}
+            color={sub?.status === 'active' ? TEAL : YELLOW}
           />
         </div>
 
@@ -676,11 +702,28 @@ function SkeletonRow({ first }: { first: boolean }) {
   );
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+function StatCard({ label, value, sub, color, badge, badgeColor }: {
+  label: string; value: string; sub?: string; color: string; badge?: string; badgeColor?: string;
+}) {
   return (
     <div style={{ background: 'var(--card)', border: `1px solid ${color}30`, borderRadius: 16, padding: '20px 24px' }}>
       <p style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{label}</p>
-      <p style={{ color, fontSize: 28, fontWeight: 800, margin: 0 }}>{value}</p>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <p style={{ color, fontSize: 28, fontWeight: 800, margin: 0 }}>{value}</p>
+        {badge && (
+          <span style={{
+            background: `${badgeColor ?? color}20`,
+            color: badgeColor ?? color,
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: 999,
+            whiteSpace: 'nowrap',
+          }}>
+            {badge}
+          </span>
+        )}
+      </div>
       {sub && <p style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 4 }}>{sub}</p>}
     </div>
   );
