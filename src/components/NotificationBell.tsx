@@ -136,9 +136,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
     }
   }
 
-  function handleRowClick() {
+  function handleRowClick(patientId: string) {
     setOpen(false);
-    router.push('/plans');
+    router.push(`/patients/${patientId}`);
   }
 
   return (
@@ -225,7 +225,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
               {items.map((item, i) => (
                 <button
                   key={`${item.patient_id}-${item.type}`}
-                  onClick={handleRowClick}
+                  onClick={() => handleRowClick(item.patient_id)}
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
@@ -268,7 +268,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
             justifyContent: 'flex-end',
           }}>
             <button
-              onClick={handleRowClick}
+              onClick={() => { setOpen(false); router.push('/plans'); }}
               style={{
                 fontSize: 12,
                 fontWeight: 600,
