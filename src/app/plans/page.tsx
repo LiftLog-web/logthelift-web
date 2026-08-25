@@ -758,8 +758,33 @@ export default function PlansPage() {
                 {filtered.map(group => {
                   const isOpen = expanded.has(group.patient_id);
                   const hasPlans = group.plans.length > 0;
+
+                  const lastDate = lastWorkoutMap.get(group.patient_id);
+                  const planText = `${group.plans.length} plan${group.plans.length !== 1 ? 's' : ''}`;
+                  let statusColor: string;
+                  let statusSubtitle: string;
+                  if (!hasPlans) {
+                    statusColor = BLUE;
+                    statusSubtitle = 'No plan assigned';
+                  } else if (loadingActivity || lastDate === undefined) {
+                    statusColor = PURPLE;
+                    statusSubtitle = planText;
+                  } else {
+                    const d = daysSince(lastDate);
+                    if (d === null) {
+                      statusColor = AMBER;
+                      statusSubtitle = `${planText} · no workouts yet`;
+                    } else if (d < threshold) {
+                      statusColor = TEAL;
+                      statusSubtitle = `${planText} · ${d === 0 ? 'active today' : `active ${d}d ago`}`;
+                    } else {
+                      statusColor = AMBER;
+                      statusSubtitle = `${planText} · ${d}d inactive`;
+                    }
+                  }
+
                   return (
-                    <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : 'var(--border)'}`, borderRadius: 16, transition: 'border-color 0.2s' }}>
+                    <div key={group.patient_id} style={{ border: `1px solid ${isOpen ? PURPLE + '60' : statusColor + '40'}`, borderRadius: 16, transition: 'border-color 0.2s' }}>
 
                       {/* Patient header row */}
                       <button
@@ -772,15 +797,15 @@ export default function PlansPage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${PURPLE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--badge-purple-text)', flexShrink: 0 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${statusColor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: statusColor, flexShrink: 0 }}>
                             {getInitials(group.patientName)}
                           </div>
                           <div>
                             <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>
                               {group.patientName}
                             </p>
-                            <p style={{ margin: 0, fontSize: 12, color: hasPlans ? 'var(--text-muted)' : 'var(--text-dim)', marginTop: 1 }}>
-                              {hasPlans ? `${group.plans.length} plan${group.plans.length !== 1 ? 's' : ''}` : 'No plan assigned'}
+                            <p style={{ margin: 0, fontSize: 12, color: statusColor, marginTop: 1 }}>
+                              {statusSubtitle}
                             </p>
                           </div>
                         </div>
