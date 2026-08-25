@@ -1181,6 +1181,77 @@ export default function PatientProgressPage() {
           </div>
         )}
 
+        {/* ── Coaching Notes ── */}
+        <div style={{ marginBottom: 36 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px' }}>
+            Coaching Notes{notes.length > 0 ? ` · ${notes.length}` : ''}
+          </p>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+            <textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddNote(); }}
+              placeholder={`Add a note about ${patientName}…`}
+              rows={3}
+              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14, resize: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, gap: 8 }}>
+              {noteText.trim() && (
+                <button
+                  onClick={() => setNoteText('')}
+                  style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={handleAddNote}
+                disabled={!noteText.trim() || addingNote}
+                style={{ background: noteText.trim() ? TEAL : 'var(--input-bg)', color: noteText.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 12, cursor: noteText.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                {addingNote ? 'Saving…' : 'Add Note'}
+              </button>
+            </div>
+          </div>
+
+          {notes.length > 0 ? (
+            <div style={{ position: 'relative', paddingLeft: 24 }}>
+              <div style={{ position: 'absolute', left: 7, top: 6, bottom: 6, width: 2, background: `${TEAL}40`, borderRadius: 1 }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {notes.map((note, i) => (
+                  <div
+                    key={note.id}
+                    style={{ position: 'relative', paddingBottom: i < notes.length - 1 ? 20 : 0 }}
+                    onMouseEnter={() => setHoveredNoteId(note.id)}
+                    onMouseLeave={() => setHoveredNoteId(null)}
+                  >
+                    <div style={{ position: 'absolute', left: -21, top: 4, width: 8, height: 8, borderRadius: '50%', background: TEAL, border: '2px solid var(--bg)', zIndex: 1 }} />
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontFamily: '"DM Mono", ui-monospace, monospace', fontSize: 11, color: 'var(--text-dim)', fontWeight: 400, display: 'block', marginBottom: 4 }}>
+                          {relativeDate(note.created_at)}
+                        </span>
+                        <p style={{ margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note.note_text}</p>
+                      </div>
+                      {hoveredNoteId === note.id && (
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          title="Delete note"
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px 4px', flexShrink: 0 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>No notes yet. Add your first coaching note above.</p>
+          )}
+        </div>
+
         {/* ── Progress section ── */}
         {weekTrends.length >= 2 && (
           <div style={{ marginBottom: 36 }}>
@@ -1363,78 +1434,6 @@ export default function PatientProgressPage() {
             )}
           </div>
         )}
-
-        {/* ── Coaching Notes ── */}
-        <div style={{ marginBottom: 36 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px' }}>
-            Coaching Notes{notes.length > 0 ? ` · ${notes.length}` : ''}
-          </p>
-
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-            <textarea
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddNote(); }}
-              placeholder={`Add a note about ${patientName}…`}
-              rows={3}
-              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14, resize: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, gap: 8 }}>
-              {noteText.trim() && (
-                <button
-                  onClick={() => setNoteText('')}
-                  style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={handleAddNote}
-                disabled={!noteText.trim() || addingNote}
-                style={{ background: noteText.trim() ? TEAL : 'var(--input-bg)', color: noteText.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 12, cursor: noteText.trim() ? 'pointer' : 'not-allowed' }}
-              >
-                {addingNote ? 'Saving…' : 'Add Note'}
-              </button>
-            </div>
-          </div>
-
-          {notes.length > 0 ? (
-            <div style={{ position: 'relative', paddingLeft: 24 }}>
-              <div style={{ position: 'absolute', left: 7, top: 6, bottom: 6, width: 2, background: `${TEAL}40`, borderRadius: 1 }} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {notes.map((note, i) => (
-                  <div
-                    key={note.id}
-                    style={{ position: 'relative', paddingBottom: i < notes.length - 1 ? 20 : 0 }}
-                    onMouseEnter={() => setHoveredNoteId(note.id)}
-                    onMouseLeave={() => setHoveredNoteId(null)}
-                  >
-                    <div style={{ position: 'absolute', left: -21, top: 4, width: 8, height: 8, borderRadius: '50%', background: TEAL, border: '2px solid var(--bg)', zIndex: 1 }} />
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontFamily: '"DM Mono", ui-monospace, monospace', fontSize: 11, color: 'var(--text-dim)', fontWeight: 400, display: 'block', marginBottom: 4 }}>
-                          {relativeDate(note.created_at)}
-                        </span>
-                        <p style={{ margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note.note_text}</p>
-                      </div>
-                      {hoveredNoteId === note.id && (
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          title="Delete note"
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px 4px', flexShrink: 0 }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>No notes yet. Add your first coaching note above.</p>
-          )}
-        </div>
 
         {/* No-workout empty state */}
         {workouts.length === 0 && (
