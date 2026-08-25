@@ -1463,48 +1463,6 @@ function NewPlanInner() {
           </div>{/* end inner scrollable */}
         </div>{/* end right panel */}
 
-        {/* Live Preview Pane */}
-        <style>{`@media (max-width: 1299px) { .plan-preview-pane { display: none !important; } }`}</style>
-        <div className="plan-preview-pane" style={{ width: 290, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '16px 12px', borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Patient View</div>
-          <div style={{ border: '2px solid var(--border-strong)', borderRadius: 36, boxShadow: '0 8px 32px rgba(0,0,0,0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-            <div style={{ background: 'var(--card-alt)', padding: '8px 0 6px', display: 'flex', justifyContent: 'center', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-              <div style={{ width: 52, height: 4, borderRadius: 3, background: 'var(--border-strong)' }} />
-            </div>
-            <div style={{ background: 'var(--card)', padding: '10px 14px 8px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Your Plan</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName || 'Untitled Plan'}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 4, padding: '6px 10px', background: 'var(--card)', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', flexShrink: 0 }}>
-              {days.map(day => (
-                <div key={day.id} style={{ padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: activeDayId === day.id ? TEAL : 'var(--card-alt)', color: activeDayId === day.id ? '#0f1117' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{day.label}</div>
-              ))}
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg)', padding: '8px', minHeight: 0 }}>
-              {activeExercises.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 8px', color: 'var(--text-dim)', fontSize: 11, lineHeight: 1.5 }}>Add exercises to see preview</div>
-              ) : activeExercises.map(pe => {
-                const restSec = pe.rest ?? 0;
-                const restStr = restSec > 0 ? `${Math.floor(restSec / 60)}:${String(restSec % 60).padStart(2, '0')}` : null;
-                const s0 = pe.sets[0];
-                const setDetail = pe.exercise.type === 'duration' && s0
-                  ? `${pe.targetSets} × ${Math.floor((s0.seconds ?? 0) / 60)}:${String((s0.seconds ?? 0) % 60).padStart(2, '0')}`
-                  : pe.exercise.type === 'cardio' && s0
-                  ? `${pe.targetSets} × ${s0.minutes ?? 0} min`
-                  : s0
-                  ? `${pe.targetSets} × ${s0.reps ?? 0} reps`
-                  : `${pe.targetSets} set${pe.targetSets !== 1 ? 's' : ''}`;
-                return (
-                  <div key={pe.id} style={{ background: 'var(--card)', borderRadius: 10, padding: '8px 10px', marginBottom: 6, border: '1px solid var(--border-subtle)' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, background: `${TEAL}22`, color: TEAL, padding: '2px 6px', borderRadius: 8, display: 'inline-block', marginBottom: 4 }}>{pe.exercise.muscleGroup}</span>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2, lineHeight: 1.3 }}>{pe.exercise.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{setDetail}{restStr ? ` · ${restStr} rest` : ''}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Save to Library bar — only on new plans, not edits */}
