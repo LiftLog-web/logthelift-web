@@ -635,6 +635,7 @@ export default function PatientProgressPage() {
 
   const [showCustomEx,     setShowCustomEx]     = useState(false);
   const [showDemos,        setShowDemos]        = useState(false);
+  const [showAllEx,        setShowAllEx]        = useState(false);
   const [customExName,     setCustomExName]     = useState('');
   const [customExMuscle,   setCustomExMuscle]   = useState('');
   const [customExEquip,    setCustomExEquip]    = useState('Bodyweight');
@@ -1202,17 +1203,34 @@ export default function PatientProgressPage() {
             {/* Exercise progression */}
             {progressExercises.length > 0 && (
               <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '16px 18px' }}>
-                <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Exercise Progression</p>
+                  {progressExercises.length > 5 && (
+                    <button onClick={() => setShowAllEx(v => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: TEAL, fontWeight: 600 }}>
+                      {showAllEx ? 'Show less' : `View all ${progressExercises.length}`}
+                    </button>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {progressExercises.map(([name, entries]) => {
-                    const latest    = entries[entries.length - 1];
-                    const prev      = entries[entries.length - 2];
-                    const isW       = latest.type === 'weighted';
-                    const fmt       = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
-                    const delta     = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
-                    const trend     = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
-                    const trendCol  = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? PURPLE : 'var(--text-dim)';
-                    const maxVal    = Math.max(...entries.map(e => e.best), 1);
+                  {(showAllEx ? progressExercises : progressExercises.slice(0, 5)).map(([name, entries]) => {
+                    const latest   = entries[entries.length - 1];
+                    const prev     = entries[entries.length - 2];
+                    const isW      = latest.type === 'weighted';
+                    const fmt      = (e: typeof entries[0]) => isW ? `${e.best} ${e.unit ?? 'kg'}` : `${e.best}s`;
+                    const delta    = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
+                    const trend    = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
+                    const trendCol = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? PURPLE : 'var(--text-dim)';
+                    const maxVal   = Math.max(...entries.map(e => e.best), 1);
+                    const W = 120, H = 32, pad = 4;
+                    const pts = entries.map((e, i) => {
+                      const x = pad + (i / Math.max(entries.length - 1, 1)) * (W - pad * 2);
+                      const y = H - pad - ((e.best / maxVal) * (H - pad * 2));
+                      return [x, y] as [number, number];
+                    });
+                    const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
+                    const area = `${pts[0][0]},${H} ` + pts.map(([x, y]) => `${x},${y}`).join(' ') + ` ${pts[pts.length - 1][0]},${H}`;
+                    const [ex, ey] = pts[pts.length - 1];
+                    const gradId = `sg-${name.replace(/\s+/g, '-')}`;
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1226,13 +1244,19 @@ export default function PatientProgressPage() {
                             )}
                           </p>
                         </div>
-                        {/* Sparkline */}
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32, flexShrink: 0 }}>
-                          {entries.map((e, i) => (
-                            <div key={i} style={{ width: 7, height: Math.max(3, (e.best / maxVal) * 28), background: i === entries.length - 1 ? TEAL : 'var(--border-strong)', borderRadius: 2 }} />
-                          ))}
-                        </div>
-                        <div style={{ width: 26, textAlign: 'center', fontSize: 20, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
+                        {/* SVG sparkline */}
+                        <svg width={W} height={H} style={{ flexShrink: 0, overflow: 'visible' }}>
+                          <defs>
+                            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={TEAL} stopOpacity={0.25} />
+                              <stop offset="100%" stopColor={TEAL} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <polygon points={area} fill={`url(#${gradId})`} />
+                          <polyline points={polyline} fill="none" stroke={TEAL} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+                          <circle cx={ex} cy={ey} r={3} fill={TEAL} />
+                        </svg>
+                        <div style={{ width: 20, textAlign: 'center', fontSize: 18, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
                       </div>
                     );
                   })}
