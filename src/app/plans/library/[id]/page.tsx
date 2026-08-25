@@ -1392,7 +1392,7 @@ export default function TemplateEditorPage() {
                 const setDetail = weekEx.type === 'duration' && s0
                   ? `${wSets.length} × ${Math.floor((s0.seconds ?? 0) / 60)}:${String((s0.seconds ?? 0) % 60).padStart(2, '0')}`
                   : weekEx.type === 'cardio' && s0
-                  ? `${wSets.length} × ${s0.minutes ?? 0} min`
+                  ? `${wSets.length} × ${(s0 as any).minutes ?? 0} min`
                   : s0
                   ? `${wSets.length} × ${s0.reps ?? 0} reps`
                   : `${wSets.length} set${wSets.length !== 1 ? 's' : ''}`;
