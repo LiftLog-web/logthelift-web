@@ -92,6 +92,19 @@ export default function MediaLibraryPage() {
   const [muscleGroupInput, setMuscleGroupInput] = useState('');
   const [notesInput,       setNotesInput]       = useState('');
 
+  const [viewMode,     setViewModeRaw] = useState<'list' | 'grid'>('list');
+  const [muscleFilter, setMuscleFilter] = useState('');
+  const [dragOver,     setDragOver]    = useState(false);
+
+  useEffect(() => {
+    try { const v = localStorage.getItem('media-view'); if (v === 'grid' || v === 'list') setViewModeRaw(v); } catch {}
+  }, []);
+
+  function setViewMode(m: 'list' | 'grid') {
+    setViewModeRaw(m);
+    try { localStorage.setItem('media-view', m); } catch {}
+  }
+
   useEffect(() => {
     const sb = getSupabase();
     sb.auth.getSession().then(async ({ data }) => {
@@ -309,7 +322,11 @@ export default function MediaLibraryPage() {
   }
 
   // Library helpers
-  const filteredItems = items.filter(m => m.exercise_name.toLowerCase().includes(search.toLowerCase()));
+  const filteredItems = items.filter(m =>
+    m.exercise_name.toLowerCase().includes(search.toLowerCase()) &&
+    (!muscleFilter || m.muscle_group === muscleFilter)
+  );
+  const muscleGroups = [...new Set(items.flatMap(m => m.muscle_group ? [m.muscle_group] : []))].sort();
   const linkCount     = items.filter(m => m.media_type === 'link').length;
   const uploadCount   = items.filter(m => m.media_type !== 'link').length;
   // Cap applies to uploaded files only — URL links are free (no server storage used)
@@ -460,7 +477,27 @@ export default function MediaLibraryPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
+    <div
+      style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}
+      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (!file || atUploadCap) return;
+        openUploadModal();
+        setMediaFile(file);
+      }}
+    >
+      {dragOver && !showModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(95,207,191,0.08)', border: `3px dashed ${TEAL}`, zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ background: 'var(--modal-bg)', border: `1px solid ${TEAL}`, borderRadius: 20, padding: '32px 48px', textAlign: 'center' }}>
+            <p style={{ fontSize: 32, margin: '0 0 8px' }}>📁</p>
+            <p style={{ fontSize: 18, fontWeight: 700, color: TEAL, margin: 0 }}>Drop to upload</p>
+          </div>
+        </div>
+      )}
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 
@@ -512,8 +549,47 @@ export default function MediaLibraryPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search exercises…"
-            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '11px 16px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
+            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 14, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '11px 16px', color: 'var(--text)', fontSize: 15, outline: 'none' }}
           />
+        )}
+        {items.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            {muscleGroups.length > 0 && (
+              <>
+                <button
+                  onClick={() => setMuscleFilter('')}
+                  style={{ background: !muscleFilter ? PURPLE : 'var(--card-alt)', color: !muscleFilter ? '#fff' : 'var(--text-muted)', border: `1px solid ${!muscleFilter ? PURPLE : 'var(--border-strong)'}`, borderRadius: 999, padding: '5px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  All
+                </button>
+                {muscleGroups.map(mg => (
+                  <button
+                    key={mg}
+                    onClick={() => setMuscleFilter(muscleFilter === mg ? '' : mg)}
+                    style={{ background: muscleFilter === mg ? PURPLE : 'var(--card-alt)', color: muscleFilter === mg ? '#fff' : 'var(--text-muted)', border: `1px solid ${muscleFilter === mg ? PURPLE : 'var(--border-strong)'}`, borderRadius: 999, padding: '5px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {mg}
+                  </button>
+                ))}
+              </>
+            )}
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: 2, flexShrink: 0 }}>
+              <button
+                onClick={() => setViewMode('list')}
+                title="List view"
+                style={{ background: viewMode === 'list' ? 'var(--card)' : 'transparent', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 15, color: viewMode === 'list' ? TEAL : 'var(--text-muted)', fontWeight: 700, transition: 'background 0.15s' }}
+              >
+                ☰
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                title="Grid view"
+                style={{ background: viewMode === 'grid' ? 'var(--card)' : 'transparent', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 15, color: viewMode === 'grid' ? TEAL : 'var(--text-muted)', fontWeight: 700, transition: 'background 0.15s' }}
+              >
+                ⊞
+              </button>
+            </div>
+          </div>
         )}
 
         {items.length === 0 ? (
@@ -532,7 +608,7 @@ export default function MediaLibraryPage() {
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 40, textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-muted)' }}>No exercises match "{search}"</p>
               </div>
-            ) : (
+            ) : viewMode === 'list' ? (
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
@@ -636,6 +712,66 @@ export default function MediaLibraryPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+                {filteredItems.map(item => {
+                  const signedUrl = signedUrls[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => { setViewersItem(item); setShowDirectShares(false); setRemoveShareError(''); }}
+                      style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                    >
+                      {/* Thumbnail */}
+                      <div style={{ position: 'relative', width: '100%', paddingBottom: '62%', background: 'var(--card-alt)', flexShrink: 0 }}>
+                        {item.media_type === 'photo' && signedUrl ? (
+                          <img
+                            src={signedUrl}
+                            alt={item.exercise_name}
+                            onClick={e => { e.stopPropagation(); setViewMedia({ url: signedUrl, type: 'photo', name: item.exercise_name }); }}
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                          />
+                        ) : item.media_type === 'video' && signedUrl ? (
+                          <video
+                            src={signedUrl}
+                            preload="metadata"
+                            muted
+                            playsInline
+                            onLoadedMetadata={e => { (e.target as HTMLVideoElement).currentTime = 0.1; }}
+                            onClick={e => { e.stopPropagation(); setViewMedia({ url: signedUrl, type: 'video', name: item.exercise_name }); }}
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                          />
+                        ) : item.media_type === 'link' ? (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🔗</div>
+                        ) : (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 20, height: 20, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          </div>
+                        )}
+                        {item.media_type === 'video' && signedUrl && (
+                          <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '2px 7px', fontSize: 11, color: '#fff', fontWeight: 700, pointerEvents: 'none' }}>▶</div>
+                        )}
+                      </div>
+                      {/* Card body */}
+                      <div style={{ padding: '10px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--text)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.exercise_name}</p>
+                        {item.muscle_group && (
+                          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{item.muscle_group}</p>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6, gap: 6 }}>
+                          <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            {typeIcon(item.media_type)} {typeLabel(item.media_type)}
+                          </span>
+                          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                            <button onClick={() => openEditModal(item)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0 }}>Edit</button>
+                            <button onClick={() => handleDelete(item)} disabled={deleting === item.id} style={{ background: 'none', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0, opacity: deleting === item.id ? 0.5 : 1 }}>{deleting === item.id ? '…' : 'Remove'}</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
       </main>
