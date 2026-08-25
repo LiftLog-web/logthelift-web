@@ -8,7 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { MUSCLE_GROUPS } from '@/data/exercises';
 import { Sk, SkPage, SkSubHeader } from '@/components/Skeleton';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 
 function getInitials(name: string): string {
   return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -93,6 +93,12 @@ interface WorkoutLog {
   satisfactionRating?: number; // legacy
   effectivenessRating?: number;
   enjoymentRating?: number;
+}
+
+interface PractitionerNote {
+  id: string;
+  note_text: string;
+  created_at: string;
 }
 
 type ExStatus = 'completed' | 'partial' | 'none';
@@ -220,6 +226,20 @@ function weekLabel(weekStartStr: string): { range: string; badge: string | null 
     start.getTime() === thisMonday.getTime() ? 'This Week' :
     start.getTime() === lastMonday.getTime() ? 'Last Week' : null;
   return { range, badge };
+}
+
+function relativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years !== 1 ? 's' : ''} ago`;
 }
 
 /* ── Activity calendar ──────────────────────────────────────────── */
@@ -616,6 +636,11 @@ export default function PatientProgressPage() {
   const [demoSignedUrls, setDemoSignedUrls] = useState<Record<string, string>>({});
   const [viewDemo,      setViewDemo]      = useState<{ url: string; type: 'photo' | 'video'; name: string } | null>(null);
 
+  const [notes,         setNotes]         = useState<PractitionerNote[]>([]);
+  const [noteText,      setNoteText]      = useState('');
+  const [addingNote,    setAddingNote]    = useState(false);
+  const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
+
   // Email modal state
   const [emailOpen,    setEmailOpen]    = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
@@ -738,6 +763,14 @@ export default function PatientProgressPage() {
         setDemoSignedUrls(signedDemoUrls);
       }
 
+      const { data: notesData } = await sb
+        .from('practitioner_notes')
+        .select('id, note_text, created_at')
+        .eq('practitioner_id', uid)
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+      setNotes(notesData ?? []);
+
       setAuthed(true);
       setLoading(false);
     });
@@ -784,6 +817,38 @@ export default function PatientProgressPage() {
       setSendResult('error');
     }
     setSending(false);
+  };
+
+  const handleAddNote = async () => {
+    const text = noteText.trim();
+    if (!text || addingNote) return;
+    setAddingNote(true);
+    const tempId = `temp_${Date.now()}`;
+    const optimistic: PractitionerNote = { id: tempId, note_text: text, created_at: new Date().toISOString() };
+    setNotes(prev => [optimistic, ...prev]);
+    setNoteText('');
+    const { data, error } = await getSupabase()
+      .from('practitioner_notes')
+      .insert({ practitioner_id: practId, patient_id: patientId, note_text: text })
+      .select('id, note_text, created_at')
+      .single();
+    if (error || !data) {
+      setNotes(prev => prev.filter(n => n.id !== tempId));
+      setNoteText(text);
+    } else {
+      setNotes(prev => prev.map(n => n.id === tempId ? data : n));
+    }
+    setAddingNote(false);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    const snapshot = notes;
+    setNotes(p => p.filter(n => n.id !== id));
+    const { error } = await getSupabase()
+      .from('practitioner_notes')
+      .delete()
+      .eq('id', id);
+    if (error) setNotes(snapshot);
   };
 
   const handleCreateCustomExercise = async () => {
@@ -1298,6 +1363,78 @@ export default function PatientProgressPage() {
             )}
           </div>
         )}
+
+        {/* ── Coaching Notes ── */}
+        <div style={{ marginBottom: 36 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px' }}>
+            Coaching Notes{notes.length > 0 ? ` · ${notes.length}` : ''}
+          </p>
+
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+            <textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddNote(); }}
+              placeholder={`Add a note about ${patientName}…`}
+              rows={3}
+              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14, resize: 'none', fontFamily: 'sans-serif', boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, gap: 8 }}>
+              {noteText.trim() && (
+                <button
+                  onClick={() => setNoteText('')}
+                  style={{ background: 'transparent', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={handleAddNote}
+                disabled={!noteText.trim() || addingNote}
+                style={{ background: noteText.trim() ? TEAL : 'var(--input-bg)', color: noteText.trim() ? '#0f1117' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '6px 16px', fontWeight: 700, fontSize: 12, cursor: noteText.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                {addingNote ? 'Saving…' : 'Add Note'}
+              </button>
+            </div>
+          </div>
+
+          {notes.length > 0 ? (
+            <div style={{ position: 'relative', paddingLeft: 24 }}>
+              <div style={{ position: 'absolute', left: 7, top: 6, bottom: 6, width: 2, background: `${TEAL}40`, borderRadius: 1 }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {notes.map((note, i) => (
+                  <div
+                    key={note.id}
+                    style={{ position: 'relative', paddingBottom: i < notes.length - 1 ? 20 : 0 }}
+                    onMouseEnter={() => setHoveredNoteId(note.id)}
+                    onMouseLeave={() => setHoveredNoteId(null)}
+                  >
+                    <div style={{ position: 'absolute', left: -21, top: 4, width: 8, height: 8, borderRadius: '50%', background: TEAL, border: '2px solid var(--bg)', zIndex: 1 }} />
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontFamily: '"DM Mono", ui-monospace, monospace', fontSize: 11, color: 'var(--text-dim)', fontWeight: 400, display: 'block', marginBottom: 4 }}>
+                          {relativeDate(note.created_at)}
+                        </span>
+                        <p style={{ margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note.note_text}</p>
+                      </div>
+                      {hoveredNoteId === note.id && (
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          title="Delete note"
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px 4px', flexShrink: 0 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>No notes yet. Add your first coaching note above.</p>
+          )}
+        </div>
 
         {/* No-workout empty state */}
         {workouts.length === 0 && (
