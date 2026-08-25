@@ -1100,10 +1100,10 @@ export default function PatientProgressPage() {
             </button>
           )}
           <button
-            onClick={() => setShowCustomEx(true)}
+            onClick={() => router.push(`/plans/new?patient=${patientId}`)}
             style={{ background: 'rgba(95,207,191,0.1)', border: `1px solid ${TEAL}`, color: TEAL, borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
-            + Create Custom Exercise
+            + New Plan
           </button>
           <button
             onClick={() => router.push('/plans')}
