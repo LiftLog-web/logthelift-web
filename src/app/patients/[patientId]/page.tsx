@@ -1220,17 +1220,6 @@ export default function PatientProgressPage() {
                     const delta    = prev.best > 0 ? ((latest.best - prev.best) / prev.best) * 100 : 0;
                     const trend    = delta > 1 ? '↑' : delta < -1 ? '↓' : '→';
                     const trendCol = delta > 1 ? TEAL : delta < -30 ? '#EF4444' : delta < -1 ? PURPLE : 'var(--text-dim)';
-                    const maxVal   = Math.max(...entries.map(e => e.best), 1);
-                    const W = 120, H = 32, pad = 4;
-                    const pts = entries.map((e, i) => {
-                      const x = pad + (i / Math.max(entries.length - 1, 1)) * (W - pad * 2);
-                      const y = H - pad - ((e.best / maxVal) * (H - pad * 2));
-                      return [x, y] as [number, number];
-                    });
-                    const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
-                    const area = `${pts[0][0]},${H} ` + pts.map(([x, y]) => `${x},${y}`).join(' ') + ` ${pts[pts.length - 1][0]},${H}`;
-                    const [ex, ey] = pts[pts.length - 1];
-                    const gradId = `sg-${name.replace(/\s+/g, '-')}`;
                     return (
                       <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1244,18 +1233,6 @@ export default function PatientProgressPage() {
                             )}
                           </p>
                         </div>
-                        {/* SVG sparkline */}
-                        <svg width={W} height={H} style={{ flexShrink: 0, overflow: 'visible' }}>
-                          <defs>
-                            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={TEAL} stopOpacity={0.25} />
-                              <stop offset="100%" stopColor={TEAL} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <polygon points={area} fill={`url(#${gradId})`} />
-                          <polyline points={polyline} fill="none" stroke={TEAL} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
-                          <circle cx={ex} cy={ey} r={3} fill={TEAL} />
-                        </svg>
                         <div style={{ width: 20, textAlign: 'center', fontSize: 18, fontWeight: 800, color: trendCol, flexShrink: 0 }}>{trend}</div>
                       </div>
                     );
