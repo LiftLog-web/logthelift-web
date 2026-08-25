@@ -4,18 +4,37 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
+import NotificationBell from './NotificationBell';
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme();
   const isDark = theme === 'dark';
   const router = useRouter();
-  const [signedIn, setSignedIn] = useState(false);
+  const [signedIn, setSignedIn]   = useState(false);
+  const [userId, setUserId]       = useState('');
+  const [showBell, setShowBell]   = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
-    sb.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+
+    async function resolveSession(session: { user: { id: string } } | null) {
+      if (!session) { setSignedIn(false); setShowBell(false); setUserId(''); return; }
+      setSignedIn(true);
+      const uid = session.user.id;
+      setUserId(uid);
+      const { data: prof } = await sb
+        .from('profiles')
+        .select('role, is_gym_owner, is_employer')
+        .eq('id', uid)
+        .single();
+      const isPract = (prof as any)?.role === 'practitioner' || !!(prof as any)?.is_gym_owner;
+      const isEmp   = !!(prof as any)?.is_employer;
+      setShowBell(isPract && !isEmp);
+    }
+
+    sb.auth.getSession().then(({ data }) => resolveSession(data.session));
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      setSignedIn(!!session);
+      resolveSession(session);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -55,6 +74,10 @@ export function ThemeToggle() {
         >
           Sign Out
         </button>
+      )}
+
+      {signedIn && showBell && userId && (
+        <NotificationBell userId={userId} />
       )}
 
       <button
