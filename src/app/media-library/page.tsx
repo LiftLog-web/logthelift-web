@@ -8,7 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
 import { Sk, SkPage, SkNav } from '@/components/Skeleton';
 import { EXERCISES } from '@/data/exercises';
-import { ClipboardList, Clapperboard } from 'lucide-react';
+import { ClipboardList, Clapperboard, ExternalLink, Lightbulb } from 'lucide-react';
 
 const TEAL      = '#5fcfbf';
 const PURPLE    = '#C471ED';
@@ -537,7 +537,7 @@ export default function MediaLibraryPage() {
         </div>
 
         <div style={{ background: 'var(--badge-teal-bg)', border: '1px solid var(--btn-teal-border)', borderRadius: 14, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
+          <Lightbulb size={20} color={TEAL} style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
             <strong style={{ color: TEAL }}>Video links</strong> are the easiest way to add demos from your PC — paste any YouTube, Vimeo, Instagram, or other video URL.
             {isEmployer ? 'Team members' : 'Patients'} tap the link in the app to open it in their browser. Demos sync instantly to the LiftLog app.
@@ -651,7 +651,16 @@ export default function MediaLibraryPage() {
                                 ▶
                               </button>
                             ) : item.media_type === 'link' ? (
-                              <div style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔗</div>
+                              <a
+                                href={item.url_link ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                                title={item.url_link ?? undefined}
+                              >
+                                <ExternalLink size={22} color={TEAL} />
+                              </a>
                             ) : (
                               <div style={{ width: 64, height: 48, background: 'var(--card)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <div style={{ width: 16, height: 16, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -673,8 +682,8 @@ export default function MediaLibraryPage() {
                           </td>
 
                           <td style={{ padding: '12px 24px' }}>
-                            <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                              {typeIcon(item.media_type)} {typeLabel(item.media_type)}
+                            <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              {item.media_type === 'link' ? <ExternalLink size={11} /> : typeIcon(item.media_type)} {typeLabel(item.media_type)}
                             </span>
                           </td>
 
@@ -743,7 +752,17 @@ export default function MediaLibraryPage() {
                             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
                           />
                         ) : item.media_type === 'link' ? (
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🔗</div>
+                          <a
+                            href={item.url_link ?? undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', background: 'var(--card-alt)' }}
+                            title={item.url_link ?? undefined}
+                          >
+                            <ExternalLink size={28} color={TEAL} />
+                            <span style={{ fontSize: 10, fontWeight: 700, color: TEAL, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Open link</span>
+                          </a>
                         ) : (
                           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div style={{ width: 20, height: 20, border: `2px solid ${TEAL}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -760,8 +779,8 @@ export default function MediaLibraryPage() {
                           <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{item.muscle_group}</p>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6, gap: 6 }}>
-                          <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            {typeIcon(item.media_type)} {typeLabel(item.media_type)}
+                          <span style={{ background: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).bg, color: (TYPE_CSS[item.media_type] ?? TYPE_CSS.link).text, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            {item.media_type === 'link' ? <ExternalLink size={10} /> : typeIcon(item.media_type)} {typeLabel(item.media_type)}
                           </span>
                           <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                             <button onClick={() => openEditModal(item)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0 }}>Edit</button>
