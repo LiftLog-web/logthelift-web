@@ -733,7 +733,7 @@ export default function PlansPage() {
                               onClick={() => router.push(`/patients/${item.patient_id}`)}
                               style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
-                              View Progress
+                              View Profile
                             </button>
                             <button
                               onClick={() => router.push(`/plans/new?patient=${item.patient_id}`)}
@@ -814,7 +814,7 @@ export default function PlansPage() {
                             onClick={e => { e.stopPropagation(); router.push(`/patients/${group.patient_id}`); }}
                             style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
-                            View Progress
+                            View Profile
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); isEmployer ? openAssignModal(group.patient_id, group.patientName) : router.push(`/plans/new?patient=${group.patient_id}`); }}
@@ -976,7 +976,7 @@ export default function PlansPage() {
                               onClick={() => router.push(`/patients/${group.patient_id}`)}
                               style={{ background: 'var(--btn-purple-bg)', color: 'var(--btn-purple-text)', border: '1px solid var(--btn-purple-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                             >
-                              View Progress
+                              View Profile
                             </button>
                             <button
                               onClick={() => handleRelink(group.patient_id, group.patientName)}
