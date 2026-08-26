@@ -1042,6 +1042,9 @@ export default function PlanLibraryPage() {
                   placeholder="Plan name…"
                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: 'var(--text)', fontSize: 14, outline: 'none' }}
                 />
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  This is the name that will appear on the patient's profile. It won't affect the template name in the Plan Library.
+                </p>
               </div>
 
               {/* Patient */}
