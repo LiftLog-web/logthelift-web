@@ -7,6 +7,10 @@
     {
       "path": "/api/weekly-leaderboard-report",
       "schedule": "0 20 * * 0"
+    },
+    {
+      "path": "/api/monthly-milestones-report",
+      "schedule": "0 9 1 * *"
     }
   ]
 }

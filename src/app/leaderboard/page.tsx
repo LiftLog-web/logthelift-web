@@ -50,6 +50,13 @@ interface TimeOffRequest {
   status: 'pending' | 'approved' | 'denied';
 }
 
+interface TopProgram {
+  name: string;
+  avgEffectiveness: number | null;
+  avgEnjoyment: number | null;
+  ratingCount: number;
+}
+
 function getPeriodStart(period: Period): Date {
   const now = new Date();
   if (period === '7d') return new Date(now.getTime() - 7 * 86400000);
@@ -238,6 +245,7 @@ export default function LeaderboardPage() {
   const [planMeta, setPlanMeta]               = useState<{ id: string; name: string }[]>([]);
   const [datesByPlan, setDatesByPlan]         = useState<Record<string, Record<string, string[]>>>({});
   const [programFilter, setProgramFilter]     = useState<string | null>(null);
+  const [topProgram, setTopProgram]           = useState<TopProgram | null>(null);
 
   useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
 
@@ -433,6 +441,25 @@ export default function LeaderboardPage() {
       setAllDates(dateMap);
       setDatesByPlan(dbp);
       setLoading(false);
+
+      // Non-blocking: fetch highest rated program
+      supabase.rpc('get_employer_program_ratings', { p_employer_id: user.id }).then(async ({ data: ratings }) => {
+        if (!ratings || (ratings as any[]).length === 0) return;
+        const top = (ratings as any[]).reduce((best: any, r: any) => {
+          const scoreR    = (r.avg_effectiveness ? Number(r.avg_effectiveness) : 0) + (r.avg_enjoyment ? Number(r.avg_enjoyment) : 0);
+          const scoreBest = (best.avg_effectiveness ? Number(best.avg_effectiveness) : 0) + (best.avg_enjoyment ? Number(best.avg_enjoyment) : 0);
+          return scoreR > scoreBest ? r : best;
+        });
+        if (!top?.plan_template_id) return;
+        const { data: tpl } = await supabase.from('plan_templates').select('name').eq('id', top.plan_template_id).single();
+        if (!tpl?.name) return;
+        setTopProgram({
+          name:             tpl.name as string,
+          avgEffectiveness: top.avg_effectiveness ? Number(top.avg_effectiveness) : null,
+          avgEnjoyment:     top.avg_enjoyment     ? Number(top.avg_enjoyment)     : null,
+          ratingCount:      Number(top.rating_count),
+        });
+      });
     })();
   }, [router]);
 
@@ -695,7 +722,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Stat cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
           <StatCard label="Total Workouts" value={totalWorkouts} sub={`Last ${periodLabel[period]}`} accent={TEAL} />
           <StatCard label="Participation Rate" value={employees.length > 0 ? `${participationRate}%` : '—'} sub={`${activeMembers} / ${employees.length} employees`} accent={PURPLE} />
           <StatCard label="Avg Per Person" value={avgWorkouts} sub="workouts in period" />
@@ -705,6 +732,25 @@ export default function LeaderboardPage() {
             sub={topStreak?.currentStreak ? topStreak.employee.name : 'No active streaks'}
             accent={GOLD}
           />
+          {topProgram && (
+            <div style={{
+              background: 'var(--card)',
+              border: `1px solid ${TEAL}`,
+              borderRadius: 16,
+              padding: '24px 28px',
+              display: 'flex', flexDirection: 'column', gap: 6,
+              boxShadow: `0 0 20px ${TEAL}22`,
+            }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Highest Rated Program</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: TEAL, lineHeight: 1.2, wordBreak: 'break-word' }}>{topProgram.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {[
+                  topProgram.avgEffectiveness !== null ? `Effectiveness ${topProgram.avgEffectiveness.toFixed(1)}/5` : '',
+                  topProgram.avgEnjoyment     !== null ? `Enjoyment ${topProgram.avgEnjoyment.toFixed(1)}/5`        : '',
+                ].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Time-off requests panel */}

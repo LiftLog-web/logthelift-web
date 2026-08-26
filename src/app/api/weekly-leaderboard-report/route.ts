@@ -116,8 +116,27 @@ interface Employee   { id: string; name: string; teamId: string | null; teamName
 interface IndividualRow { rank: number; name: string; teamName: string | null; count: number; streak: number; avgEffectiveness: number | null; avgEnjoyment: number | null; totalReps: number; totalDurationSecs: number; fullProgramDays: number; }
 interface TeamRow    { rank: number; name: string; total: number; active: number; members: number; }
 interface LbData     { individual: IndividualRow[]; teamRows: TeamRow[]; hasTeams: boolean; numPrograms: number; employeeIds: string[]; }
+interface TopProgram { name: string; avgEffectiveness: number | null; avgEnjoyment: number | null; }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function fetchTopProgram(employerId: string, client: any): Promise<TopProgram | null> {
+  const { data: ratings } = await client.rpc('get_employer_program_ratings', { p_employer_id: employerId });
+  if (!ratings || (ratings as any[]).length === 0) return null;
+  const top = (ratings as any[]).reduce((best: any, r: any) => {
+    const scoreR    = (r.avg_effectiveness ? Number(r.avg_effectiveness) : 0) + (r.avg_enjoyment ? Number(r.avg_enjoyment) : 0);
+    const scoreBest = (best.avg_effectiveness ? Number(best.avg_effectiveness) : 0) + (best.avg_enjoyment ? Number(best.avg_enjoyment) : 0);
+    return scoreR > scoreBest ? r : best;
+  });
+  if (!top?.plan_template_id) return null;
+  const { data: tpl } = await client.from('plan_templates').select('name').eq('id', top.plan_template_id).single();
+  if (!tpl?.name) return null;
+  return {
+    name:             tpl.name as string,
+    avgEffectiveness: top.avg_effectiveness ? Number(top.avg_effectiveness) : null,
+    avgEnjoyment:     top.avg_enjoyment     ? Number(top.avg_enjoyment)     : null,
+  };
+}
 
 async function fetchLeaderboard(
   employerId:   string,
@@ -488,11 +507,12 @@ function emailShell(content: string, footerNote: string) {
 }
 
 function buildWeeklyHtml(
-  company:  string,
-  fromDate: string,
-  toDate:   string,
-  programs: { name: string }[],
-  data:     LbData,
+  company:    string,
+  fromDate:   string,
+  toDate:     string,
+  programs:   { name: string }[],
+  data:       LbData,
+  topProgram: TopProgram | null = null,
 ): string {
   const { individual, teamRows, hasTeams, numPrograms } = data;
   const totalWorkouts  = individual.reduce((s, r) => s + r.count, 0);
@@ -556,6 +576,19 @@ function buildWeeklyHtml(
         </td>
       </tr>
     </table>
+
+    ${topProgram ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+      <tr>
+        <td style="background:#0f1117;border:1px solid rgba(30,219,168,0.3);border-radius:12px;padding:18px;text-align:center;">
+          <div style="font-size:12px;font-weight:700;color:#1EDBA8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">&#11088; Highest Rated Program</div>
+          <div style="font-size:18px;font-weight:800;color:#f0f0f0;margin-bottom:8px;">${esc(topProgram.name)}</div>
+          <div style="font-size:13px;color:#6b7280;">
+            ${topProgram.avgEffectiveness !== null ? `Effectiveness: <strong style="color:#f0f0f0;">${topProgram.avgEffectiveness.toFixed(1)}/5</strong>` : ''}${topProgram.avgEffectiveness !== null && topProgram.avgEnjoyment !== null ? ' &middot; ' : ''}${topProgram.avgEnjoyment !== null ? `Enjoyment: <strong style="color:#f0f0f0;">${topProgram.avgEnjoyment.toFixed(1)}/5</strong>` : ''}
+          </div>
+        </td>
+      </tr>
+    </table>` : ''}
 
     ${buildSpotlights(individual, numPrograms)}
 
@@ -726,7 +759,7 @@ export async function GET(req: NextRequest) {
           from:    FROM,
           to:      email,
           subject,
-          html:    buildWeeklyHtml(company, sevenAgo, todayStr, empActive, data),
+          html:    buildWeeklyHtml(company, sevenAgo, todayStr, empActive, data, await fetchTopProgram(employerId, client)),
         });
         if (error) { console.error('Weekly send failed', employerId, error); weekFailed++; }
         else {
@@ -839,7 +872,7 @@ export async function POST(req: NextRequest) {
       from:  FROM,
       to:    user.email,
       subject,
-      html:  buildWeeklyHtml(company, fromDate, todayStr, activeProgs ?? [], data),
+      html:  buildWeeklyHtml(company, fromDate, todayStr, activeProgs ?? [], data, await fetchTopProgram(user.id, client)),
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
