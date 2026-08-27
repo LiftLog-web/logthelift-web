@@ -13,7 +13,7 @@ const GOLD   = '#FFD700';
 const SILVER = '#94A3B8';
 const BRONZE = '#CD7F32';
 
-type Period = '7d' | '1m' | '4m';
+type Period = '7d' | '1m' | '4m' | 'prog';
 
 interface Team {
   id: string;
@@ -57,11 +57,13 @@ interface TopProgram {
   ratingCount: number;
 }
 
-function getPeriodStart(period: Period): Date {
+function getPeriodStart(period: Period, progFrom?: string | null): Date {
   const now = new Date();
   if (period === '7d') return new Date(now.getTime() - 7 * 86400000);
   if (period === '1m') return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-  return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
+  if (period === '4m') return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
+  if (progFrom) return new Date(progFrom + 'T00:00:00');
+  return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
 }
 
 function expandDateRange(start: string, end: string): string[] {
@@ -246,6 +248,7 @@ export default function LeaderboardPage() {
   const [datesByPlan, setDatesByPlan]         = useState<Record<string, Record<string, string[]>>>({});
   const [programFilter, setProgramFilter]     = useState<string | null>(null);
   const [topProgram, setTopProgram]           = useState<TopProgram | null>(null);
+  const [programDates, setProgramDates]       = useState<{ from: string } | null>(null);
 
   useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
 
@@ -380,7 +383,7 @@ export default function LeaderboardPage() {
         supabase.from('patient_links').select('patient_id, team_id, profiles!patient_links_patient_id_fkey(display_name)').eq('practitioner_id', user.id),
         supabase.from('employer_teams').select('id, name').eq('employer_id', user.id).order('name'),
         supabase.from('workout_plans').select('id, name').eq('practitioner_id', user.id),
-        supabase.from('employer_programs').select('schedule_type, work_days').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('employer_programs').select('schedule_type, work_days, started_at').eq('employer_id', user.id).lte('started_at', todayStr).gte('ends_at', todayStr).order('started_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('time_off_requests').select('id, employee_id, start_date, end_date, status').eq('employer_id', user.id).in('status', ['pending', 'approved']).order('start_date', { ascending: false }),
       ]);
 
@@ -394,8 +397,13 @@ export default function LeaderboardPage() {
       }
       setApprovedOffMap(offMap);
 
-      setScheduleType((activeSched as any)?.schedule_type ?? 'fixed');
-      setWorkDays((activeSched as any)?.work_days ?? [1, 2, 3, 4, 5]);
+      const sched = activeSched as any;
+      setScheduleType(sched?.schedule_type ?? 'fixed');
+      setWorkDays(sched?.work_days ?? [1, 2, 3, 4, 5]);
+      if (sched?.started_at) {
+        setProgramDates({ from: sched.started_at as string });
+        setPeriod('prog');
+      }
 
       if (!links || links.length === 0) { setLoading(false); return; }
       setTeams((teamsData ?? []) as Team[]);
@@ -475,7 +483,7 @@ export default function LeaderboardPage() {
   }, [planMeta]);
 
   const entries = useMemo<LeaderboardEntry[]>(() => {
-    const start = getPeriodStart(period);
+    const start = getPeriodStart(period, programDates?.from);
     const startStr = start.toISOString().slice(0, 10);
 
     return employees
@@ -500,7 +508,7 @@ export default function LeaderboardPage() {
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, scheduleType, workDays, approvedOffMap]);
+  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, programDates, scheduleType, workDays, approvedOffMap]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
@@ -525,7 +533,7 @@ export default function LeaderboardPage() {
     }).sort((a, b) => b.totalWorkouts - a.totalWorkouts);
   }, [teams, employees, entries]);
 
-  const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months' };
+  const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months', 'prog': 'This Program' };
 
   const top3 = activeEntries.slice(0, 3);
 
@@ -569,7 +577,7 @@ export default function LeaderboardPage() {
 
           {/* Period toggle */}
           <div style={{ display: 'flex', gap: 8, background: 'var(--bg)', borderRadius: 12, padding: 4, border: '1px solid var(--border)' }}>
-            {(['7d', '1m', '4m'] as Period[]).map(p => (
+            {(['7d', '1m', '4m', ...(programDates ? ['prog'] : [])] as Period[]).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -723,7 +731,7 @@ export default function LeaderboardPage() {
 
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
-          <StatCard label="Total Workouts" value={totalWorkouts} sub={`Last ${periodLabel[period]}`} accent={TEAL} />
+          <StatCard label="Total Workouts" value={totalWorkouts} sub={period === 'prog' ? 'Current program' : `Last ${periodLabel[period]}`} accent={TEAL} />
           <StatCard label="Participation Rate" value={employees.length > 0 ? `${participationRate}%` : '—'} sub={`${activeMembers} / ${employees.length} employees`} accent={PURPLE} />
           <StatCard label="Avg Per Person" value={avgWorkouts} sub="workouts in period" />
           <StatCard
