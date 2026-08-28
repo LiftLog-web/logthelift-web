@@ -553,9 +553,15 @@ export default function ProgramsPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {activePrograms.map(prog => (
-                <div key={prog.id} style={{ background: 'var(--card)', border: `2px solid ${TEAL}`, borderRadius: 18, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div
+                  key={prog.id}
+                  onClick={() => handlePreviewPastProg(prog)}
+                  style={{ background: 'var(--card)', border: `2px solid ${TEAL}`, borderRadius: 18, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 0 0 3px ${TEAL}30`)}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                >
                   <div>
-                    <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 3px' }}>{prog.name}</h2>
+                    <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 3px' }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 13 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
                     {employeeCount > 0 && programEngagement[prog.id] != null && (
                       <p style={{ margin: '5px 0 0', fontSize: 13, color: TEAL, fontWeight: 600 }}>
@@ -569,7 +575,7 @@ export default function ProgramsPage() {
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0', fontWeight: 600 }}>days left</p>
                     </div>
                     <button
-                      onClick={() => handleRemoveProgram(prog)}
+                      onClick={e => { e.stopPropagation(); handleRemoveProgram(prog); }}
                       disabled={removingProgId === prog.id}
                       style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: removingProgId === prog.id ? 'not-allowed' : 'pointer', opacity: removingProgId === prog.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
                     >
