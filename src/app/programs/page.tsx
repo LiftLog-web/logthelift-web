@@ -323,9 +323,12 @@ export default function ProgramsPage() {
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
     const tolaunch  = availableNowTemplates.filter(t => selectedTplIds.includes(t.id) && !activePrograms.some(p => p.plan_template_id === t.id));
     const newProgs: EmployerProgram[] = [];
+    const today_date = new Date().toISOString().slice(0, 10);
     for (const tpl of tolaunch) {
       if (employees.length > 0) {
-        await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
+        let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
+        if (start > today_date) del = del.gte('start_date', start);
+        await del;
         const { error: plansErr } = await sb.from('workout_plans').insert(
           employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
 
@@ -362,7 +365,10 @@ export default function ProgramsPage() {
     if (linksErr) { setLaunchError('Could not load employees: ' + linksErr.message); setLaunching(false); return; }
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
     if (employees.length > 0) {
-      await sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
+      const today_d = new Date().toISOString().slice(0, 10);
+      let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
+      if (start > today_d) del = del.gte('start_date', start);
+      await del;
       const { error: plansErr } = await sb.from('workout_plans').insert(
         employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
       );
