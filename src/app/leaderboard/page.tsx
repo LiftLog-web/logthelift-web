@@ -486,6 +486,7 @@ export default function LeaderboardPage() {
       supabase.from('employer_programs')
         .select('id, started_at, ends_at')
         .eq('employer_id', user.id)
+        .lte('started_at', todayStr)
         .lt('ends_at', todayStr)
         .order('ends_at', { ascending: false })
         .then(({ data: pastProgsData }) => {
@@ -493,11 +494,12 @@ export default function LeaderboardPage() {
           const past: PastProgram[] = (pastProgsData as any[]).map(p => {
             const f = new Date((p.started_at as string) + 'T12:00:00');
             const t = new Date((p.ends_at   as string) + 'T12:00:00');
-            const fromLbl = f.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const toLbl   = t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const fromLbl = f.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const toLbl   = t.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const label   = fromLbl === toLbl ? fromLbl : `${fromLbl} – ${toLbl}`;
             return {
               id: p.id as string,
-              name: `${fromLbl} – ${toLbl}`,
+              name: label,
               started_at: p.started_at as string,
               ends_at:    p.ends_at    as string,
             };
