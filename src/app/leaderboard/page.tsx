@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import { Mail, Upload, AlertTriangle } from 'lucide-react';
+import { Mail, Upload, AlertTriangle, Info } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -674,6 +674,19 @@ export default function LeaderboardPage() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
               <input type="checkbox" checked={includeTeamInReport} onChange={toggleIncludeTeam} style={{ accentColor: PURPLE, width: 11, height: 11 }} />
               Auto-send Sundays
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }} className="lb-info-wrap">
+                <Info size={11} style={{ color: 'var(--text-muted)', opacity: 0.6, cursor: 'default' }} />
+                <span style={{
+                  position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+                  background: 'var(--modal-bg)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '7px 10px', width: 210, fontSize: 11,
+                  color: 'var(--text)', lineHeight: 1.45, pointerEvents: 'none',
+                  boxShadow: '0 4px 16px #0003', zIndex: 100,
+                  whiteSpace: 'normal' as const,
+                }} className="lb-info-tip">
+                  When checked, your weekly leaderboard summary is automatically emailed to all team members every Sunday morning.
+                </span>
+              </span>
             </label>
           </div>
         </div>

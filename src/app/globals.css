@@ -142,3 +142,7 @@ input[type="number"] {
 .liftlog-icon-clipboard { fill: #0d2e24; }
 [data-theme="light"] .liftlog-icon-pill      { fill: #e6faf5; }
 [data-theme="light"] .liftlog-icon-clipboard { fill: #ffffff; }
+
+/* ── Leaderboard info tooltip ── */
+.lb-info-wrap .lb-info-tip { opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+.lb-info-wrap:hover .lb-info-tip { opacity: 1; }
