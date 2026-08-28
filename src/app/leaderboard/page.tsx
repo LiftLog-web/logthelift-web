@@ -590,223 +590,181 @@ export default function LeaderboardPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif' }}>
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
 
-        {/* Hero banner — compact */}
-        <div style={{
-          borderRadius: 20,
-          padding: '16px 24px',
-          marginBottom: 24,
-          background: `radial-gradient(ellipse at 20% 50%, ${TEAL}22 0%, transparent 60%),
-                       radial-gradient(ellipse at 80% 30%, ${PURPLE}22 0%, transparent 55%),
-                       var(--card)`,
-          border: '1px solid var(--border)',
-          boxShadow: `0 0 60px ${TEAL}18, 0 4px 32px #0003`,
-          display: 'flex',
-          flexDirection: 'column' as const,
-          gap: 10,
-          position: 'relative' as const,
-          overflow: 'hidden',
-        }}>
-
-          {/* Row 1: Title + action buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 26, lineHeight: 1 }}>🏆</span>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, background: `linear-gradient(135deg, ${TEAL}, ${PURPLE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  Leaderboard
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{companyName}</div>
+        {/* Page header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 26, lineHeight: 1 }}>🏆</span>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, background: `linear-gradient(135deg, ${TEAL}, ${PURPLE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Leaderboard
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
-              <button
-                onClick={sendReport}
-                disabled={emailStatus === 'sending'}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${emailStatus === 'error' ? '#F9731660' : `${TEAL}50`}`,
-                  borderRadius: 8,
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: emailStatus === 'sent' ? TEAL : emailStatus === 'error' ? '#F97316' : 'var(--text-muted)',
-                  cursor: emailStatus === 'sending' ? 'wait' : 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {emailStatus === 'sending'
-                  ? '⏳ Sending…'
-                  : emailStatus === 'sent'
-                  ? '✓ Report Sent'
-                  : emailStatus === 'error'
-                  ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12} /> Retry</span>
-                  : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={12} /> Email Report</span>}
-              </button>
-              <button
-                onClick={sendToTeam}
-                disabled={teamEmailStatus === 'sending'}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${teamEmailStatus === 'error' ? '#F9731660' : '#C471ED50'}`,
-                  borderRadius: 8,
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: teamEmailStatus === 'sent' ? PURPLE : teamEmailStatus === 'error' ? '#F97316' : 'var(--text-muted)',
-                  cursor: teamEmailStatus === 'sending' ? 'wait' : 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {teamEmailStatus === 'sending'
-                  ? '⏳ Sending…'
-                  : teamEmailStatus === 'sent'
-                  ? '✓ Team Notified'
-                  : teamEmailStatus === 'error'
-                  ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12} /> Retry</span>
-                  : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Upload size={12} /> Share with Team</span>}
-              </button>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={includeTeamInReport}
-                  onChange={toggleIncludeTeam}
-                  style={{ accentColor: PURPLE, width: 11, height: 11 }}
-                />
-                Auto-send Sundays
-              </label>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{companyName}</div>
             </div>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
+            <button
+              onClick={sendReport}
+              disabled={emailStatus === 'sending'}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${emailStatus === 'error' ? '#F9731660' : `${TEAL}50`}`,
+                borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                color: emailStatus === 'sent' ? TEAL : emailStatus === 'error' ? '#F97316' : 'var(--text-muted)',
+                cursor: emailStatus === 'sending' ? 'wait' : 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {emailStatus === 'sending' ? '⏳ Sending…' : emailStatus === 'sent' ? '✓ Report Sent'
+                : emailStatus === 'error'
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12} /> Retry</span>
+                : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={12} /> Email Report</span>}
+            </button>
+            <button
+              onClick={sendToTeam}
+              disabled={teamEmailStatus === 'sending'}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${teamEmailStatus === 'error' ? '#F9731660' : '#C471ED50'}`,
+                borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                color: teamEmailStatus === 'sent' ? PURPLE : teamEmailStatus === 'error' ? '#F97316' : 'var(--text-muted)',
+                cursor: teamEmailStatus === 'sending' ? 'wait' : 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {teamEmailStatus === 'sending' ? '⏳ Sending…' : teamEmailStatus === 'sent' ? '✓ Team Notified'
+                : teamEmailStatus === 'error'
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12} /> Retry</span>
+                : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Upload size={12} /> Share with Team</span>}
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={includeTeamInReport} onChange={toggleIncludeTeam} style={{ accentColor: PURPLE, width: 11, height: 11 }} />
+              Auto-send Sundays
+            </label>
+          </div>
+        </div>
 
-          {/* Row 2: Period toggle + week chips inline */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' as const, gap: 6 }}>
-            <div style={{ display: 'flex', gap: 4, background: 'var(--bg)', borderRadius: 10, padding: 3, border: '1px solid var(--border)', flexShrink: 0 }}>
-              {(['7d', '1m', '4m', ...(programDates ? ['prog'] : [])] as Period[]).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: 7,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: 12,
+        {(emailMsg || teamEmailMsg) && (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: 12 }}>
+            {emailMsg && <p style={{ margin: 0, fontSize: 11, color: emailStatus === 'error' ? '#F97316' : TEAL }}>{emailMsg}</p>}
+            {teamEmailMsg && <p style={{ margin: 0, fontSize: 11, color: teamEmailStatus === 'error' ? '#F97316' : PURPLE }}>{teamEmailMsg}</p>}
+          </div>
+        )}
+
+        {/* Two-column layout: sticky filter sidebar + scrollable content */}
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+
+          {/* Sticky filter sidebar */}
+          <div style={{
+            width: 200,
+            flexShrink: 0,
+            position: 'sticky' as const,
+            top: 80,
+            display: 'flex',
+            flexDirection: 'column' as const,
+            gap: 20,
+            background: `radial-gradient(ellipse at 15% 25%, ${TEAL}1a 0%, transparent 65%), var(--card)`,
+            borderRadius: 18,
+            padding: '18px 14px',
+            border: '1px solid var(--border)',
+            boxShadow: `0 0 40px ${TEAL}10, 0 2px 16px #0002`,
+          }}>
+
+            {/* Period */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>Period</div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+                {(['7d', '1m', '4m', ...(programDates ? ['prog'] : [])] as Period[]).map(p => (
+                  <button key={p} onClick={() => setPeriod(p)} style={{
+                    padding: '7px 12px', borderRadius: 9, border: 'none',
+                    textAlign: 'left' as const, cursor: 'pointer', fontWeight: 700, fontSize: 13,
                     background: period === p ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'transparent',
                     color: period === p ? '#fff' : 'var(--text-muted)',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.18s',
                     boxShadow: period === p ? `0 2px 10px ${TEAL}44` : 'none',
-                  }}
-                >
-                  {periodLabel[p]}
-                </button>
-              ))}
+                  }}>
+                    {periodLabel[p]}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Week filter */}
             {period === 'prog' && programWeeks.length > 1 && (
-              <>
-                {programWeeks.map(w => {
-                  const active = selectedWeeks.includes(w.weekNum);
-                  return (
-                    <button
-                      key={w.weekNum}
-                      onClick={() => setSelectedWeeks(prev =>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>Week</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                  {programWeeks.map(w => {
+                    const active = selectedWeeks.includes(w.weekNum);
+                    return (
+                      <button key={w.weekNum} onClick={() => setSelectedWeeks(prev =>
                         prev.includes(w.weekNum) ? prev.filter(x => x !== w.weekNum) : [...prev, w.weekNum]
-                      )}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: 20,
+                      )} style={{
+                        padding: '4px 10px', borderRadius: 20,
                         border: `1px solid ${active ? TEAL : 'var(--border)'}`,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: 12,
+                        cursor: 'pointer', fontWeight: 600, fontSize: 12,
                         background: active ? `${TEAL}22` : 'transparent',
                         color: active ? TEAL : 'var(--text-muted)',
                         transition: 'all 0.15s',
-                      }}
-                    >
-                      Wk {w.weekNum}
-                    </button>
-                  );
-                })}
-                {selectedWeeks.length > 0 && (
-                  <button
-                    onClick={() => setSelectedWeeks([])}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 20,
+                      }}>
+                        Wk {w.weekNum}
+                      </button>
+                    );
+                  })}
+                  {selectedWeeks.length > 0 && (
+                    <button onClick={() => setSelectedWeeks([])} style={{
+                      padding: '4px 10px', borderRadius: 20,
                       border: '1px solid var(--border)',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: 12,
-                      background: 'transparent',
-                      color: 'var(--text-muted)',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    All weeks
-                  </button>
-                )}
-              </>
+                      cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                      background: 'transparent', color: 'var(--text-muted)', transition: 'all 0.15s',
+                    }}>All</button>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
 
-          {/* Row 3: Individual/Teams toggle + Program filter pills — only when either exists */}
-          {(teams.length > 0 || programs.length > 1) && (
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' as const, gap: 6 }}>
-              {teams.length > 0 && (
-                <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+            {/* View toggle */}
+            {teams.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>View</div>
+                <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, padding: 3 }}>
                   {(['individual', 'team'] as const).map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setLbView(v)}
-                      style={{
-                        border: 'none', borderRadius: 5, padding: '5px 14px',
-                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        background: lbView === v ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'transparent',
-                        color: lbView === v ? '#fff' : 'var(--text-muted)',
-                        transition: 'all 0.2s',
-                        boxShadow: lbView === v ? `0 2px 8px ${TEAL}44` : 'none',
-                      }}
-                    >
+                    <button key={v} onClick={() => setLbView(v)} style={{
+                      flex: 1, border: 'none', borderRadius: 6, padding: '6px 4px',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      background: lbView === v ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'transparent',
+                      color: lbView === v ? '#fff' : 'var(--text-muted)',
+                      transition: 'all 0.18s',
+                      boxShadow: lbView === v ? `0 2px 8px ${TEAL}44` : 'none',
+                    }}>
                       {v === 'team' ? 'Teams' : 'Individual'}
                     </button>
                   ))}
                 </div>
-              )}
-              {programs.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+              </div>
+            )}
+
+            {/* Program filter */}
+            {programs.length > 1 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>Program</div>
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
                   {[null, ...programs].map(prog => (
-                    <button
-                      key={prog ?? '__all__'}
-                      onClick={() => setProgramFilter(prog)}
-                      style={{
-                        borderRadius: 7,
-                        padding: '5px 12px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: programFilter === prog ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'var(--bg)',
-                        color: programFilter === prog ? '#fff' : 'var(--text-muted)',
-                        border: `1px solid ${programFilter === prog ? 'transparent' : 'var(--border)'}`,
-                        boxShadow: programFilter === prog ? `0 2px 8px ${TEAL}44` : 'none',
-                        transition: 'all 0.2s',
-                      }}
-                    >
+                    <button key={prog ?? '__all__'} onClick={() => setProgramFilter(prog)} style={{
+                      padding: '6px 12px', borderRadius: 9, border: 'none',
+                      textAlign: 'left' as const, cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                      background: programFilter === prog ? `linear-gradient(135deg, ${TEAL}, ${PURPLE})` : 'transparent',
+                      color: programFilter === prog ? '#fff' : 'var(--text-muted)',
+                      transition: 'all 0.18s',
+                      boxShadow: programFilter === prog ? `0 2px 8px ${TEAL}44` : 'none',
+                    }}>
                       {prog ?? 'All Programs'}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
-          {/* Status messages */}
-          {(emailMsg || teamEmailMsg) && (
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
-              {emailMsg && <p style={{ margin: 0, fontSize: 11, color: emailStatus === 'error' ? '#F97316' : TEAL }}>{emailMsg}</p>}
-              {teamEmailMsg && <p style={{ margin: 0, fontSize: 11, color: teamEmailStatus === 'error' ? '#F97316' : PURPLE }}>{teamEmailMsg}</p>}
-            </div>
-          )}
-        </div>
+          {/* Main scrollable content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
 
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
@@ -1176,6 +1134,8 @@ export default function LeaderboardPage() {
             </>
           )
         )}
+          </div>{/* end main content */}
+        </div>{/* end two-column layout */}
       </main>
     </div>
   );
