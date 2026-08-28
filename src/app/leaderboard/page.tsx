@@ -13,7 +13,7 @@ const GOLD   = '#FFD700';
 const SILVER = '#94A3B8';
 const BRONZE = '#CD7F32';
 
-type Period = '7d' | '1m' | '4m' | 'prog';
+type Period = '4m' | 'prog' | 'past';
 
 interface Team {
   id: string;
@@ -57,26 +57,33 @@ interface TopProgram {
   ratingCount: number;
 }
 
-function getPeriodStart(period: Period, progFrom?: string | null): Date {
-  const now = new Date();
-  if (period === '7d') return new Date(now.getTime() - 7 * 86400000);
-  if (period === '1m') return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-  if (period === '4m') return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
-  if (progFrom) return new Date(progFrom + 'T00:00:00');
-  return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+interface PastProgram {
+  id: string;
+  name: string;
+  started_at: string;
+  ends_at: string;
 }
 
-function computeProgramWeeks(progFrom: string): Array<{ weekNum: number; from: string; to: string }> {
+function getPeriodStart(period: Period, progFrom?: string | null, pastFrom?: string | null): Date {
+  const now = new Date();
+  if (period === '4m') return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
+  if (period === 'prog' && progFrom) return new Date(progFrom + 'T00:00:00');
+  if (period === 'past' && pastFrom) return new Date(pastFrom + 'T00:00:00');
+  return new Date(now.getFullYear(), now.getMonth() - 4, now.getDate());
+}
+
+function computeProgramWeeks(progFrom: string, progTo?: string): Array<{ weekNum: number; from: string; to: string }> {
   const start = new Date(progFrom + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const bound = progTo ? new Date(progTo + 'T00:00:00') : today;
   const weeks: Array<{ weekNum: number; from: string; to: string }> = [];
   const cursor = new Date(start);
   let weekNum = 1;
-  while (cursor <= today) {
+  while (cursor <= bound) {
     const weekEnd = new Date(cursor);
     weekEnd.setDate(weekEnd.getDate() + 6);
-    if (weekEnd > today) weekEnd.setTime(today.getTime());
+    if (weekEnd > bound) weekEnd.setTime(bound.getTime());
     weeks.push({ weekNum, from: cursor.toISOString().slice(0, 10), to: weekEnd.toISOString().slice(0, 10) });
     cursor.setDate(cursor.getDate() + 7);
     weekNum++;
@@ -242,7 +249,7 @@ function PodiumBlock({ entry, rank, height }: { entry: LeaderboardEntry; rank: 1
 export default function LeaderboardPage() {
   const router = useRouter();
   const [loading, setLoading]   = useState(true);
-  const [period, setPeriod]     = useState<Period>('1m');
+  const [period, setPeriod]     = useState<Period>('4m');
   const [lbView, setLbView]     = useState<'team' | 'individual'>('individual');
   const [companyName, setCompanyName] = useState('');
   const [teams, setTeams]             = useState<Team[]>([]);
@@ -268,11 +275,13 @@ export default function LeaderboardPage() {
   const [topProgram, setTopProgram]           = useState<TopProgram | null>(null);
   const [programDates, setProgramDates]       = useState<{ from: string } | null>(null);
   const [selectedWeeks, setSelectedWeeks]     = useState<number[]>([]);
+  const [pastPrograms, setPastPrograms]       = useState<PastProgram[]>([]);
+  const [selectedPastProgram, setSelectedPastProgram] = useState<PastProgram | null>(null);
 
   useEffect(() => {
     setEmailStatus('idle');
     setEmailMsg('');
-    if (period !== 'prog') setSelectedWeeks([]);
+    if (period !== 'prog' && period !== 'past') setSelectedWeeks([]);
   }, [period]);
 
   async function approveRequest(id: string) {
@@ -473,6 +482,30 @@ export default function LeaderboardPage() {
       setDatesByPlan(dbp);
       setLoading(false);
 
+      // Non-blocking: fetch past employer programs
+      supabase.from('employer_programs')
+        .select('id, started_at, ends_at')
+        .eq('employer_id', user.id)
+        .lt('ends_at', todayStr)
+        .order('ends_at', { ascending: false })
+        .then(({ data: pastProgsData }) => {
+          if (!pastProgsData?.length) return;
+          const past: PastProgram[] = (pastProgsData as any[]).map(p => {
+            const f = new Date((p.started_at as string) + 'T12:00:00');
+            const t = new Date((p.ends_at   as string) + 'T12:00:00');
+            const fromLbl = f.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const toLbl   = t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return {
+              id: p.id as string,
+              name: `${fromLbl} – ${toLbl}`,
+              started_at: p.started_at as string,
+              ends_at:    p.ends_at    as string,
+            };
+          });
+          setPastPrograms(past);
+          setSelectedPastProgram(past[0]);
+        });
+
       // Non-blocking: fetch highest rated program
       supabase.rpc('get_employer_program_ratings', { p_employer_id: user.id }).then(async ({ data: ratings }) => {
         if (!ratings || (ratings as any[]).length === 0) return;
@@ -505,17 +538,19 @@ export default function LeaderboardPage() {
     return map;
   }, [planMeta]);
 
-  const programWeeks = useMemo(
-    () => programDates ? computeProgramWeeks(programDates.from) : [],
-    [programDates],
-  );
+  const programWeeks = useMemo(() => {
+    if (period === 'prog' && programDates) return computeProgramWeeks(programDates.from);
+    if (period === 'past' && selectedPastProgram) return computeProgramWeeks(selectedPastProgram.started_at, selectedPastProgram.ends_at);
+    return [];
+  }, [period, programDates, selectedPastProgram]);
 
   const entries = useMemo<LeaderboardEntry[]>(() => {
-    const start = getPeriodStart(period, programDates?.from);
+    const start = getPeriodStart(period, programDates?.from, selectedPastProgram?.started_at);
     const startStr = start.toISOString().slice(0, 10);
+    const endStr: string | null = period === 'past' ? (selectedPastProgram?.ends_at ?? null) : null;
 
     let allowedDateSet: Set<string> | null = null;
-    if (period === 'prog' && selectedWeeks.length > 0) {
+    if ((period === 'prog' || period === 'past') && selectedWeeks.length > 0) {
       allowedDateSet = new Set<string>();
       for (const w of programWeeks) {
         if (selectedWeeks.includes(w.weekNum)) {
@@ -539,6 +574,8 @@ export default function LeaderboardPage() {
         }
         const periodDates = allowed
           ? dates.filter(d => allowed.has(d))
+          : endStr
+          ? dates.filter(d => d >= startStr && d <= endStr)
           : dates.filter(d => d >= startStr);
         return {
           employee: emp,
@@ -549,7 +586,7 @@ export default function LeaderboardPage() {
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, programDates, programWeeks, selectedWeeks, scheduleType, workDays, approvedOffMap]);
+  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, programDates, selectedPastProgram, programWeeks, selectedWeeks, scheduleType, workDays, approvedOffMap]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
@@ -574,7 +611,7 @@ export default function LeaderboardPage() {
     }).sort((a, b) => b.totalWorkouts - a.totalWorkouts);
   }, [teams, employees, entries]);
 
-  const periodLabel: Record<Period, string> = { '7d': '7 Days', '1m': '1 Month', '4m': '4 Months', 'prog': 'This Program' };
+  const periodLabel: Record<Period, string> = { '4m': '4 Months', 'prog': 'This Program', 'past': 'Past Programs' };
 
   const top3 = activeEntries.slice(0, 3);
 
@@ -671,7 +708,7 @@ export default function LeaderboardPage() {
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>Period</div>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
-                {(['7d', '1m', '4m', ...(programDates ? ['prog'] : [])] as Period[]).map(p => (
+                {(['4m', ...(programDates ? ['prog'] : []), ...(pastPrograms.length ? ['past'] : [])] as Period[]).map(p => (
                   <button key={p} onClick={() => setPeriod(p)} style={{
                     padding: '7px 12px', borderRadius: 9, border: 'none',
                     textAlign: 'left' as const, cursor: 'pointer', fontWeight: 700, fontSize: 13,
@@ -684,10 +721,29 @@ export default function LeaderboardPage() {
                   </button>
                 ))}
               </div>
+              {/* Past program selector */}
+              {period === 'past' && pastPrograms.length > 0 && (
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+                  {pastPrograms.map(prog => {
+                    const isSelected = selectedPastProgram?.id === prog.id;
+                    return (
+                      <button key={prog.id} onClick={() => setSelectedPastProgram(prog)} style={{
+                        padding: '5px 10px 5px 14px', borderRadius: 7, border: 'none',
+                        textAlign: 'left' as const, cursor: 'pointer', fontWeight: 600, fontSize: 11,
+                        background: isSelected ? `${TEAL}22` : 'transparent',
+                        color: isSelected ? TEAL : 'var(--text-muted)',
+                        transition: 'all 0.15s',
+                      }}>
+                        {prog.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Week filter */}
-            {period === 'prog' && programWeeks.length > 1 && (
+            {(period === 'prog' || period === 'past') && programWeeks.length > 1 && (
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: TEAL, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6 }}>Week</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
