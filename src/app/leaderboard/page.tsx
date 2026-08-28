@@ -66,6 +66,24 @@ function getPeriodStart(period: Period, progFrom?: string | null): Date {
   return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
 }
 
+function computeProgramWeeks(progFrom: string): Array<{ weekNum: number; from: string; to: string }> {
+  const start = new Date(progFrom + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weeks: Array<{ weekNum: number; from: string; to: string }> = [];
+  const cursor = new Date(start);
+  let weekNum = 1;
+  while (cursor <= today) {
+    const weekEnd = new Date(cursor);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    if (weekEnd > today) weekEnd.setTime(today.getTime());
+    weeks.push({ weekNum, from: cursor.toISOString().slice(0, 10), to: weekEnd.toISOString().slice(0, 10) });
+    cursor.setDate(cursor.getDate() + 7);
+    weekNum++;
+  }
+  return weeks;
+}
+
 function expandDateRange(start: string, end: string): string[] {
   const out: string[] = [];
   const cursor = new Date(start + 'T00:00:00');
@@ -249,8 +267,13 @@ export default function LeaderboardPage() {
   const [programFilter, setProgramFilter]     = useState<string | null>(null);
   const [topProgram, setTopProgram]           = useState<TopProgram | null>(null);
   const [programDates, setProgramDates]       = useState<{ from: string } | null>(null);
+  const [selectedWeeks, setSelectedWeeks]     = useState<number[]>([]);
 
-  useEffect(() => { setEmailStatus('idle'); setEmailMsg(''); }, [period]);
+  useEffect(() => {
+    setEmailStatus('idle');
+    setEmailMsg('');
+    if (period !== 'prog') setSelectedWeeks([]);
+  }, [period]);
 
   async function approveRequest(id: string) {
     const supabase = getSupabase();
@@ -482,9 +505,25 @@ export default function LeaderboardPage() {
     return map;
   }, [planMeta]);
 
+  const programWeeks = useMemo(
+    () => programDates ? computeProgramWeeks(programDates.from) : [],
+    [programDates],
+  );
+
   const entries = useMemo<LeaderboardEntry[]>(() => {
     const start = getPeriodStart(period, programDates?.from);
     const startStr = start.toISOString().slice(0, 10);
+
+    let allowedDateSet: Set<string> | null = null;
+    if (period === 'prog' && selectedWeeks.length > 0) {
+      allowedDateSet = new Set<string>();
+      for (const w of programWeeks) {
+        if (selectedWeeks.includes(w.weekNum)) {
+          for (const d of expandDateRange(w.from, w.to)) allowedDateSet.add(d);
+        }
+      }
+    }
+    const allowed = allowedDateSet;
 
     return employees
       .map(emp => {
@@ -498,7 +537,9 @@ export default function LeaderboardPage() {
         } else {
           dates = allDates[emp.id] ?? [];
         }
-        const periodDates = dates.filter(d => d >= startStr);
+        const periodDates = allowed
+          ? dates.filter(d => allowed.has(d))
+          : dates.filter(d => d >= startStr);
         return {
           employee: emp,
           workoutCount: periodDates.length,
@@ -508,7 +549,7 @@ export default function LeaderboardPage() {
         };
       })
       .sort((a, b) => b.workoutCount - a.workoutCount || b.currentStreak - a.currentStreak);
-  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, programDates, scheduleType, workDays, approvedOffMap]);
+  }, [employees, allDates, datesByPlan, planIdsByProgram, programFilter, period, programDates, programWeeks, selectedWeeks, scheduleType, workDays, approvedOffMap]);
 
   const totalWorkouts  = useMemo(() => entries.reduce((s, e) => s + e.workoutCount, 0), [entries]);
   const activeMembers  = useMemo(() => entries.filter(e => e.workoutCount > 0).length, [entries]);
@@ -598,6 +639,54 @@ export default function LeaderboardPage() {
               </button>
             ))}
           </div>
+
+          {/* Week filter — only when "This Program" is active and ≥2 weeks have elapsed */}
+          {period === 'prog' && programWeeks.length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {programWeeks.map(w => {
+                const active = selectedWeeks.includes(w.weekNum);
+                return (
+                  <button
+                    key={w.weekNum}
+                    onClick={() => setSelectedWeeks(prev =>
+                      prev.includes(w.weekNum) ? prev.filter(x => x !== w.weekNum) : [...prev, w.weekNum]
+                    )}
+                    style={{
+                      padding: '5px 14px',
+                      borderRadius: 20,
+                      border: `1px solid ${active ? TEAL : 'var(--border)'}`,
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      background: active ? `${TEAL}22` : 'transparent',
+                      color: active ? TEAL : 'var(--text-muted)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    Wk {w.weekNum}
+                  </button>
+                );
+              })}
+              {selectedWeeks.length > 0 && (
+                <button
+                  onClick={() => setSelectedWeeks([])}
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: 20,
+                    border: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 12,
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  All weeks
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Teams / Individual toggle — only when teams exist */}
           {teams.length > 0 && (
@@ -731,7 +820,16 @@ export default function LeaderboardPage() {
 
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
-          <StatCard label="Total Workouts" value={totalWorkouts} sub={period === 'prog' ? 'Current program' : `Last ${periodLabel[period]}`} accent={TEAL} />
+          <StatCard
+            label="Total Workouts"
+            value={totalWorkouts}
+            sub={
+              period === 'prog' && selectedWeeks.length > 0
+                ? `Week${selectedWeeks.length > 1 ? 's' : ''} ${[...selectedWeeks].sort((a, b) => a - b).join(', ')}`
+                : period === 'prog' ? 'Current program' : `Last ${periodLabel[period]}`
+            }
+            accent={TEAL}
+          />
           <StatCard label="Participation Rate" value={employees.length > 0 ? `${participationRate}%` : '—'} sub={`${activeMembers} / ${employees.length} employees`} accent={PURPLE} />
           <StatCard label="Avg Per Person" value={avgWorkouts} sub="workouts in period" />
           <StatCard
