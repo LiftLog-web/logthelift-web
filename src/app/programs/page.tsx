@@ -214,12 +214,13 @@ export default function ProgramsPage() {
       setPastPrograms(past);
       setLoading(false);
 
-      // Fetch aggregate ratings for this employer's employees (non-blocking)
+      // Fetch per-period ratings for this employer's employees (non-blocking)
       sb.rpc('get_employer_program_ratings', { p_employer_id: uid }).then(({ data: ratingsData }) => {
         if (!ratingsData) return;
         const map: Record<string, ProgramRating> = {};
         for (const r of ratingsData as any[]) {
-          map[r.plan_template_id] = {
+          const key = `${r.plan_template_id}::${(r.period_end as string).slice(0, 10)}`;
+          map[key] = {
             avg_effectiveness: r.avg_effectiveness ? Number(r.avg_effectiveness) : null,
             avg_enjoyment:     r.avg_enjoyment     ? Number(r.avg_enjoyment)     : null,
             rating_count:      Number(r.rating_count),
@@ -804,7 +805,7 @@ export default function ProgramsPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pastPrograms.map(prog => {
-                const rating = programRatings[prog.plan_template_id] ?? null;
+                const rating = programRatings[`${prog.plan_template_id}::${prog.ends_at.slice(0, 10)}`] ?? null;
                 return (
                   <div key={prog.id} onClick={() => handlePreviewPastProg(prog)} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', opacity: 0.82, cursor: 'pointer' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
