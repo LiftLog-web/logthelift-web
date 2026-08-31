@@ -330,15 +330,25 @@ export default function ProgramsPage() {
     const today_date = new Date().toISOString().slice(0, 10);
     for (const tpl of tolaunch) {
       if (employees.length > 0) {
-        let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
-        // Future launch: delete null-start rows (currently active) OR rows within the new period.
-        // Same-day launch: delete all currently-active rows (null or started ≤ end).
-        if (start > today_date) {
-          del = del.or(`start_date.is.null,and(start_date.gte.${start},start_date.lte.${end})`);
-        } else {
-          del = del.or(`start_date.is.null,start_date.lte.${end}`);
-        }
-        await del;
+        // Expire currently active rows by setting end_date (preserves UUIDs so
+        // synced_workouts session references remain intact for historical ratings).
+        const expiryDate = new Date(start);
+        expiryDate.setDate(expiryDate.getDate() - 1);
+        const expiry = expiryDate.toISOString().slice(0, 10);
+        await sb.from('workout_plans')
+          .update({ end_date: expiry })
+          .eq('practitioner_id', userId)
+          .in('patient_id', employees)
+          .eq('name', tpl.name)
+          .or(`start_date.is.null,start_date.lte.${today_date}`)
+          .or(`end_date.is.null,end_date.gte.${today_date}`);
+        // Delete future-scheduled rows that haven't started yet (no sessions exist for them).
+        await sb.from('workout_plans')
+          .delete()
+          .eq('practitioner_id', userId)
+          .in('patient_id', employees)
+          .eq('name', tpl.name)
+          .gt('start_date', today_date);
         const { error: plansErr } = await sb.from('workout_plans').insert(
           employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
 
@@ -376,13 +386,24 @@ export default function ProgramsPage() {
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
     if (employees.length > 0) {
       const today_d = new Date().toISOString().slice(0, 10);
-      let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
-      if (start > today_d) {
-        del = del.or(`start_date.is.null,and(start_date.gte.${start},start_date.lte.${end})`);
-      } else {
-        del = del.or(`start_date.is.null,start_date.lte.${end}`);
-      }
-      await del;
+      // Expire currently active rows (preserves UUIDs for historical ratings).
+      const expiryDate = new Date(start);
+      expiryDate.setDate(expiryDate.getDate() - 1);
+      const expiry = expiryDate.toISOString().slice(0, 10);
+      await sb.from('workout_plans')
+        .update({ end_date: expiry })
+        .eq('practitioner_id', userId)
+        .in('patient_id', employees)
+        .eq('name', launchModal.name)
+        .or(`start_date.is.null,start_date.lte.${today_d}`)
+        .or(`end_date.is.null,end_date.gte.${today_d}`);
+      // Delete future-scheduled rows that haven't started yet (no sessions exist for them).
+      await sb.from('workout_plans')
+        .delete()
+        .eq('practitioner_id', userId)
+        .in('patient_id', employees)
+        .eq('name', launchModal.name)
+        .gt('start_date', today_d);
       const { error: plansErr } = await sb.from('workout_plans').insert(
         employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
       );
