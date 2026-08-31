@@ -270,10 +270,17 @@ export default function ProgramsPage() {
     const { error } = await sb.from('employer_programs').update({ ends_at: yesterday }).eq('id', prog.id);
     if (error) { alert('Could not end program: ' + error.message); setRemovingProgId(null); return; }
     const today_rm = new Date().toISOString().slice(0, 10);
+    // Expire active plans (preserves UUIDs so synced_workouts references remain intact for historical ratings).
+    await sb.from('workout_plans').update({ end_date: yesterday })
+      .eq('practitioner_id', userId)
+      .eq('name', prog.name)
+      .or(`start_date.is.null,start_date.lte.${today_rm}`)
+      .or(`end_date.is.null,end_date.gte.${today_rm}`);
+    // Delete future-scheduled rows that haven't started yet (no sessions exist for them).
     await sb.from('workout_plans').delete()
       .eq('practitioner_id', userId)
       .eq('name', prog.name)
-      .or(`start_date.is.null,start_date.lte.${today_rm}`);
+      .gt('start_date', today_rm);
     const ended = { ...prog, ends_at: yesterday };
     setActivePrograms(prev => prev.filter(p => p.id !== prog.id));
     setPastPrograms(prev => [ended, ...prev]);
