@@ -21,13 +21,15 @@ interface Client {
 }
 
 interface EmployerRating {
-  plan_name:         string;
-  plan_template_id:  string;
-  avg_effectiveness: number | null;
-  avg_enjoyment:     number | null;
-  rating_count:      number;
-  completed_count:   number;
-  total_count:       number;
+  plan_name:          string;
+  plan_template_id:   string;
+  program_started_at: string;
+  program_ends_at:    string;
+  avg_effectiveness:  number | null;
+  avg_enjoyment:      number | null;
+  rating_count:       number;
+  completed_count:    number;
+  total_count:        number;
 }
 
 interface EmployerGroup {
@@ -100,7 +102,7 @@ export default function MasterClientsPage() {
       p_employer_id:     selected,
     }).then(({ data }) => {
       const map: Record<string, EmployerRating> = {};
-      for (const r of (data as EmployerRating[]) ?? []) map[r.plan_name] = r;
+      for (const r of (data as EmployerRating[]) ?? []) map[`${r.plan_name}::${r.program_ends_at.slice(0, 10)}`] = r;
       setEmployerRatings(prev => ({ ...prev, [selected]: map }));
       setLoadingRatings(prev => { const s = new Set(prev); s.delete(selected); return s; });
     });
@@ -289,7 +291,7 @@ export default function MasterClientsPage() {
                               .map((prog, i) => {
                                 const active    = isActive(prog);
                                 const days      = daysLeft(prog.program_ends_at);
-                                const r         = ratingsMap?.[prog.program_name] ?? null;
+                                const r         = ratingsMap?.[`${prog.program_name}::${prog.program_ends_at.slice(0, 10)}`] ?? null;
                                 const hasRating = r != null && Number(r.rating_count) > 0;
                                 const eff       = hasRating ? r!.avg_effectiveness : null;
                                 const enj       = hasRating ? r!.avg_enjoyment     : null;
