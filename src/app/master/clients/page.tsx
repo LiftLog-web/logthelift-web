@@ -38,7 +38,8 @@ interface EmployerGroup {
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  // Parse date-only strings as local noon to prevent UTC-midnight timezone rollover
+  return new Date(d.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function isActive(c: Client): boolean {
