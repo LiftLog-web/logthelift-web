@@ -604,6 +604,27 @@ export default function ProgramsPage() {
                         {programEngagement[prog.id]} / {employeeCount} employee{employeeCount !== 1 ? 's' : ''} started
                       </p>
                     )}
+                    {(() => {
+                      const rating = programRatings[`${prog.plan_template_id}::${prog.ends_at.slice(0, 10)}`] ?? null;
+                      if (!rating || rating.rating_count === 0) return null;
+                      return (
+                        <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {rating.avg_effectiveness !== null && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: TEAL }}>
+                              {rating.avg_effectiveness.toFixed(1)} effectiveness
+                            </span>
+                          )}
+                          {rating.avg_enjoyment !== null && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: PURPLE }}>
+                              {rating.avg_enjoyment.toFixed(1)} enjoyment
+                            </span>
+                          )}
+                          <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>
+                            {rating.rating_count} rating{rating.rating_count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <div style={{ background: `${TEAL}18`, border: `1px solid ${TEAL}40`, borderRadius: 12, padding: '10px 18px', textAlign: 'center' }}>
