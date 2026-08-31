@@ -268,7 +268,11 @@ export default function ProgramsPage() {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const { error } = await sb.from('employer_programs').update({ ends_at: yesterday }).eq('id', prog.id);
     if (error) { alert('Could not end program: ' + error.message); setRemovingProgId(null); return; }
-    await sb.from('workout_plans').delete().eq('practitioner_id', userId).eq('name', prog.name);
+    const today_rm = new Date().toISOString().slice(0, 10);
+    await sb.from('workout_plans').delete()
+      .eq('practitioner_id', userId)
+      .eq('name', prog.name)
+      .or(`start_date.is.null,start_date.lte.${today_rm}`);
     const ended = { ...prog, ends_at: yesterday };
     setActivePrograms(prev => prev.filter(p => p.id !== prog.id));
     setPastPrograms(prev => [ended, ...prev]);
@@ -326,7 +330,8 @@ export default function ProgramsPage() {
     const today_date = new Date().toISOString().slice(0, 10);
     for (const tpl of tolaunch) {
       if (employees.length > 0) {
-        let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name);
+        let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', tpl.name)
+          .or(`start_date.is.null,start_date.lte.${end}`);
         if (start > today_date) del = del.gte('start_date', start);
         await del;
         const { error: plansErr } = await sb.from('workout_plans').insert(
@@ -366,7 +371,8 @@ export default function ProgramsPage() {
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
     if (employees.length > 0) {
       const today_d = new Date().toISOString().slice(0, 10);
-      let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name);
+      let del = sb.from('workout_plans').delete().eq('practitioner_id', userId).in('patient_id', employees).eq('name', launchModal.name)
+        .or(`start_date.is.null,start_date.lte.${end}`);
       if (start > today_d) del = del.gte('start_date', start);
       await del;
       const { error: plansErr } = await sb.from('workout_plans').insert(
