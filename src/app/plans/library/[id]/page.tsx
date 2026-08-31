@@ -15,6 +15,12 @@ const PURPLE    = '#C471ED';
 const RED       = '#EF4444';
 const MASTER_ID = process.env.NEXT_PUBLIC_FEATURED_PRACTITIONER_ID ?? '969ea6c6-ba6d-4ee4-8bb8-a7cee267f40c';
 
+const ILLUS_BUCKET_URL = 'https://oiugmbbqigzswlndaidd.supabase.co/storage/v1/object/public/exercise-illustrations';
+function autoIllustrationUrl(exerciseName: string): string {
+  const safe = exerciseName.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60);
+  return `${ILLUS_BUCKET_URL}/${safe}.png`;
+}
+
 const MUSCLE_GROUP_SECTIONS = [
   { label: 'Upper Body',         members: ['Chest', 'Back', 'Shoulders'] },
   { label: 'Arms',               members: ['Biceps', 'Triceps', 'Forearms'] },
@@ -1269,11 +1275,20 @@ export default function TemplateEditorPage() {
                                   + Add Video
                                 </button>
                               ))}
-                              {ex.illustrationUrl && (
+                              {ex.illustrationUrl ? (
                                 <img
                                   src={ex.illustrationUrl}
                                   alt=""
                                   onClick={e => { e.stopPropagation(); setLightboxUrl(ex.illustrationUrl!); }}
+                                  style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginLeft: 8, border: '1px solid var(--border)', cursor: 'zoom-in', flexShrink: 0 }}
+                                  title="Click to enlarge"
+                                />
+                              ) : (
+                                <img
+                                  src={autoIllustrationUrl(weekExercise.name)}
+                                  alt=""
+                                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                  onClick={ev => { ev.stopPropagation(); setLightboxUrl(autoIllustrationUrl(weekExercise.name)); }}
                                   style={{ width: 28, height: 28, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginLeft: 8, border: '1px solid var(--border)', cursor: 'zoom-in', flexShrink: 0 }}
                                   title="Click to enlarge"
                                 />

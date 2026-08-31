@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const sbAdmin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
     const safeName    = exerciseName.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60);
-    const storagePath = `${safeName}_${exerciseId}.png`;
+    const storagePath = `${safeName}.png`;
 
     const { error: uploadErr } = await sbAdmin.storage
       .from(BUCKET)
