@@ -49,6 +49,9 @@ function getMotionHint(exerciseName: string): string {
   if ((lower.includes('circle') || lower.includes('circular')) && !lower.includes('ankle') && !lower.includes('wrist') && !lower.includes('foot')) {
     return ' Both arms are shown raised near the top of the circular arc (roughly 11 and 1 o\'clock positions), with a faint thin dotted oval path drawn around each shoulder joint tracing the full rotation the arm travels. No arrows — only the dotted circular path.';
   }
+  if (lower.includes('toe') && (lower.includes('spread') || lower.includes('splay') || lower.includes('curl'))) {
+    return ' The character is seated upright on a chair with both feet flat on the floor. Their shoes have been removed and are set aside — feet are shown in socks or bare. All ten toes are lifted off the floor and spread wide apart like a fan. The focus of the illustration is on the feet showing the toe spread clearly. Hands rest relaxed on the thighs. IMPORTANT: the shoes-off rule overrides the general footwear rule for this exercise only.';
+  }
   if (lower.includes('butterfly')) {
     return ' CRITICAL POSE: the character is seated on a chair. Both feet are lifted completely off the floor, soles pressed flat together meeting at the centre between the knees, with both knees splayed wide out to the sides like open butterfly wings — forming a clear diamond shape with the legs. Both hands rest on the inner knees pressing gently outward and downward. The feet must be touching each other sole-to-sole and must NOT be on the floor.';
   }
