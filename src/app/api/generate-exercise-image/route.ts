@@ -43,7 +43,10 @@ const BodySchema = z.object({
 
 function getMotionHint(exerciseName: string): string {
   const lower = exerciseName.toLowerCase();
-  if (lower.includes('circle') || lower.includes('circular')) {
+  if (lower.includes('ankle') && (lower.includes('circle') || lower.includes('circular'))) {
+    return ' The character is seated upright on a chair. One leg is extended straight forward with the foot raised off the floor. The other foot rests flat on the floor. Both arms are relaxed — hands resting on the lap or chair arms, NOT raised. A single faint dotted circular path surrounds the raised foot tracing the ankle rotation. No arm motion paths. No arrows.';
+  }
+  if ((lower.includes('circle') || lower.includes('circular')) && !lower.includes('ankle') && !lower.includes('wrist') && !lower.includes('foot')) {
     return ' Both arms are shown raised near the top of the circular arc (roughly 11 and 1 o\'clock positions), with a faint thin dotted oval path drawn around each shoulder joint tracing the full rotation the arm travels. No arrows — only the dotted circular path.';
   }
   if (lower.includes('butterfly')) {
