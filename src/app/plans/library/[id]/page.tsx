@@ -1277,6 +1277,7 @@ export default function TemplateEditorPage() {
                               ))}
                               {ex.illustrationUrl ? (
                                 <img
+                                  key={`illus-real-${ex.id}`}
                                   src={ex.illustrationUrl}
                                   alt=""
                                   onClick={e => { e.stopPropagation(); setLightboxUrl(ex.illustrationUrl!); }}
@@ -1285,6 +1286,7 @@ export default function TemplateEditorPage() {
                                 />
                               ) : (
                                 <img
+                                  key={`illus-auto-${ex.id}`}
                                   src={autoIllustrationUrl(weekExercise.name)}
                                   alt=""
                                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
