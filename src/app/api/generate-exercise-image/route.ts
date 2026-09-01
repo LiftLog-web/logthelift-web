@@ -46,6 +46,9 @@ function getMotionHint(exerciseName: string): string {
   if (lower.includes('circle') || lower.includes('circular')) {
     return ' Both arms are shown raised near the top of the circular arc (roughly 11 and 1 o\'clock positions), with a faint thin dotted oval path drawn around each shoulder joint tracing the full rotation the arm travels. No arrows — only the dotted circular path.';
   }
+  if (lower.includes('butterfly')) {
+    return ' CRITICAL POSE: the character is seated on a chair. Both feet are lifted completely off the floor, soles pressed flat together meeting at the centre between the knees, with both knees splayed wide out to the sides like open butterfly wings — forming a clear diamond shape with the legs. Both hands rest on the inner knees pressing gently outward and downward. The feet must be touching each other sole-to-sole and must NOT be on the floor.';
+  }
   return '';
 }
 
