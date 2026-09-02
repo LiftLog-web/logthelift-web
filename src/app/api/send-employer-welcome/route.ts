@@ -5,8 +5,21 @@ import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 
-const BodySchema = z.object({
+// Manual call: { email: "..." }
+const ManualBodySchema = z.object({
   email: z.string().email().max(254),
+});
+
+// Supabase Database Webhook payload shape (UPDATE on profiles)
+const WebhookBodySchema = z.object({
+  type:   z.string(),
+  record: z.object({
+    email:       z.string().email(),
+    is_employer: z.boolean().optional(),
+  }),
+  old_record: z.object({
+    is_employer: z.boolean().optional(),
+  }).optional(),
 });
 
 function escapeHtml(s: string): string {
@@ -191,48 +204,75 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Server misconfigured.' }, { status: 503 });
   }
 
-  // Auth — require a valid Bearer token
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const webhookSecret  = process.env.EMPLOYER_WELCOME_WEBHOOK_SECRET;
+  const incomingSecret = req.headers.get('x-webhook-secret');
+  const isWebhook      = webhookSecret && incomingSecret === webhookSecret;
 
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let email: string;
+  let rateLimitKey: string;
 
-  // Only practitioners (which includes employers) may call this
-  const { data: callerProf } = await sb
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (callerProf?.role !== 'practitioner') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (isWebhook) {
+    // Supabase Database Webhook path — no user session needed
+    let body: unknown;
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+    const parsed = WebhookBodySchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 });
+
+    // Only send when is_employer flipped to true
+    if (!parsed.data.record.is_employer) {
+      return NextResponse.json({ skipped: true, reason: 'is_employer is not true' });
+    }
+    if (parsed.data.old_record?.is_employer === true) {
+      return NextResponse.json({ skipped: true, reason: 'is_employer was already true' });
+    }
+
+    email         = parsed.data.record.email;
+    rateLimitKey  = `send-employer-welcome:webhook:${email}`;
+  } else {
+    // Manual / admin call — require a valid Bearer token from a practitioner
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: callerProf } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (callerProf?.role !== 'practitioner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    let parsed: ReturnType<typeof ManualBodySchema.safeParse>;
+    try {
+      parsed = ManualBodySchema.safeParse(await req.json());
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+
+    email        = parsed.data.email;
+    rateLimitKey = `send-employer-welcome:${user.id}`;
   }
 
-  // Rate limit — 20 welcome emails per user per hour
-  const rl = rateLimit(`send-employer-welcome:${user.id}`, 20, 60 * 60 * 1000);
+  // Rate limit — 20/hr regardless of path
+  const rl = rateLimit(rateLimitKey, 20, 60 * 60 * 1000);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
   }
 
-  let parsed: ReturnType<typeof BodySchema.safeParse>;
-  try {
-    parsed = BodySchema.safeParse(await req.json());
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
-  }
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
-  }
-  const { email } = parsed.data;
-
-  // Look up the employer profile by email using service role (bypasses RLS)
+  // Look up company name via service role (bypasses RLS)
   const adminSb = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data: profile } = await adminSb
     .from('profiles')
-    .select('company_name, is_employer')
+    .select('company_name')
     .eq('email', email)
     .single();
 
