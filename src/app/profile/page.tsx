@@ -423,21 +423,17 @@ function ProfilePageContent() {
               : (isEmployer ? <Building2 size={28} /> : getInitials(profile?.display_name || profile?.email || '?'))}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
-            {isEmployer && (
+            {isEmployer ? (
               <div style={{ marginBottom: 12 }}>
                 {editingCompanyName ? (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
                     <input
                       autoFocus
                       value={companyNameInput}
                       onChange={e => setCompanyNameInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveCompanyName(); if (e.key === 'Escape') setEditingCompanyName(false); }}
                       placeholder="Company name"
-                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: 'var(--text)', outline: 'none', minWidth: 160 }}
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 22, fontWeight: 800, color: 'var(--text)', outline: 'none', minWidth: 200 }}
                     />
                     <button onClick={handleSaveCompanyName} disabled={savingCompanyName}
                       style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -451,13 +447,21 @@ function ProfilePageContent() {
                 ) : (
                   <button
                     onClick={() => { setCompanyNameInput(profile.company_name ?? ''); setEditingCompanyName(true); }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: profile.company_name ? 'var(--text-muted)' : 'var(--text-dim)', fontSize: 13 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text)', marginBottom: 4 }}
                   >
-                    <span>{companyNameSaved ? 'Saved!' : (profile.company_name || 'Add company name')}</span>
-                    <Pencil size={12} style={{ opacity: 0.5 }} />
+                    <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>
+                      {companyNameSaved ? 'Saved!' : (profile.company_name || 'Add company name')}
+                    </h1>
+                    <Pencil size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
                   </button>
                 )}
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>{profile?.email}</p>
               </div>
+            ) : (
+              <>
+                <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
+              </>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
