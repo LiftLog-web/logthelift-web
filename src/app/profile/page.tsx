@@ -6,7 +6,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { Sk, SkPage } from '@/components/Skeleton';
-import { Lock, Building2 } from 'lucide-react';
+import { Lock, Building2, Pencil } from 'lucide-react';
 
 function getInitials(name: string): string {
   return (name || '?').trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -88,6 +88,12 @@ function ProfilePageContent() {
   const [sendingInvite, setSendingInvite] = useState(false);
   const [inviteSent, setInviteSent]   = useState(false);
   const [inviteError, setInviteError] = useState('');
+
+  // Company name edit state (employer only)
+  const [editingCompanyName, setEditingCompanyName] = useState(false);
+  const [companyNameInput, setCompanyNameInput]     = useState('');
+  const [savingCompanyName, setSavingCompanyName]   = useState(false);
+  const [companyNameSaved, setCompanyNameSaved]     = useState(false);
 
   // Collapsible section state
   const [employeesOpen, setEmployeesOpen] = useState(true);
@@ -255,6 +261,18 @@ function ProfilePageContent() {
     setSendingInvite(false);
   };
 
+  const handleSaveCompanyName = async () => {
+    if (!profile) return;
+    setSavingCompanyName(true);
+    const sb = getSupabase();
+    await sb.from('profiles').update({ company_name: companyNameInput.trim() || null }).eq('id', profile.id);
+    setProfile(p => p ? { ...p, company_name: companyNameInput.trim() || null } : p);
+    setEditingCompanyName(false);
+    setSavingCompanyName(false);
+    setCompanyNameSaved(true);
+    setTimeout(() => setCompanyNameSaved(false), 3000);
+  };
+
   const handleCancelSubscription = async () => {
     if (!confirm(
       subscription?.periodEnd
@@ -409,8 +427,37 @@ function ProfilePageContent() {
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{profile?.display_name}</h1>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 12px' }}>{profile?.email}</p>
-            {isEmployer && profile?.company_name && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 12px' }}>{profile.company_name}</p>
+            {isEmployer && (
+              <div style={{ marginBottom: 12 }}>
+                {editingCompanyName ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      autoFocus
+                      value={companyNameInput}
+                      onChange={e => setCompanyNameInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveCompanyName(); if (e.key === 'Escape') setEditingCompanyName(false); }}
+                      placeholder="Company name"
+                      style={{ background: 'var(--card-alt)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: 'var(--text)', outline: 'none', minWidth: 160 }}
+                    />
+                    <button onClick={handleSaveCompanyName} disabled={savingCompanyName}
+                      style={{ background: TEAL, color: '#0f1117', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      {savingCompanyName ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingCompanyName(false)}
+                      style={{ background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setCompanyNameInput(profile.company_name ?? ''); setEditingCompanyName(true); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: profile.company_name ? 'var(--text-muted)' : 'var(--text-dim)', fontSize: 13 }}
+                  >
+                    <span>{companyNameSaved ? 'Saved!' : (profile.company_name || 'Add company name')}</span>
+                    <Pencil size={12} style={{ opacity: 0.5 }} />
+                  </button>
+                )}
+              </div>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ background: isPractitioner ? 'var(--badge-purple-bg)' : 'var(--badge-teal-bg)', color: isPractitioner ? 'var(--badge-purple-text)' : 'var(--badge-teal-text)', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
