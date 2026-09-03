@@ -604,7 +604,14 @@ export default function ProgramsPage() {
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                 >
                   <div>
-                    <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 3px' }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                      <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</h2>
+                      {prog.started_at && (
+                        <span style={{ background: 'var(--border)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 }}>
+                          {new Date(prog.started_at + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
                     <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 13 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
                     {employeeCount > 0 && programEngagement[prog.id] != null && (
                       <p style={{ margin: '5px 0 0', fontSize: 13, color: TEAL, fontWeight: 600 }}>
@@ -837,7 +844,14 @@ export default function ProgramsPage() {
                 return (
                   <div key={prog.id} onClick={() => handlePreviewPastProg(prog)} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', opacity: 0.82, cursor: 'pointer' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 2px' }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                        <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{previewingProgId === prog.id ? 'Loading…' : prog.name}</p>
+                        {prog.started_at && (
+                          <span style={{ background: 'var(--border)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 }}>
+                            {new Date(prog.started_at + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
                       <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{fmt(prog.started_at)} — {fmt(prog.ends_at)}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>

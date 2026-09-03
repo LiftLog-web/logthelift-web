@@ -740,6 +740,11 @@ export default function MasterProgramsPage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
                       <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{p.template_name}</h2>
+                      {p.catalog_available_from && (
+                        <span style={{ background: 'var(--border)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 }}>
+                          {new Date(p.catalog_available_from + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
                       {p.featured_duration_days && (
                         <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>{p.featured_duration_days}d</span>
                       )}
