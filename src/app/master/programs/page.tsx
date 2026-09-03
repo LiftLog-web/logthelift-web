@@ -728,7 +728,7 @@ export default function MasterProgramsPage() {
             function ProgramCard({ p }: { p: Program }) {
               const status       = getStatus(p);
               const r            = ratings[p.template_name];
-              const hasR         = r != null && Number(r.rating_count) > 0;
+              const hasR         = r != null && Number(r.rating_count) > 0 && p.employer_count > 0;
               const eff          = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
               const enj          = hasR ? r.avg_enjoyment : null;
               const isSaving     = savingAvailId === p.template_id;
@@ -958,7 +958,7 @@ export default function MasterProgramsPage() {
                   .filter(w => w.week_number >= 1 && w.week_number <= 8)
                   .sort((a, b) => a.week_number - b.week_number);
                 const maxCount = Math.max(...trendData.map(w => Number(w.workout_count)), 1);
-                const hasData = total > 0 || (r != null && Number(r.rating_count) > 0) || trendData.length > 0;
+                const hasData = (p.employer_count > 0) && (total > 0 || (r != null && Number(r.rating_count) > 0) || trendData.length > 0);
                 return (
                   <div key={p.template_id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: hasData ? 18 : 6, flexWrap: 'wrap' }}>
