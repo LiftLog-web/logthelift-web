@@ -27,6 +27,7 @@ interface Program {
 }
 
 interface ProgramRating {
+  plan_template_id:  string;
   plan_name:         string;
   avg_effectiveness: number | null;
   avg_enjoyment:     number | null;
@@ -37,6 +38,7 @@ interface ProgramRating {
 }
 
 interface DayRating {
+  plan_template_id:  string;
   plan_name:         string;
   day_id:            string;
   day_label:         string | null;
@@ -47,9 +49,10 @@ interface DayRating {
 }
 
 interface TrendRow {
-  plan_name:     string;
-  week_number:   number;
-  workout_count: number;
+  plan_template_id: string;
+  plan_name:        string;
+  week_number:      number;
+  workout_count:    number;
 }
 
 interface ParsedPreview {
@@ -326,18 +329,18 @@ export default function MasterProgramsPage() {
       ]);
       setPrograms((rows as Program[]) ?? []);
       const ratingMap: Record<string, ProgramRating> = {};
-      for (const r of (ratingRows as ProgramRating[]) ?? []) ratingMap[r.plan_name] = r;
+      for (const r of (ratingRows as ProgramRating[]) ?? []) ratingMap[r.plan_template_id] = r;
       setRatings(ratingMap);
       const dayRatingMap: Record<string, DayRating[]> = {};
       for (const d of (dayRatingRows as DayRating[]) ?? []) {
-        if (!dayRatingMap[d.plan_name]) dayRatingMap[d.plan_name] = [];
-        dayRatingMap[d.plan_name].push(d);
+        if (!dayRatingMap[d.plan_template_id]) dayRatingMap[d.plan_template_id] = [];
+        dayRatingMap[d.plan_template_id].push(d);
       }
       setDayRatings(dayRatingMap);
       const trendMap: Record<string, TrendRow[]> = {};
       for (const t of (trendRows as TrendRow[]) ?? []) {
-        if (!trendMap[t.plan_name]) trendMap[t.plan_name] = [];
-        trendMap[t.plan_name].push(t);
+        if (!trendMap[t.plan_template_id]) trendMap[t.plan_template_id] = [];
+        trendMap[t.plan_template_id].push(t);
       }
       setTrends(trendMap);
       setActivePreviews((previewRows as ActivePreview[]) ?? []);
@@ -727,7 +730,7 @@ export default function MasterProgramsPage() {
 
             function ProgramCard({ p }: { p: Program }) {
               const status       = getStatus(p);
-              const r            = ratings[p.template_name];
+              const r            = ratings[p.template_id];
               const hasR         = r != null && Number(r.rating_count) > 0 && p.employer_count > 0;
               const eff          = hasR ? (r.avg_effectiveness ?? r.avg_satisfaction) : null;
               const enj          = hasR ? r.avg_enjoyment : null;
@@ -949,12 +952,12 @@ export default function MasterProgramsPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {programs.map(p => {
-                const r        = ratings[p.template_name];
-                const days     = dayRatings[p.template_name] ?? [];
+                const r        = ratings[p.template_id];
+                const days     = dayRatings[p.template_id] ?? [];
                 const completed = Number(r?.completed_count ?? 0);
                 const total = Number(r?.total_count ?? 0);
                 const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-                const trendData = (trends[p.template_name] ?? [])
+                const trendData = (trends[p.template_id] ?? [])
                   .filter(w => w.week_number >= 1 && w.week_number <= 8)
                   .sort((a, b) => a.week_number - b.week_number);
                 const maxCount = Math.max(...trendData.map(w => Number(w.workout_count)), 1);
