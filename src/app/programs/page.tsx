@@ -646,6 +646,13 @@ export default function ProgramsPage() {
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0', fontWeight: 600 }}>days left</p>
                     </div>
                     <button
+                      onClick={e => { e.stopPropagation(); handleRelaunch(prog); }}
+                      disabled={relaunchLoading === prog.id}
+                      style={{ background: 'none', border: `1.5px solid ${TEAL}60`, color: TEAL, borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: relaunchLoading === prog.id ? 'wait' : 'pointer', opacity: relaunchLoading === prog.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {relaunchLoading === prog.id ? 'Loading…' : 'Schedule Next Run'}
+                    </button>
+                    <button
                       onClick={e => { e.stopPropagation(); handleRemoveProgram(prog); }}
                       disabled={removingProgId === prog.id}
                       style={{ background: 'none', border: '1.5px solid #EF444450', color: '#EF4444', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: removingProgId === prog.id ? 'not-allowed' : 'pointer', opacity: removingProgId === prog.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
