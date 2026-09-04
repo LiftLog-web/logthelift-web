@@ -547,10 +547,11 @@ export default function MasterProgramsPage() {
       await sb.from('workout_plans').delete().eq('practitioner_id', MASTER_ID).in('patient_id', employees).eq('name', previewLaunchTpl.name);
       const { error: wpErr } = await sb.from('workout_plans').insert(
         employees.map(patientId => ({
-          practitioner_id: MASTER_ID,
-          patient_id:      patientId,
-          name:            previewLaunchTpl.name,
-          exercises:       serialized,
+          practitioner_id:  MASTER_ID,
+          patient_id:       patientId,
+          plan_template_id: previewLaunchTpl.id,
+          name:             previewLaunchTpl.name,
+          exercises:        serialized,
         }))
       );
       if (wpErr) { setPreviewLaunchError('Failed to assign workout plans: ' + wpErr.message); setPreviewLaunching(false); return; }

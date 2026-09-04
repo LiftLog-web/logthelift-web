@@ -109,14 +109,15 @@ export async function POST(req: NextRequest) {
           .eq('patient_id', user.id)
           .eq('name', prog.name);
         await sbAdmin.from('workout_plans').insert({
-          practitioner_id: invite.practitioner_id,
-          patient_id: user.id,
-          name: prog.name,
-          description: tpl.description ?? null,
-          exercises: serializeExercisesForMobile(tpl.exercises),
-          end_date: prog.ends_at,
-          created_at: now,
-          updated_at: now,
+          practitioner_id:  invite.practitioner_id,
+          patient_id:       user.id,
+          plan_template_id: prog.plan_template_id,
+          name:             prog.name,
+          description:      tpl.description ?? null,
+          exercises:        serializeExercisesForMobile(tpl.exercises),
+          end_date:         prog.ends_at,
+          created_at:       now,
+          updated_at:       now,
         });
       }
     }

@@ -358,7 +358,7 @@ export default function ProgramsPage() {
           .eq('name', tpl.name)
           .gt('start_date', today_date);
         const { error: plansErr } = await sb.from('workout_plans').insert(
-          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
+          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: tpl.id, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
 
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
@@ -413,7 +413,7 @@ export default function ProgramsPage() {
         .eq('name', launchModal.name)
         .gt('start_date', today_d);
       const { error: plansErr } = await sb.from('workout_plans').insert(
-        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
+        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: launchModal.id, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
