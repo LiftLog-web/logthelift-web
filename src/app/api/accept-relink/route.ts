@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10);
     const { data: activeProgs } = await sbAdmin
       .from('employer_programs')
-      .select('id, plan_template_id, name, ends_at')
+      .select('id, plan_template_id, name, started_at, ends_at')
       .eq('employer_id', invite.practitioner_id)
       .gte('ends_at', today);
 
@@ -115,7 +115,8 @@ export async function POST(req: NextRequest) {
           name:             prog.name,
           description:      tpl.description ?? null,
           exercises:        serializeExercisesForMobile(tpl.exercises),
-          end_date:         prog.ends_at,
+          start_date:       prog.started_at ? prog.started_at.slice(0, 10) : null,
+          end_date:         prog.ends_at ? prog.ends_at.slice(0, 10) : null,
           created_at:       now,
           updated_at:       now,
         });
