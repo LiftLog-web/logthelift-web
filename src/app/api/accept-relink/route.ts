@@ -62,10 +62,21 @@ export async function POST(req: NextRequest) {
 
   await sbAdmin.from('invite_codes').update({ used_by: user.id }).eq('id', invite_id);
 
+  const { data: practProf } = await sbAdmin
+    .from('profiles')
+    .select('display_name, is_employer')
+    .eq('id', invite.practitioner_id)
+    .single();
+
   const { error: linkError } = await sbAdmin
     .from('patient_links')
     .upsert(
-      { practitioner_id: invite.practitioner_id, patient_id: user.id, unlinked_at: null },
+      {
+        practitioner_id: invite.practitioner_id,
+        patient_id: user.id,
+        unlinked_at: null,
+        link_type: practProf?.is_employer ? 'employer' : 'practitioner',
+      },
       { onConflict: 'practitioner_id,patient_id' }
     );
 
@@ -78,12 +89,6 @@ export async function POST(req: NextRequest) {
     .update({ hidden_by_patient: false })
     .eq('patient_id', user.id)
     .eq('practitioner_id', invite.practitioner_id);
-
-  const { data: practProf } = await sbAdmin
-    .from('profiles')
-    .select('display_name, is_employer')
-    .eq('id', invite.practitioner_id)
-    .single();
 
   // Auto-assign all active employer programs to the newly linked employee
   if (practProf?.is_employer) {
