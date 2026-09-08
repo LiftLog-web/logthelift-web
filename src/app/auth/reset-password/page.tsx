@@ -6,13 +6,15 @@ import { AlertTriangle } from 'lucide-react';
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
+  const isDev = searchParams.get('dev') === '1';
+  const scheme = isDev ? 'liftlog-dev' : 'liftlog';
   const [showFallback, setShowFallback] = useState(false);
   const [appLink, setAppLink] = useState<string | null>(null);
 
   useEffect(() => {
     // PKCE flow: Supabase puts the auth code in ?code= (query param)
     if (code) {
-      const link = `liftlog://reset-password?code=${encodeURIComponent(code)}`;
+      const link = `${scheme}://reset-password?code=${encodeURIComponent(code)}`;
       setAppLink(link);
       window.location.href = link;
       const t = setTimeout(() => setShowFallback(true), 2500);
@@ -22,14 +24,14 @@ function ResetPasswordContent() {
     // which never reaches the server but is readable client-side.
     const hash = window.location.hash; // e.g. "#access_token=...&type=recovery"
     if (hash && hash.length > 1) {
-      const link = `liftlog://reset-password${hash}`;
+      const link = `${scheme}://reset-password${hash}`;
       setAppLink(link);
       window.location.href = link;
       const t = setTimeout(() => setShowFallback(true), 2500);
       return () => clearTimeout(t);
     }
     setShowFallback(true);
-  }, [code]);
+  }, [code, scheme]);
 
   return (
     <div style={{
