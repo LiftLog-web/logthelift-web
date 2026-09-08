@@ -552,6 +552,8 @@ export default function MasterProgramsPage() {
           plan_template_id: previewLaunchTpl.id,
           name:             previewLaunchTpl.name,
           exercises:        serialized,
+          start_date:       start,
+          end_date:         end,
         }))
       );
       if (wpErr) { setPreviewLaunchError('Failed to assign workout plans: ' + wpErr.message); setPreviewLaunching(false); return; }
