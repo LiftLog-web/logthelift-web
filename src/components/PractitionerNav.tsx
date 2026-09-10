@@ -52,7 +52,7 @@ export default function PractitionerNav({ rightSlot, isEmployer = false }: { rig
       height: 56,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <a href="/" style={{ color: TEAL, fontWeight: 800, fontSize: 18, textDecoration: 'none', marginRight: 16 }}>
+        <a href="/" onClick={(e) => { if (pathname === '/') e.preventDefault(); }} style={{ color: TEAL, fontWeight: 800, fontSize: 18, textDecoration: 'none', marginRight: 16 }}>
           LiftLog
         </a>
         {NAV_ITEMS.map(item => (
