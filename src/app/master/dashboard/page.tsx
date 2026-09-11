@@ -20,6 +20,7 @@ interface Stats {
 }
 
 interface DayRating {
+  plan_template_id:  string;
   plan_name:         string;
   day_id:            string;
   day_label:         string;
@@ -212,29 +213,27 @@ export default function MasterDashboardPage() {
 
       const days = (ratingsData as DayRating[]) ?? [];
 
-      // Build day_id → the specific template that day belongs to.
-      // This is the key fix: multiple templates can share a plan_name (one per month),
-      // so we must resolve to the specific instance via day_id, not group by name.
+      // Build template_id → meta map (one entry per monthly instance)
       type TemplateMeta = { plan_id: string; plan_name: string; catalog_month: string | null; planDays: PlanTemplateDay[] };
-      const dayToTemplate = new Map<string, TemplateMeta>();
+      const templateById = new Map<string, TemplateMeta>();
       (templates ?? []).forEach((t: any) => {
-        const meta: TemplateMeta = {
+        templateById.set(t.id as string, {
           plan_id:       t.id as string,
           plan_name:     t.name as string,
           catalog_month: t.catalog_available_from ? (t.catalog_available_from as string).slice(0, 7) : null,
           planDays:      (t.exercises?.days ?? []) as PlanTemplateDay[],
-        };
-        meta.planDays.forEach(d => dayToTemplate.set(d.id, meta));
+        });
       });
 
-      // Group by plan_id (one entry per monthly instance, not per name)
+      // Group by plan_template_id — the RPC now returns this column directly per row,
+      // so each monthly instance gets its own bucket with no cross-program or cross-month collapse.
       const planMap = new Map<string, { meta: TemplateMeta; rows: DayRating[] }>();
       days.forEach(row => {
-        const meta = dayToTemplate.get(row.day_id);
+        const meta = templateById.get(row.plan_template_id);
         if (!meta) return;
-        const bucket = planMap.get(meta.plan_id);
+        const bucket = planMap.get(row.plan_template_id);
         if (bucket) bucket.rows.push(row);
-        else planMap.set(meta.plan_id, { meta, rows: [row] });
+        else planMap.set(row.plan_template_id, { meta, rows: [row] });
       });
 
       // Sort plans by catalog_month then name
