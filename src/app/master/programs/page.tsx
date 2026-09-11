@@ -274,6 +274,14 @@ function getMonthOptions(): Date[] {
   return months;
 }
 
+function groupBySeries(list: Program[]): { name: string; items: Program[] }[] {
+  const map: Record<string, Program[]> = {};
+  for (const p of list) (map[p.template_name] ??= []).push(p);
+  return Object.entries(map)
+    .map(([name, items]) => ({ name, items }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default function MasterProgramsPage() {
   const router = useRouter();
   const [programs,      setPrograms]      = useState<Program[]>([]);
@@ -313,6 +321,7 @@ export default function MasterProgramsPage() {
   const [range,              setRange]              = useState<DateRange | undefined>();
   const [scheduleType,       setScheduleType]       = useState<'all_days' | 'work_days'>('work_days');
   const [workDays,           setWorkDays]           = useState<number[]>([1, 2, 3, 4, 5]);
+  const [expandedSeries,     setExpandedSeries]     = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const sb = getSupabase();
@@ -854,14 +863,63 @@ export default function MasterProgramsPage() {
               );
             }
 
-            const future = [...scheduled, ...drafts];
-
-            const pastByMonth: Record<string, Program[]> = {};
-            for (const p of past) {
-              const key = p.catalog_available_until?.slice(0, 7) ?? 'unknown';
-              (pastByMonth[key] ??= []).push(p);
+            function toggleSeries(name: string) {
+              setExpandedSeries(prev => {
+                const next = new Set(prev);
+                next.has(name) ? next.delete(name) : next.add(name);
+                return next;
+              });
             }
-            const pastMonthKeys = Object.keys(pastByMonth).sort().reverse();
+
+            function SeriesBlock({ list }: { list: Program[] }) {
+              const groups = groupBySeries(list);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {groups.map(({ name, items: grp }) => {
+                    if (grp.length === 1) return <ProgramCard key={grp[0].template_id} p={grp[0]} />;
+                    const isOpen = expandedSeries.has(name);
+                    const dates = grp
+                      .map(p => p.catalog_available_from)
+                      .filter((d): d is string => !!d)
+                      .sort();
+                    const firstDate = dates[0]
+                      ? new Date(dates[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                      : null;
+                    const lastDate = dates.length > 1 && dates[dates.length - 1] !== dates[0]
+                      ? new Date(dates[dates.length - 1] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                      : null;
+                    return (
+                      <div key={name} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+                        <button
+                          onClick={() => toggleSeries(name)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' as const }}>
+                            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{name}</span>
+                            <span style={{ background: `${TEAL}20`, color: TEAL, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999 }}>
+                              {grp.length} instances
+                            </span>
+                            {firstDate && (
+                              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                                {firstDate}{lastDate ? ` – ${lastDate}` : ''}
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 18, color: 'var(--text-muted)', flexShrink: 0, display: 'inline-block', transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+                        </button>
+                        {isOpen && (
+                          <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {grp.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            const future = [...scheduled, ...drafts];
 
             return (
               <>
@@ -891,7 +949,7 @@ export default function MasterProgramsPage() {
                 {programSubTab === 'active' && (
                   live.length === 0
                     ? <p style={{ color: 'var(--text-dim)', fontSize: 14, padding: '24px 0' }}>No programs are currently live.</p>
-                    : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{live.map(p => <ProgramCard key={p.template_id} p={p} />)}</div>
+                    : <SeriesBlock list={live} />
                 )}
 
                 {programSubTab === 'future' && (
@@ -905,7 +963,7 @@ export default function MasterProgramsPage() {
                               <span style={{ width: 8, height: 8, borderRadius: '50%', background: PURPLE, display: 'inline-block', flexShrink: 0 }} />
                               <span style={{ fontSize: 12, fontWeight: 800, color: PURPLE, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Scheduled ({scheduled.length})</span>
                             </div>
-                            {scheduled.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                            <SeriesBlock list={scheduled} />
                           </>
                         )}
                         {drafts.length > 0 && (
@@ -913,7 +971,7 @@ export default function MasterProgramsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: scheduled.length > 0 ? 16 : 0, marginBottom: 4 }}>
                               <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Drafts ({drafts.length})</span>
                             </div>
-                            {drafts.map(p => <ProgramCard key={p.template_id} p={p} />)}
+                            <SeriesBlock list={drafts} />
                           </>
                         )}
                       </div>
@@ -923,26 +981,7 @@ export default function MasterProgramsPage() {
                 {programSubTab === 'past' && (
                   past.length === 0
                     ? <p style={{ color: 'var(--text-dim)', fontSize: 14, padding: '24px 0' }}>No past programs yet.</p>
-                    : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                        {pastMonthKeys.map(monthKey => {
-                          const label = monthKey === 'unknown'
-                            ? 'Unknown'
-                            : new Date(monthKey + '-01T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                          return (
-                            <div key={monthKey}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                                <span style={{ fontSize: 12, fontWeight: 800, color: AMBER, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{label}</span>
-                                <div style={{ flex: 1, height: 1, background: AMBER + '30' }} />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {pastByMonth[monthKey].map(p => <ProgramCard key={p.template_id} p={p} />)}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )
+                    : <SeriesBlock list={past} />
                 )}
               </>
             );
