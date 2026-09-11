@@ -98,6 +98,7 @@ export default function MasterDashboardPage() {
   const [drillLoading, setDrillLoading]     = useState(false);
   const [templateMap, setTemplateMap]       = useState<Map<string, PlanTemplateDay[]>>(new Map());
   const [expandedDayKey, setExpandedDayKey] = useState<string | null>(null);
+  const [exportLoading,  setExportLoading]  = useState(false);
   const drillRef = useRef<HTMLDivElement>(null);
 
   const closeDrill = useCallback(() => {
@@ -187,6 +188,95 @@ export default function MasterDashboardPage() {
       })();
     });
   }, [router]);
+
+  function triggerDownload(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportRatings(format: 'json' | 'csv') {
+    setExportLoading(true);
+    try {
+      const sb = getSupabase();
+      const [{ data: ratingsData }, { data: templates }] = await Promise.all([
+        sb.rpc('get_featured_program_day_ratings', { p_practitioner_id: MASTER_ID }),
+        sb.from('plan_templates').select('name, exercises').eq('practitioner_id', MASTER_ID).eq('is_featured', true),
+      ]);
+
+      const days    = (ratingsData as DayRating[]) ?? [];
+      const tMap    = new Map<string, PlanTemplateDay[]>();
+      (templates ?? []).forEach((t: any) => tMap.set(t.name as string, (t.exercises?.days ?? []) as PlanTemplateDay[]));
+
+      const planMap = new Map<string, DayRating[]>();
+      days.forEach(row => {
+        const existing = planMap.get(row.plan_name);
+        if (existing) existing.push(row);
+        else planMap.set(row.plan_name, [row]);
+      });
+
+      const exportDate = new Date().toISOString().slice(0, 10);
+
+      if (format === 'json') {
+        const payload = {
+          exported_at: exportDate,
+          note: 'LiftLog program rating data. Each day includes both effectiveness and enjoyment scores plus the exercises performed. Use this to identify high- and low-performing days when designing future programs.',
+          overall: {
+            avg_effectiveness: stats?.avg_effectiveness != null ? Number(stats.avg_effectiveness).toFixed(2) : null,
+            effectiveness_ratings: stats?.effectiveness_count ?? 0,
+            avg_enjoyment: stats?.avg_enjoyment != null ? Number(stats.avg_enjoyment).toFixed(2) : null,
+            enjoyment_ratings: stats?.enjoyment_count ?? 0,
+          },
+          programs: [...planMap.entries()].map(([planName, dayRows]) => {
+            const planDays = tMap.get(planName) ?? [];
+            const sorted   = [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
+            return {
+              name: planName,
+              days: sorted.map(d => {
+                const tmplDay = planDays.find(td => td.id === d.day_id);
+                return {
+                  day:               d.day_label || `Day ${d.day_order}`,
+                  order:             d.day_order,
+                  avg_effectiveness: d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : null,
+                  avg_enjoyment:     d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : null,
+                  ratings:           d.rating_count,
+                  exercises:         (tmplDay?.exercises ?? []).map(e => ({
+                    name:         e.exercise.name,
+                    muscle_group: e.exercise.muscleGroup,
+                    type:         e.exercise.type,
+                    sets:         e.targetSets,
+                  })),
+                };
+              }),
+            };
+          }),
+        };
+        triggerDownload(JSON.stringify(payload, null, 2), `liftlog-ratings-${exportDate}.json`, 'application/json');
+      } else {
+        const rows = ['program,day,order,avg_effectiveness,avg_enjoyment,ratings,exercises'];
+        [...planMap.entries()].forEach(([planName, dayRows]) => {
+          const planDays = tMap.get(planName) ?? [];
+          [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0)).forEach(d => {
+            const tmplDay       = planDays.find(td => td.id === d.day_id);
+            const exerciseNames = (tmplDay?.exercises ?? []).map(e => e.exercise.name).join(' | ');
+            const eff = d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : '';
+            const enj = d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : '';
+            const name    = planName.replace(/"/g, '""');
+            const dayLbl  = (d.day_label || `Day ${d.day_order}`).replace(/"/g, '""');
+            const excs    = exerciseNames.replace(/"/g, '""');
+            rows.push(`"${name}","${dayLbl}",${d.day_order},${eff},${enj},${d.rating_count},"${excs}"`);
+          });
+        });
+        triggerDownload(rows.join('\n'), `liftlog-ratings-${exportDate}.csv`, 'text/csv');
+      }
+    } finally {
+      setExportLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -310,8 +400,29 @@ export default function MasterDashboardPage() {
           </div>
         )}
 
+        {/* Export for Claude */}
+        {!noData && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>Export ratings for Claude:</span>
+            <button
+              onClick={() => exportRatings('json')}
+              disabled={exportLoading}
+              style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 999, border: `1px solid ${TEAL}50`, background: `${TEAL}12`, color: TEAL, cursor: exportLoading ? 'default' : 'pointer', opacity: exportLoading ? 0.5 : 1 }}
+            >
+              {exportLoading ? '…' : 'JSON'}
+            </button>
+            <button
+              onClick={() => exportRatings('csv')}
+              disabled={exportLoading}
+              style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 999, border: `1px solid ${PURPLE}50`, background: `${PURPLE}12`, color: PURPLE, cursor: exportLoading ? 'default' : 'pointer', opacity: exportLoading ? 0.5 : 1 }}
+            >
+              {exportLoading ? '…' : 'CSV'}
+            </button>
+          </div>
+        )}
+
         {/* Program Schedule */}
-        <div style={{ marginTop: 32 }}>
+        <div style={{ marginTop: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Program Schedule</h2>
             <a href="/master/programs" style={{ fontSize: 13, color: TEAL, textDecoration: 'none', fontWeight: 600 }}>
