@@ -244,16 +244,25 @@ export default function MasterDashboardPage() {
 
       const exportDate = new Date().toISOString().slice(0, 10);
 
+      // Compute overall from the export rows themselves so the summary reconciles with the payload.
+      const allDays        = sortedPlans.flatMap(({ rows }) => rows);
+      const effDays        = allDays.filter(r => r.avg_effectiveness != null);
+      const enjDays        = allDays.filter(r => r.avg_enjoyment    != null);
+      const totalEffCount  = effDays.reduce((s, r) => s + r.rating_count, 0);
+      const totalEnjCount  = enjDays.reduce((s, r) => s + r.rating_count, 0);
+      const wavgEff        = totalEffCount > 0 ? effDays.reduce((s, r) => s + r.avg_effectiveness! * r.rating_count, 0) / totalEffCount : null;
+      const wavgEnj        = totalEnjCount > 0 ? enjDays.reduce((s, r) => s + r.avg_enjoyment!    * r.rating_count, 0) / totalEnjCount : null;
+
       if (format === 'json') {
         const payload = {
           exported_at: exportDate,
           reliability_threshold: RELIABILITY_THRESHOLD,
-          note: `LiftLog program rating data. Each program entry is one specific monthly template instance — plan_id and catalog_month are at the program level and apply to all of its days. Days with ratings < ${RELIABILITY_THRESHOLD} are flagged reliable:false and should be treated as directional only.`,
+          note: `LiftLog program rating data. Each program entry is one specific monthly template instance — plan_id and catalog_month are at the program level and apply to all of its days. Days with ratings < ${RELIABILITY_THRESHOLD} are flagged reliable:false and should be treated as directional only. The overall block is a weighted average across all exported days.`,
           overall: {
-            avg_effectiveness:     stats?.avg_effectiveness != null ? Number(stats.avg_effectiveness).toFixed(2) : null,
-            effectiveness_ratings: stats?.effectiveness_count ?? 0,
-            avg_enjoyment:         stats?.avg_enjoyment    != null ? Number(stats.avg_enjoyment).toFixed(2)    : null,
-            enjoyment_ratings:     stats?.enjoyment_count  ?? 0,
+            avg_effectiveness:     wavgEff != null ? wavgEff.toFixed(2) : null,
+            effectiveness_ratings: totalEffCount,
+            avg_enjoyment:         wavgEnj != null ? wavgEnj.toFixed(2) : null,
+            enjoyment_ratings:     totalEnjCount,
           },
           programs: sortedPlans.map(({ meta, rows }) => ({
             plan_id:       meta.plan_id,
