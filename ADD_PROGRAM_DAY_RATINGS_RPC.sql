@@ -32,7 +32,7 @@ BEGIN
     MAX(day_info.ord)                                                       AS day_order,
     ROUND(AVG(r.eff) FILTER (WHERE r.eff IS NOT NULL), 1)                 AS avg_effectiveness,
     ROUND(AVG(r.enj) FILTER (WHERE r.enj IS NOT NULL), 1)                 AS avg_enjoyment,
-    COUNT(*) FILTER (WHERE r.eff IS NOT NULL OR r.enj IS NOT NULL)        AS rating_count
+    COUNT(DISTINCT CASE WHEN r.eff IS NOT NULL OR r.enj IS NOT NULL THEN sw.id END) AS rating_count
   FROM plan_templates pt
   JOIN employer_programs ep ON ep.plan_template_id = pt.id
   JOIN patient_links     pl ON pl.practitioner_id  = ep.employer_id
@@ -61,7 +61,7 @@ BEGIN
     AND pt.is_featured      = true
     AND (sw.data->>'planDayId') IS NOT NULL
   GROUP BY pt.id, pt.name, (sw.data->>'planDayId')
-  HAVING COUNT(*) FILTER (WHERE r.eff IS NOT NULL OR r.enj IS NOT NULL) > 0
+  HAVING COUNT(DISTINCT CASE WHEN r.eff IS NOT NULL OR r.enj IS NOT NULL THEN sw.id END) > 0
   ORDER BY pt.name, MAX(day_info.ord);
 END;
 $$;
