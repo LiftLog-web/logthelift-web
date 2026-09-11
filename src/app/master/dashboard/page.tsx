@@ -199,18 +199,29 @@ export default function MasterDashboardPage() {
     URL.revokeObjectURL(url);
   }
 
+  const RELIABILITY_THRESHOLD = 15;
+
   async function exportRatings(format: 'json' | 'csv') {
     setExportLoading(true);
     try {
       const sb = getSupabase();
       const [{ data: ratingsData }, { data: templates }] = await Promise.all([
         sb.rpc('get_featured_program_day_ratings', { p_practitioner_id: MASTER_ID }),
-        sb.from('plan_templates').select('name, exercises').eq('practitioner_id', MASTER_ID).eq('is_featured', true),
+        sb.from('plan_templates').select('id, name, catalog_available_from, exercises').eq('practitioner_id', MASTER_ID).eq('is_featured', true),
       ]);
 
-      const days    = (ratingsData as DayRating[]) ?? [];
-      const tMap    = new Map<string, PlanTemplateDay[]>();
-      (templates ?? []).forEach((t: any) => tMap.set(t.name as string, (t.exercises?.days ?? []) as PlanTemplateDay[]));
+      const days = (ratingsData as DayRating[]) ?? [];
+
+      // name → { id, catalog_month, days[] }
+      const tMeta = new Map<string, { id: string; catalog_month: string | null; days: PlanTemplateDay[] }>();
+      (templates ?? []).forEach((t: any) => {
+        const rawDate: string | null = t.catalog_available_from ?? null;
+        tMeta.set(t.name as string, {
+          id:            t.id as string,
+          catalog_month: rawDate ? rawDate.slice(0, 7) : null,
+          days:          (t.exercises?.days ?? []) as PlanTemplateDay[],
+        });
+      });
 
       const planMap = new Map<string, DayRating[]>();
       days.forEach(row => {
@@ -224,26 +235,30 @@ export default function MasterDashboardPage() {
       if (format === 'json') {
         const payload = {
           exported_at: exportDate,
-          note: 'LiftLog program rating data. Each day includes both effectiveness and enjoyment scores plus the exercises performed. Use this to identify high- and low-performing days when designing future programs.',
+          reliability_threshold: RELIABILITY_THRESHOLD,
+          note: `LiftLog program rating data. Each day includes both effectiveness and enjoyment scores plus the exercises performed. Days with ratings < ${RELIABILITY_THRESHOLD} are flagged reliable:false and should be treated as directional only. Use plan_id and catalog_month for stable matching — do not rely on theme name uniqueness.`,
           overall: {
-            avg_effectiveness: stats?.avg_effectiveness != null ? Number(stats.avg_effectiveness).toFixed(2) : null,
+            avg_effectiveness:     stats?.avg_effectiveness != null ? Number(stats.avg_effectiveness).toFixed(2) : null,
             effectiveness_ratings: stats?.effectiveness_count ?? 0,
-            avg_enjoyment: stats?.avg_enjoyment != null ? Number(stats.avg_enjoyment).toFixed(2) : null,
-            enjoyment_ratings: stats?.enjoyment_count ?? 0,
+            avg_enjoyment:         stats?.avg_enjoyment    != null ? Number(stats.avg_enjoyment).toFixed(2)    : null,
+            enjoyment_ratings:     stats?.enjoyment_count  ?? 0,
           },
           programs: [...planMap.entries()].map(([planName, dayRows]) => {
-            const planDays = tMap.get(planName) ?? [];
-            const sorted   = [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
+            const meta   = tMeta.get(planName);
+            const sorted = [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
             return {
-              name: planName,
+              name:          planName,
+              plan_id:       meta?.id           ?? null,
+              catalog_month: meta?.catalog_month ?? null,
               days: sorted.map(d => {
-                const tmplDay = planDays.find(td => td.id === d.day_id);
+                const tmplDay = (meta?.days ?? []).find(td => td.id === d.day_id);
                 return {
                   day:               d.day_label || `Day ${d.day_order}`,
                   order:             d.day_order,
                   avg_effectiveness: d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : null,
                   avg_enjoyment:     d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : null,
                   ratings:           d.rating_count,
+                  reliable:          d.rating_count >= RELIABILITY_THRESHOLD,
                   exercises:         (tmplDay?.exercises ?? []).map(e => ({
                     name:         e.exercise.name,
                     muscle_group: e.exercise.muscleGroup,
@@ -257,18 +272,20 @@ export default function MasterDashboardPage() {
         };
         triggerDownload(JSON.stringify(payload, null, 2), `liftlog-ratings-${exportDate}.json`, 'application/json');
       } else {
-        const rows = ['program,day,order,avg_effectiveness,avg_enjoyment,ratings,exercises'];
+        const rows = ['plan_id,catalog_month,program,day,order,avg_effectiveness,avg_enjoyment,ratings,reliable,exercises'];
         [...planMap.entries()].forEach(([planName, dayRows]) => {
-          const planDays = tMap.get(planName) ?? [];
+          const meta = tMeta.get(planName);
           [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0)).forEach(d => {
-            const tmplDay       = planDays.find(td => td.id === d.day_id);
+            const tmplDay       = (meta?.days ?? []).find(td => td.id === d.day_id);
             const exerciseNames = (tmplDay?.exercises ?? []).map(e => e.exercise.name).join(' | ');
-            const eff = d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : '';
-            const enj = d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : '';
+            const eff     = d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : '';
+            const enj     = d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : '';
             const name    = planName.replace(/"/g, '""');
             const dayLbl  = (d.day_label || `Day ${d.day_order}`).replace(/"/g, '""');
             const excs    = exerciseNames.replace(/"/g, '""');
-            rows.push(`"${name}","${dayLbl}",${d.day_order},${eff},${enj},${d.rating_count},"${excs}"`);
+            const planId  = (meta?.id ?? '').replace(/"/g, '""');
+            const month   = meta?.catalog_month ?? '';
+            rows.push(`"${planId}","${month}","${name}","${dayLbl}",${d.day_order},${eff},${enj},${d.rating_count},${d.rating_count >= RELIABILITY_THRESHOLD},"${excs}"`);
           });
         });
         triggerDownload(rows.join('\n'), `liftlog-ratings-${exportDate}.csv`, 'text/csv');
