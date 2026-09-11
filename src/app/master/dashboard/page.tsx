@@ -212,22 +212,35 @@ export default function MasterDashboardPage() {
 
       const days = (ratingsData as DayRating[]) ?? [];
 
-      // name → { id, catalog_month, days[] }
-      const tMeta = new Map<string, { id: string; catalog_month: string | null; days: PlanTemplateDay[] }>();
+      // Build day_id → the specific template that day belongs to.
+      // This is the key fix: multiple templates can share a plan_name (one per month),
+      // so we must resolve to the specific instance via day_id, not group by name.
+      type TemplateMeta = { plan_id: string; plan_name: string; catalog_month: string | null; planDays: PlanTemplateDay[] };
+      const dayToTemplate = new Map<string, TemplateMeta>();
       (templates ?? []).forEach((t: any) => {
-        const rawDate: string | null = t.catalog_available_from ?? null;
-        tMeta.set(t.name as string, {
-          id:            t.id as string,
-          catalog_month: rawDate ? rawDate.slice(0, 7) : null,
-          days:          (t.exercises?.days ?? []) as PlanTemplateDay[],
-        });
+        const meta: TemplateMeta = {
+          plan_id:       t.id as string,
+          plan_name:     t.name as string,
+          catalog_month: t.catalog_available_from ? (t.catalog_available_from as string).slice(0, 7) : null,
+          planDays:      (t.exercises?.days ?? []) as PlanTemplateDay[],
+        };
+        meta.planDays.forEach(d => dayToTemplate.set(d.id, meta));
       });
 
-      const planMap = new Map<string, DayRating[]>();
+      // Group by plan_id (one entry per monthly instance, not per name)
+      const planMap = new Map<string, { meta: TemplateMeta; rows: DayRating[] }>();
       days.forEach(row => {
-        const existing = planMap.get(row.plan_name);
-        if (existing) existing.push(row);
-        else planMap.set(row.plan_name, [row]);
+        const meta = dayToTemplate.get(row.day_id);
+        if (!meta) return;
+        const bucket = planMap.get(meta.plan_id);
+        if (bucket) bucket.rows.push(row);
+        else planMap.set(meta.plan_id, { meta, rows: [row] });
+      });
+
+      // Sort plans by catalog_month then name
+      const sortedPlans = [...planMap.values()].sort((a, b) => {
+        const mCmp = (a.meta.catalog_month ?? '').localeCompare(b.meta.catalog_month ?? '');
+        return mCmp !== 0 ? mCmp : a.meta.plan_name.localeCompare(b.meta.plan_name);
       });
 
       const exportDate = new Date().toISOString().slice(0, 10);
@@ -236,55 +249,50 @@ export default function MasterDashboardPage() {
         const payload = {
           exported_at: exportDate,
           reliability_threshold: RELIABILITY_THRESHOLD,
-          note: `LiftLog program rating data. Each day includes both effectiveness and enjoyment scores plus the exercises performed. Days with ratings < ${RELIABILITY_THRESHOLD} are flagged reliable:false and should be treated as directional only. Use plan_id and catalog_month for stable matching — do not rely on theme name uniqueness.`,
+          note: `LiftLog program rating data. Each program entry is one specific monthly template instance — plan_id and catalog_month are at the program level and apply to all of its days. Days with ratings < ${RELIABILITY_THRESHOLD} are flagged reliable:false and should be treated as directional only.`,
           overall: {
             avg_effectiveness:     stats?.avg_effectiveness != null ? Number(stats.avg_effectiveness).toFixed(2) : null,
             effectiveness_ratings: stats?.effectiveness_count ?? 0,
             avg_enjoyment:         stats?.avg_enjoyment    != null ? Number(stats.avg_enjoyment).toFixed(2)    : null,
             enjoyment_ratings:     stats?.enjoyment_count  ?? 0,
           },
-          programs: [...planMap.entries()].map(([planName, dayRows]) => {
-            const meta   = tMeta.get(planName);
-            const sorted = [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0));
-            return {
-              name:          planName,
-              plan_id:       meta?.id           ?? null,
-              catalog_month: meta?.catalog_month ?? null,
-              days: sorted.map(d => {
-                const tmplDay = (meta?.days ?? []).find(td => td.id === d.day_id);
-                return {
-                  day:               d.day_label || `Day ${d.day_order}`,
-                  order:             d.day_order,
-                  avg_effectiveness: d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : null,
-                  avg_enjoyment:     d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : null,
-                  ratings:           d.rating_count,
-                  reliable:          d.rating_count >= RELIABILITY_THRESHOLD,
-                  exercises:         (tmplDay?.exercises ?? []).map(e => ({
-                    name:         e.exercise.name,
-                    muscle_group: e.exercise.muscleGroup,
-                    type:         e.exercise.type,
-                    sets:         e.targetSets,
-                  })),
-                };
-              }),
-            };
-          }),
+          programs: sortedPlans.map(({ meta, rows }) => ({
+            plan_id:       meta.plan_id,
+            plan_name:     meta.plan_name,
+            catalog_month: meta.catalog_month,
+            days: [...rows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0)).map(d => {
+              const tmplDay = meta.planDays.find(td => td.id === d.day_id);
+              return {
+                day:               d.day_label || `Day ${d.day_order}`,
+                order:             d.day_order,
+                avg_effectiveness: d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : null,
+                avg_enjoyment:     d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : null,
+                ratings:           d.rating_count,
+                reliable:          d.rating_count >= RELIABILITY_THRESHOLD,
+                exercises:         (tmplDay?.exercises ?? []).map(e => ({
+                  name:         e.exercise.name,
+                  muscle_group: e.exercise.muscleGroup,
+                  type:         e.exercise.type,
+                  sets:         e.targetSets,
+                })),
+              };
+            }),
+          })),
         };
         triggerDownload(JSON.stringify(payload, null, 2), `liftlog-ratings-${exportDate}.json`, 'application/json');
       } else {
         const rows = ['plan_id,catalog_month,program,day,order,avg_effectiveness,avg_enjoyment,ratings,reliable,exercises'];
-        [...planMap.entries()].forEach(([planName, dayRows]) => {
-          const meta = tMeta.get(planName);
+        sortedPlans.forEach(({ meta, rows: dayRows }) => {
           [...dayRows].sort((a, b) => (a.day_order ?? 0) - (b.day_order ?? 0)).forEach(d => {
-            const tmplDay       = (meta?.days ?? []).find(td => td.id === d.day_id);
+            const tmplDay       = meta.planDays.find(td => td.id === d.day_id);
             const exerciseNames = (tmplDay?.exercises ?? []).map(e => e.exercise.name).join(' | ');
-            const eff     = d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : '';
-            const enj     = d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : '';
-            const name    = planName.replace(/"/g, '""');
-            const dayLbl  = (d.day_label || `Day ${d.day_order}`).replace(/"/g, '""');
-            const excs    = exerciseNames.replace(/"/g, '""');
-            const planId  = (meta?.id ?? '').replace(/"/g, '""');
-            const month   = meta?.catalog_month ?? '';
+            const eff    = d.avg_effectiveness != null ? Number(d.avg_effectiveness).toFixed(2) : '';
+            const enj    = d.avg_enjoyment    != null ? Number(d.avg_enjoyment).toFixed(2)    : '';
+            const planId = meta.plan_id.replace(/"/g, '""');
+            const month  = meta.catalog_month ?? '';
+            const name   = meta.plan_name.replace(/"/g, '""');
+            const dayLbl = (d.day_label || `Day ${d.day_order}`).replace(/"/g, '""');
+            const excs   = exerciseNames.replace(/"/g, '""');
             rows.push(`"${planId}","${month}","${name}","${dayLbl}",${d.day_order},${eff},${enj},${d.rating_count},${d.rating_count >= RELIABILITY_THRESHOLD},"${excs}"`);
           });
         });
