@@ -11,6 +11,14 @@
     {
       "path": "/api/monthly-milestones-report",
       "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/notify-expiry",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/notify-no-program",
+      "schedule": "0 9 20 * *"
     }
   ]
 }
