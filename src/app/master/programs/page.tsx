@@ -568,13 +568,14 @@ export default function MasterProgramsPage() {
       if (wpErr) { setPreviewLaunchError('Failed to assign workout plans: ' + wpErr.message); setPreviewLaunching(false); return; }
     }
     const { data: epData, error: epErr } = await sb.from('employer_programs').insert({
-      employer_id:       MASTER_ID,
-      plan_template_id:  previewLaunchTpl.id,
-      name:              previewLaunchTpl.name,
-      started_at:        start,
-      ends_at:           end,
-      schedule_type:     scheduleType,
-      work_days:         workDays,
+      employer_id:        MASTER_ID,
+      plan_template_id:   previewLaunchTpl.id,
+      name:               previewLaunchTpl.name,
+      started_at:         start,
+      ends_at:            end,
+      schedule_type:      scheduleType,
+      work_days:          workDays,
+      exercises_snapshot: previewLaunchTpl.exercises,
     }).select('id, plan_template_id, name, ends_at').single();
     if (epErr) { setPreviewLaunchError('Failed to create employer program: ' + epErr.message); setPreviewLaunching(false); return; }
     setActivePreviews(prev => [...prev, epData as ActivePreview]);

@@ -35,6 +35,7 @@ interface EmployerProgram {
   ends_at: string;
   schedule_type: string;
   work_days: number[];
+  exercises_snapshot?: any;
 }
 
 interface ProgramRating {
@@ -190,7 +191,7 @@ export default function ProgramsPage() {
           .lte('catalog_available_from', future45)
           .order('catalog_available_from'),
         sb.from('employer_programs')
-          .select('id, plan_template_id, name, started_at, ends_at')
+          .select('id, plan_template_id, name, started_at, ends_at, exercises_snapshot')
           .eq('employer_id', uid)
           .order('started_at', { ascending: false }),
         sb.from('patient_links')
@@ -309,7 +310,8 @@ export default function ProgramsPage() {
       .single();
     setPreviewingProgId(null);
     if (!tplData) { alert('Could not load program details.'); return; }
-    setPreviewTpl(tplData as FeaturedTemplate);
+    const tpl = tplData as FeaturedTemplate;
+    setPreviewTpl(prog.exercises_snapshot ? { ...tpl, exercises: prog.exercises_snapshot } : tpl);
   }
 
   function toggleSelect(id: string) {
@@ -363,7 +365,7 @@ export default function ProgramsPage() {
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
       }
-      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days').single();
+      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: tpl.exercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
       if (progErr) { setLaunchError(`Could not save "${tpl.name}": ` + progErr.message); setLaunching(false); return; }
       newProgs.push(progData as EmployerProgram);
     }
@@ -417,7 +419,7 @@ export default function ProgramsPage() {
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
-    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days').single();
+    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: launchModal.exercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
     const newProg = progData as EmployerProgram;
     setActivePrograms(prev => [newProg, ...prev]);
