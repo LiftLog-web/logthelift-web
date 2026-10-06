@@ -564,11 +564,11 @@ function ActivityGrid({
                           {ex.sets.length > 0 && (
                             <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {ex.sets.map((s, si) => {
+                                const done = s.completed === true;
                                 const target = ex.targetSets?.[si];
                                 const skippedZero = ex.exercise.type === 'cardio' ? '0 min' : ex.exercise.type === 'duration' ? '0s' : '0 reps';
                                 const actual = done ? setLabel(s, ex.exercise.type) : skippedZero;
                                 const tLabel = target ? setLabel(target, ex.exercise.type) : null;
-                                const done = s.completed === true;
                                 return (
                                   <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: done ? 'transparent' : 'rgba(239,68,68,0.08)', borderRadius: 6, padding: done ? '0' : '2px 6px', margin: done ? '0' : '0 -6px' }}>
                                     <span style={{ width: 18, color: done ? 'var(--text-dim)' : '#ef4444', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
