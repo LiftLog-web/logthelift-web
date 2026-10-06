@@ -196,7 +196,7 @@ function setLabel(s: WorkoutSet, type: string): string {
     const rw = s.rightWeight ? ` × ${s.rightWeight}${s.unit ?? 'lbs'}` : '';
     return `L ${s.leftReps ?? 0} reps${lw} / R ${s.rightReps ?? 0} reps${rw}`;
   }
-  const w = s.weight !== undefined ? `${s.weight}${s.unit ?? 'kg'}` : '';
+  const w = s.weight ? `${s.weight}${s.unit ?? 'kg'}` : '';
   const r = s.reps   !== undefined ? `${s.reps} reps` : '';
   return [r, w].filter(Boolean).join(' × ') || '—';
 }
@@ -565,7 +565,8 @@ function ActivityGrid({
                             <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {ex.sets.map((s, si) => {
                                 const target = ex.targetSets?.[si];
-                                const actual = setLabel(s, ex.exercise.type);
+                                const skippedZero = ex.exercise.type === 'cardio' ? '0 min' : ex.exercise.type === 'duration' ? '0s' : '0 reps';
+                                const actual = done ? setLabel(s, ex.exercise.type) : skippedZero;
                                 const tLabel = target ? setLabel(target, ex.exercise.type) : null;
                                 const done = s.completed === true;
                                 return (
