@@ -72,6 +72,7 @@ interface WorkoutSet {
   rightWeight?: number;
   leftDuration?: number;
   rightDuration?: number;
+  completed?: boolean;
 }
 
 interface LoggedExercise {
@@ -109,11 +110,13 @@ function exStatus(ex: LoggedExercise): ExStatus {
   if (targets.length === 0) return ex.sets.length > 0 ? 'completed' : 'none';
   if (ex.sets.length === 0) return 'none';
 
+  if (!ex.sets.some(s => s.completed)) return 'none';
+
   let met = 0;
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
     const a = ex.sets[i];
-    if (!a) break;
+    if (!a || !a.completed) break;
     if (t.reps !== undefined) {
       const actualReps   = a.isSplit ? Math.min(a.leftReps   ?? 0, a.rightReps   ?? 0) : (a.reps   ?? 0);
       const actualWeight = a.isSplit ? Math.min(a.leftWeight ?? 0, a.rightWeight ?? 0) : (a.weight ?? 0);
