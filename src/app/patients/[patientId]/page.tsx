@@ -569,14 +569,14 @@ function ActivityGrid({
                                 const tLabel = target ? setLabel(target, ex.exercise.type) : null;
                                 const done = s.completed === true;
                                 return (
-                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, opacity: done ? 1 : 0.45 }}>
-                                    <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
-                                    <span style={{ color: 'var(--text)', minWidth: 90, textDecoration: done ? 'none' : 'line-through' }}>{actual}</span>
+                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: done ? 'transparent' : 'rgba(239,68,68,0.08)', borderRadius: 6, padding: done ? '0' : '2px 6px', margin: done ? '0' : '0 -6px' }}>
+                                    <span style={{ width: 18, color: done ? 'var(--text-dim)' : '#ef4444', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
+                                    <span style={{ color: done ? 'var(--text)' : 'var(--text-muted)', minWidth: 90 }}>{actual}</span>
                                     {tLabel && (
                                       <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>target: {tLabel}</span>
                                     )}
                                     {!done && (
-                                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>not done</span>
+                                      <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, marginLeft: 'auto' }}>Skipped</span>
                                     )}
                                   </div>
                                 );
