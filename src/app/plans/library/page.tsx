@@ -1055,9 +1055,9 @@ export default function PlanLibraryPage() {
                   onChange={e => setAssignPatientId(e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--card-alt)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 14px', color: assignPatientId ? 'var(--text)' : 'var(--text-muted)', fontSize: 14, outline: 'none', cursor: 'pointer' }}
                 >
-                  <option value="">{isEmployer ? 'Select an employee…' : 'Select a patient…'}</option>
+                  <option value="" style={{ color: '#111', background: '#fff' }}>{isEmployer ? 'Select an employee…' : 'Select a patient…'}</option>
                   {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.display_name}</option>
+                    <option key={p.id} value={p.id} style={{ color: '#111', background: '#fff' }}>{p.display_name}</option>
                   ))}
                 </select>
                 {patients.length === 0 && (
