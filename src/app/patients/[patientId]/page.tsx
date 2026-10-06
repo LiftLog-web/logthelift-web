@@ -567,12 +567,16 @@ function ActivityGrid({
                                 const target = ex.targetSets?.[si];
                                 const actual = setLabel(s, ex.exercise.type);
                                 const tLabel = target ? setLabel(target, ex.exercise.type) : null;
+                                const done = s.completed === true;
                                 return (
-                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                                  <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, opacity: done ? 1 : 0.45 }}>
                                     <span style={{ width: 18, color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{si + 1}</span>
-                                    <span style={{ color: 'var(--text)', minWidth: 90 }}>{actual}</span>
+                                    <span style={{ color: 'var(--text)', minWidth: 90, textDecoration: done ? 'none' : 'line-through' }}>{actual}</span>
                                     {tLabel && (
                                       <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>target: {tLabel}</span>
+                                    )}
+                                    {!done && (
+                                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic' }}>not done</span>
                                     )}
                                   </div>
                                 );
