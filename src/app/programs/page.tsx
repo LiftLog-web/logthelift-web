@@ -440,6 +440,35 @@ export default function ProgramsPage() {
         employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: launchModal.id, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(freshExercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
+      // Silent post-launch verification: read back one inserted row and confirm
+      // its exercise count matches what was fetched from plan_templates.
+      const expectedCount = (() => {
+        const ex = freshExercises;
+        if (!ex) return 0;
+        if (Array.isArray(ex)) return ex.length;
+        if (ex.days) return ex.days.reduce((n: number, d: any) => n + (d.exercises?.length ?? 0), 0);
+        return 0;
+      })();
+      const { data: verifyRow } = await sb.from('workout_plans')
+        .select('exercises')
+        .eq('plan_template_id', launchModal.id)
+        .eq('practitioner_id', userId)
+        .eq('start_date', start)
+        .limit(1)
+        .single();
+      if (verifyRow) {
+        const actual = verifyRow.exercises;
+        const actualCount = (() => {
+          if (!actual) return 0;
+          if (Array.isArray(actual)) return actual.length;
+          if (actual.days) return actual.days.reduce((n: number, d: any) => n + (d.exercises?.length ?? 0), 0);
+          return 0;
+        })();
+        if (actualCount !== expectedCount) {
+          setLaunchError(`Launch error: plan recorded ${actualCount} exercises but template has ${expectedCount}. Please contact support.`);
+          setLaunching(false); return;
+        }
+      }
     }
     const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: freshExercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
