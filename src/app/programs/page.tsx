@@ -25,6 +25,7 @@ interface FeaturedTemplate {
   exercises: any;
   catalog_available_from:  string | null;
   catalog_available_until: string | null;
+  created_at: string;
 }
 
 interface EmployerProgram {
@@ -184,7 +185,7 @@ export default function ProgramsPage() {
 
       const [templatesRes, programsRes, linksRes] = await Promise.all([
         sb.from('plan_templates')
-          .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until')
+          .select('id, name, description, featured_duration_days, exercises, catalog_available_from, catalog_available_until, created_at')
           .eq('practitioner_id', MASTER_ID)
           .eq('is_featured', true)
           .not('catalog_available_from', 'is', null)
@@ -205,8 +206,19 @@ export default function ProgramsPage() {
       const allTemplates = ((templatesRes.data ?? []) as FeaturedTemplate[]).filter(
         t => !t.catalog_available_until || t.catalog_available_until >= today
       );
-      setAvailableNowTemplates(allTemplates.filter(t => t.catalog_available_from! <= today));
-      setComingSoonTemplates(allTemplates.filter(t => t.catalog_available_from! > today));
+      // Deduplicate by name, keeping the most recently created template for each name.
+      // Prevents employers from accidentally launching a stale same-named template when
+      // duplicates exist under the master account.
+      const dedupedTemplates = Array.from(
+        allTemplates.reduce((map, t) => {
+          const key = t.name.toLowerCase().trim();
+          const existing = map.get(key);
+          if (!existing || t.created_at > existing.created_at) map.set(key, t);
+          return map;
+        }, new Map<string, FeaturedTemplate>())
+      ).map(([, t]) => t);
+      setAvailableNowTemplates(dedupedTemplates.filter(t => t.catalog_available_from! <= today));
+      setComingSoonTemplates(dedupedTemplates.filter(t => t.catalog_available_from! > today));
 
       const progs = (programsRes.data ?? []) as EmployerProgram[];
       const active = progs.filter(p => p.ends_at >= today);
