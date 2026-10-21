@@ -403,6 +403,16 @@ export default function ProgramsPage() {
     setLaunching(true); setLaunchError('');
     const sb  = getSupabase();
     const now = new Date().toISOString();
+
+    // Re-fetch template exercises fresh from the DB at launch time so we never
+    // insert stale page-load data into employees' workout_plans.
+    const { data: freshTpl, error: tplErr } = await sb.from('plan_templates')
+      .select('exercises')
+      .eq('id', launchModal.id)
+      .single();
+    if (tplErr || !freshTpl) { setLaunchError('Could not load program content. Please refresh and try again.'); setLaunching(false); return; }
+    const freshExercises = freshTpl.exercises;
+
     const { data: links, error: linksErr } = await sb.from('patient_links').select('patient_id').eq('practitioner_id', userId);
     if (linksErr) { setLaunchError('Could not load employees: ' + linksErr.message); setLaunching(false); return; }
     const employees = (links ?? []).map((l: any) => l.patient_id as string);
@@ -427,11 +437,11 @@ export default function ProgramsPage() {
         .eq('name', launchModal.name)
         .gt('start_date', today_d);
       const { error: plansErr } = await sb.from('workout_plans').insert(
-        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: launchModal.id, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(launchModal.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
+        employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: launchModal.id, name: launchModal.name, description: launchModal.description ?? null, exercises: serializeExercisesForMobile(freshExercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
       );
       if (plansErr) { setLaunchError('Could not assign plans: ' + plansErr.message); setLaunching(false); return; }
     }
-    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: launchModal.exercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
+    const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: launchModal.id, name: launchModal.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: freshExercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
     if (progErr) { setLaunchError('Could not save program: ' + progErr.message); setLaunching(false); return; }
     const newProg = progData as EmployerProgram;
     setActivePrograms(prev => [newProg, ...prev]);
