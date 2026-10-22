@@ -465,8 +465,7 @@ export default function ProgramsPage() {
           if (actual.days) return actual.days.reduce((n: number, d: any) => n + (d.exercises?.length ?? 0), 0);
           return 0;
         })();
-        const ANGIE_TEST_CO = '631d68da-c352-4d94-acc8-2508f6677413';
-        if (actualCount !== expectedCount || userId === ANGIE_TEST_CO) { // TODO: remove test condition
+        if (actualCount !== expectedCount) {
           // Internal flag only — not shown to employer.
           Sentry.captureMessage('Launch verification mismatch', {
             level: 'error',
