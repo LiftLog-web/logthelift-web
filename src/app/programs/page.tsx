@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { DayPicker } from 'react-day-picker';
@@ -466,7 +467,10 @@ export default function ProgramsPage() {
         })();
         if (actualCount !== expectedCount) {
           // Internal flag only — not shown to employer.
-          console.error('[LiftLog] Launch verification mismatch', { templateId: launchModal.id, expected: expectedCount, actual: actualCount, start });
+          Sentry.captureMessage('Launch verification mismatch', {
+            level: 'error',
+            extra: { templateId: launchModal.id, templateName: launchModal.name, expected: expectedCount, actual: actualCount, start },
+          });
         }
       }
     }
