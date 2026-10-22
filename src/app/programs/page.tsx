@@ -352,6 +352,10 @@ export default function ProgramsPage() {
     const newProgs: EmployerProgram[] = [];
     const today_date = new Date().toISOString().slice(0, 10);
     for (const tpl of tolaunch) {
+      // Always fetch fresh exercises from DB to avoid stale page-load cache.
+      const { data: freshTpl, error: freshErr } = await sb.from('plan_templates').select('exercises').eq('id', tpl.id).single();
+      if (freshErr || !freshTpl) { setLaunchError(`Could not load exercises for "${tpl.name}": ` + (freshErr?.message ?? 'not found')); setLaunching(false); return; }
+      const freshExercises = freshTpl.exercises;
       if (employees.length > 0) {
         // Expire currently active rows by setting end_date (preserves UUIDs so
         // synced_workouts session references remain intact for historical ratings).
@@ -373,12 +377,12 @@ export default function ProgramsPage() {
           .eq('name', tpl.name)
           .gt('start_date', today_date);
         const { error: plansErr } = await sb.from('workout_plans').insert(
-          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: tpl.id, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(tpl.exercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
+          employees.map(patientId => ({ practitioner_id: userId, patient_id: patientId, plan_template_id: tpl.id, name: tpl.name, description: tpl.description ?? null, exercises: serializeExercisesForMobile(freshExercises), start_date: start, end_date: end, created_at: now, updated_at: now }))
 
         );
         if (plansErr) { setLaunchError(`Could not assign "${tpl.name}": ` + plansErr.message); setLaunching(false); return; }
       }
-      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: tpl.exercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
+      const { data: progData, error: progErr } = await sb.from('employer_programs').insert({ employer_id: userId, plan_template_id: tpl.id, name: tpl.name, started_at: start, ends_at: end, schedule_type: scheduleType, work_days: workDays, exercises_snapshot: freshExercises }).select('id, plan_template_id, name, started_at, ends_at, schedule_type, work_days, exercises_snapshot').single();
       if (progErr) { setLaunchError(`Could not save "${tpl.name}": ` + progErr.message); setLaunching(false); return; }
       newProgs.push(progData as EmployerProgram);
     }
