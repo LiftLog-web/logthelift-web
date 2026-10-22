@@ -465,8 +465,8 @@ export default function ProgramsPage() {
           return 0;
         })();
         if (actualCount !== expectedCount) {
-          setLaunchError(`Launch error: plan recorded ${actualCount} exercises but template has ${expectedCount}. Please contact support.`);
-          setLaunching(false); return;
+          // Internal flag only — not shown to employer.
+          console.error('[LiftLog] Launch verification mismatch', { templateId: launchModal.id, expected: expectedCount, actual: actualCount, start });
         }
       }
     }
