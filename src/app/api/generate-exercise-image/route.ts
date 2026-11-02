@@ -88,11 +88,13 @@ export async function POST(req: NextRequest) {
     const motionHint = getMotionHint(exerciseName);
     const prompt = `Safe, professional workplace wellness exercise illustration. Clean minimal instructional diagram of ${character} performing the office mobility exercise "${exerciseName}" in a workplace or office setting.${poseHint} Flat vector illustration style, white background, clear body posture demonstrating the exercise movement. The entire figure must be fully visible — full head including top of hair and both feet including soles — with generous empty space above the head and below the feet so nothing is cropped. The person has a calm, natural expression — relaxed and focused, not frowning or sad. All hands must have exactly five natural, anatomically correct fingers — no fused, missing, or distorted fingers. The character must be wearing closed-toe work shoes or sneakers — absolutely no bare feet. No text labels.${motionHint}`;
 
-    const imageRes = await openai.images.generate({ model: 'dall-e-3', prompt, n: 1, size: '1024x1792', quality: 'standard', response_format: 'b64_json' }) as { data: Array<{ b64_json?: string | null }> };
+    const imageRes = await openai.images.generate({ model: 'dall-e-3', prompt, n: 1, size: '1024x1792', quality: 'standard' });
 
-    const b64 = imageRes.data?.[0]?.b64_json;
-    if (!b64) return NextResponse.json({ error: 'Image generation failed.' }, { status: 500 });
-    const imgBuffer = Buffer.from(b64, 'base64');
+    const imageUrl = imageRes.data?.[0]?.url;
+    if (!imageUrl) return NextResponse.json({ error: 'Image generation failed.' }, { status: 500 });
+    const imgFetch = await fetch(imageUrl);
+    if (!imgFetch.ok) return NextResponse.json({ error: 'Image download failed.' }, { status: 500 });
+    const imgBuffer = Buffer.from(await imgFetch.arrayBuffer());
 
     // Service-role client for storage + DB writes — bypasses RLS safely on the server
     const sbAdmin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!);
