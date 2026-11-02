@@ -177,7 +177,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: publicUrl });
   } catch (err: any) {
-    console.error('[generate-exercise-image]', err);
-    return NextResponse.json({ error: err?.message ?? 'Unexpected server error' }, { status: 500 });
+    const detail = err?.error ?? err;
+    console.error('[generate-exercise-image]', JSON.stringify(detail, null, 2));
+    const msg = err?.error?.message ?? err?.message ?? 'Unexpected server error';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
