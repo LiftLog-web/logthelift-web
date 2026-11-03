@@ -52,6 +52,12 @@ function getMotionHint(exerciseName: string): string {
   if (lower.includes('toe') && (lower.includes('spread') || lower.includes('splay') || lower.includes('curl'))) {
     return ' The character is seated upright on a chair with both feet flat on the floor, wearing closed-toe shoes. The toe movement is invisible inside the shoes — do NOT attempt to show toes outside or through the shoes. Hands rest relaxed on the thighs. Show good seated posture only.';
   }
+  if (lower.includes('wrist') && lower.includes('extensor')) {
+    return ' CRITICAL POSE: the character stands upright facing forward. The RIGHT arm is extended straight forward at shoulder height, elbow fully straight, palm facing DOWN with fingers pointing toward the floor. The LEFT hand is placed on TOP of the right hand\'s fingers and gently presses them DOWNWARD to deepen the stretch. Show only ONE figure — do not render a second figure, second pose, or inset panel.';
+  }
+  if (lower.includes('wrist') && lower.includes('flexor')) {
+    return ' CRITICAL POSE: the character stands upright facing forward. The RIGHT arm is extended straight forward at shoulder height, elbow fully straight, palm facing UP with fingers pointing toward the floor (wrist bent back). The LEFT hand holds the right hand\'s fingers from below and gently pulls them BACK and DOWN toward the body. Show only ONE figure — do not render a second figure, second pose, or inset panel.';
+  }
   if (lower.includes('butterfly')) {
     return ' CRITICAL POSE: the character is seated on a chair. Both feet are lifted completely off the floor, soles pressed flat together meeting at the centre between the knees, with both knees splayed wide out to the sides like open butterfly wings — forming a clear diamond shape with the legs. Both hands rest on the inner knees pressing gently outward and downward. The feet must be touching each other sole-to-sole and must NOT be on the floor.';
   }
