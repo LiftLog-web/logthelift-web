@@ -491,7 +491,7 @@ export default function LeaderboardPage() {
         .order('ends_at', { ascending: false })
         .then(({ data: pastProgsData }) => {
           if (!pastProgsData?.length) return;
-          const past: PastProgram[] = (pastProgsData as any[]).map(p => {
+          const rawPast: PastProgram[] = (pastProgsData as any[]).map(p => {
             const f = new Date((p.started_at as string) + 'T12:00:00');
             const t = new Date((p.ends_at   as string) + 'T12:00:00');
             const fromLbl = f.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -504,6 +504,17 @@ export default function LeaderboardPage() {
               ends_at:    p.ends_at    as string,
             };
           });
+          // Group programs that share the same month label into one entry
+          const grouped: Record<string, PastProgram> = {};
+          for (const p of rawPast) {
+            if (!grouped[p.name]) {
+              grouped[p.name] = { ...p };
+            } else {
+              if (p.started_at < grouped[p.name].started_at) grouped[p.name].started_at = p.started_at;
+              if (p.ends_at   > grouped[p.name].ends_at)   grouped[p.name].ends_at   = p.ends_at;
+            }
+          }
+          const past = Object.values(grouped);
           setPastPrograms(past);
           setSelectedPastProgram(past[0]);
         });
