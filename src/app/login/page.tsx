@@ -170,7 +170,7 @@ export default function LoginPage() {
   };
 
   const roles: { value: Role; label: string; color: string }[] = [
-    { value: 'patient',       label: 'Patient',      color: PURPLE },
+    { value: 'patient',       label: 'Individual',   color: PURPLE },
     { value: 'practitioner',  label: 'Practitioner', color: PURPLE },
     { value: 'business',      label: 'Business',     color: YELLOW },
   ];
