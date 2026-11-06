@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import { Mail, Upload, AlertTriangle, Info } from 'lucide-react';
+import { Mail, Upload, AlertTriangle, Info, Crown, Trophy, Medal, Flame, Star } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -212,13 +212,13 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
 
 function PodiumBlock({ entry, rank, height }: { entry: LeaderboardEntry; rank: 1 | 2 | 3; height: number }) {
   const color  = rank === 1 ? GOLD : rank === 2 ? SILVER : BRONZE;
-  const medal  = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+  const medalIcon = rank === 1 ? <Medal size={28} color={GOLD} /> : rank === 2 ? <Medal size={28} color={SILVER} /> : <Medal size={28} color={BRONZE} />;
   const glow   = rank === 1 ? `0 0 32px ${GOLD}66, 0 4px 24px #0004` : '0 2px 8px #0002';
   const border = rank === 1 ? `2px solid ${GOLD}` : `1px solid ${color}44`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-      {rank === 1 && <div style={{ fontSize: 28 }}>👑</div>}
+      {rank === 1 && <Crown size={28} color={TEAL} />}
       <Avatar name={entry.employee.name} size={rank === 1 ? 60 : 48} />
       <div style={{ fontSize: rank === 1 ? 15 : 13, fontWeight: 700, color: 'var(--text)', textAlign: 'center', maxWidth: 120 }}>
         {entry.employee.name}
@@ -227,7 +227,7 @@ function PodiumBlock({ entry, rank, height }: { entry: LeaderboardEntry; rank: 1
         {entry.workoutCount} workout{entry.workoutCount !== 1 ? 's' : ''}
       </div>
       {entry.currentStreak > 0 && (
-        <div style={{ fontSize: 12, color: TEAL, fontWeight: 600 }}>🔥 {entry.currentStreak}d streak</div>
+        <div style={{ fontSize: 12, color: TEAL, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><Flame size={12} color="#F97316" />{entry.currentStreak}d streak</div>
       )}
       <div style={{
         width: rank === 1 ? 120 : 96,
@@ -240,7 +240,7 @@ function PodiumBlock({ entry, rank, height }: { entry: LeaderboardEntry; rank: 1
         boxShadow: glow,
         fontSize: 28,
       }}>
-        {medal}
+        {medalIcon}
       </div>
     </div>
   );
@@ -643,7 +643,7 @@ export default function LeaderboardPage() {
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10, marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 26, lineHeight: 1 }}>🏆</span>
+            <Trophy size={26} color={TEAL} />
             <div>
               <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, background: `linear-gradient(135deg, ${TEAL}, ${PURPLE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Leaderboard
@@ -1037,7 +1037,7 @@ export default function LeaderboardPage() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
               {teamEntries.map((te, idx) => {
-                const rankMedal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                const rankMedal = idx === 0 ? <Medal size={18} color={GOLD} /> : idx === 1 ? <Medal size={18} color={SILVER} /> : idx === 2 ? <Medal size={18} color={BRONZE} /> : null;
                 const accentColor = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : 'var(--border)';
                 return (
                   <div key={te.team.id} style={{
@@ -1048,7 +1048,7 @@ export default function LeaderboardPage() {
                     boxShadow: idx === 0 ? `0 0 20px ${GOLD}22` : '0 2px 8px #0002',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      {rankMedal && <span style={{ fontSize: 18 }}>{rankMedal}</span>}
+                      {rankMedal}
                       <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{te.team.name}</span>
                     </div>
                     <div style={{ fontSize: 36, fontWeight: 900, color: te.totalWorkouts > 0 ? TEAL : 'var(--text-muted)', lineHeight: 1, marginBottom: 6 }}>
@@ -1060,7 +1060,7 @@ export default function LeaderboardPage() {
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <span>{te.activeMembers} / {te.totalMembers} members active</span>
                       {te.topPerformer && te.topPerformer.workoutCount > 0 && (
-                        <span style={{ color: PURPLE, fontWeight: 600 }}>⭐ {te.topPerformer.employee.name}</span>
+                        <span style={{ color: PURPLE, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={12} color={PURPLE} />{te.topPerformer.employee.name}</span>
                       )}
                     </div>
                   </div>
@@ -1128,7 +1128,7 @@ export default function LeaderboardPage() {
 
                 {activeEntries.map((entry, idx) => {
                   const rank      = idx + 1;
-                  const medalEl   = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+                  const medalEl   = rank === 1 ? <Medal size={22} color={GOLD} /> : rank === 2 ? <Medal size={22} color={SILVER} /> : rank === 3 ? <Medal size={22} color={BRONZE} /> : null;
                   const isTop     = rank <= 3;
                   const rowAccent = rank === 1 ? `${GOLD}18` : rank === 2 ? `${SILVER}12` : rank === 3 ? `${BRONZE}12` : 'transparent';
 
@@ -1161,12 +1161,12 @@ export default function LeaderboardPage() {
                       </div>
                       <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
                         {entry.currentStreak > 0
-                          ? <span style={{ color: '#F97316' }}>🔥 {entry.currentStreak}d</span>
+                          ? <span style={{ color: '#F97316', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Flame size={13} color="#F97316" />{entry.currentStreak}d</span>
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </div>
                       <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
                         {entry.longestStreak > 0
-                          ? <span style={{ color: PURPLE }}>⭐ {entry.longestStreak}d</span>
+                          ? <span style={{ color: PURPLE, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Star size={13} color={PURPLE} />{entry.longestStreak}d</span>
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </div>
                       <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>

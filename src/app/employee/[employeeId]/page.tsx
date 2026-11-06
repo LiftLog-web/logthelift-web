@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { checkPractitionerAccess } from '@/lib/checkPractitionerAccess';
-import { Calendar } from 'lucide-react';
+import { Calendar, Flame, Trophy } from 'lucide-react';
 
 const TEAL   = '#1EDBA8';
 const PURPLE = '#C471ED';
@@ -27,7 +27,7 @@ interface WorkoutLog {
 
 function StatCard({ label, value, sub, accent, icon }: {
   label: string; value: string | number | React.ReactNode;
-  sub?: string; accent?: string; icon?: string;
+  sub?: string; accent?: string; icon?: React.ReactNode;
 }) {
   return (
     <div style={{
@@ -39,7 +39,7 @@ function StatCard({ label, value, sub, accent, icon }: {
       boxShadow: accent ? `0 0 20px ${accent}18` : '0 2px 8px #0001',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {icon && <span style={{ fontSize: 20 }}>{icon}</span>}
+        {icon && <span style={{ display: 'inline-flex', alignItems: 'center' }}>{icon}</span>}
         <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
       </div>
       <div style={{ fontSize: 34, fontWeight: 800, color: accent ?? 'var(--text)', lineHeight: 1 }}>{value}</div>
@@ -420,8 +420,8 @@ export default function EmployeeOverviewPage() {
 
         {/* Streak stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-          <StatCard label="Current Streak" value={`${currentStreak}d`} sub="employer-plan workouts" accent={TEAL} icon="🔥" />
-          <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="employer-plan workouts" accent={PURPLE} icon="🏆" />
+          <StatCard label="Current Streak" value={`${currentStreak}d`} sub="employer-plan workouts" accent={TEAL} icon={<Flame size={20} color="#F97316" />} />
+          <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="employer-plan workouts" accent={PURPLE} icon={<Trophy size={20} color={PURPLE} />} />
         </div>
 
         {/* Activity dots */}

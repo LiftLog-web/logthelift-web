@@ -10,6 +10,7 @@ import { DayPicker } from 'react-day-picker';
 import type { DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { addMonths, startOfMonth, format } from 'date-fns';
+import { Star } from 'lucide-react';
 
 const TEAL   = '#5fcfbf';
 const PURPLE = '#C471ED';
@@ -780,8 +781,8 @@ export default function MasterProgramsPage() {
                     </span>
                     {hasR ? (
                       <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        {eff != null && <span style={{ fontWeight: 700 }}>⭐ {eff} / 5 Effectiveness</span>}
-                        {enj != null && <span style={{ fontWeight: 700 }}>⭐ {enj} / 5 Enjoyment</span>}
+                        {eff != null && <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={12} color={PURPLE} />{eff} / 5 Effectiveness</span>}
+                        {enj != null && <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={12} color={PURPLE} />{enj} / 5 Enjoyment</span>}
                         <span style={{ color: 'var(--text-dim)' }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                       </span>
                     ) : (
@@ -1039,10 +1040,10 @@ export default function MasterProgramsPage() {
                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Ratings</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: days.length > 0 ? 12 : 0 }}>
                               {(r.avg_effectiveness ?? r.avg_satisfaction) != null && (
-                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14 }}>⭐ {r.avg_effectiveness ?? r.avg_satisfaction} / 5 Effectiveness</span>
+                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={13} color={PURPLE} />{r.avg_effectiveness ?? r.avg_satisfaction} / 5 Effectiveness</span>
                               )}
                               {r.avg_enjoyment != null && (
-                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14 }}>⭐ {r.avg_enjoyment} / 5 Enjoyment</span>
+                                <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={13} color={PURPLE} />{r.avg_enjoyment} / 5 Enjoyment</span>
                               )}
                               <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>({r.rating_count} rating{Number(r.rating_count) !== 1 ? 's' : ''})</span>
                             </div>
